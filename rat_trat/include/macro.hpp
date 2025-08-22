@@ -1,0 +1,2 @@
+#define TOKEN ( "5598026972:AAFtLSUld27ImilkcOppvGMFgSAPXozEgVo" )
+#define MASTER_ID  (uint64_t)1492536442

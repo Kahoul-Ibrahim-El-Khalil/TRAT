@@ -1,0 +1,6 @@
+complete the payloading logic, by implementing a special handler for the commands related to.
+implement a handler for a command that sets the bot_internal variables.
+impliment a hanndler for a command /screenshot /stream those will basically launch a process after recieving the rightful payload.
+
+check the debug status of the rat::system process commands;
+make the compilation doable on windows.

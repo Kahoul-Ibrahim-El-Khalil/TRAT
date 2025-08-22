@@ -1,0 +1,49 @@
+# Ignore build directories in all modules
+**/build/
+build/
+**/.cache/*
+*.idx
+# Ignore compiled static libraries
+*.a
+.clang*
+.cmake*
+# Ignore executables / binaries
+*.out
+*.exe
+trat    # or any other specific final binaries
+
+# Ignore CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+*.DS_Store
+
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+
+# Ignore IDE/editor settings
+.vscode/
+.idea/
+*.iml
+
+# Ignore coverage reports (if used)
+coverage/
+*.gcda
+*.gcno
+*.gcov
+
+**/.cache/clangd/
+**/.cache/*
+.editorconfig
+*.yml
+*.yaml
+tools/run-clang-format.py
+tools/run-clang-tidy.py

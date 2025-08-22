@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/odahim/Sources/C/rat_networking/build",
+  "command": "/usr/bin/c++  -I/home/odahim/Sources/C/rat_networking/include -Oz -std=gnu++20 -o CMakeFiles/rat_networking.dir/src/networking.cpp.o -c /home/odahim/Sources/C/rat_networking/src/networking.cpp",
+  "file": "/home/odahim/Sources/C/rat_networking/src/networking.cpp"
+},
+{
+  "directory": "/home/odahim/Sources/C/rat_networking/build",
+  "command": "/usr/bin/c++  -I/home/odahim/Sources/C/rat_networking/include -std=gnu++20 -o CMakeFiles/rat_networker.dir/src/main.cpp.o -c /home/odahim/Sources/C/rat_networking/src/main.cpp",
+  "file": "/home/odahim/Sources/C/rat_networking/src/main.cpp"
+}
+]
