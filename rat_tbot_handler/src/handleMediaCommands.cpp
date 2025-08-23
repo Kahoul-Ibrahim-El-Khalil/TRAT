@@ -7,7 +7,7 @@
 #include "logging.hpp"
 namespace rat::tbot::handler {
 
-std::string _handleScreenshotCommand(const Bot& arg_Bot) {
+std::string _handleScreenshotCommand(Bot& arg_Bot) {
     
     auto image_path = std::filesystem::path(fmt::format("{}.jpg", rat::system::getCurrentDateTime_Underscored() ));
     std::string output_buffer;

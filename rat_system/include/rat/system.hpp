@@ -101,32 +101,20 @@ namespace rat::system {
     // -------------------------------
     /*boost_wrapper*/
 
-   uint32_t getProcessId(void);
+    uint32_t getProcessId(void);
     std::string listProcesses(void); // May require elevated privileges
     bool killProcess(uint32_t arg_Pid); // May require elevated privileges
-
-
-    struct TinyTask {
-        std::string command;
-        std::vector<std::string> parameters;
-
-        std::string output_buffer; // stdout
-        std::string error_buffer;  // stderr
-
-        uint32_t timeout_ms{0}; // 0 = infinite
-        std::function<void(int)> call_back;
+    
+    std::string runShellCommand(const std::string& arg_Command, unsigned int Timeout_ms);
+    
+    struct ProcessResult {
+        int exit_code;
+        std::string stdout_str;
+        std::string stderr_str;
     };
- /*returns true if it launches successfully regardless if it is actually successful*/ 
 
-  std::string runCommand(const std::string& arg_Command, uint32_t Timeout_ms);
+    std::string runProcess(const std::string& arg_Command, unsigned int Timeout_ms, std::function<void(ProcessResult)> lambda_Callback);
 
-  void runSystemCommand(const std::string &cmd,
-                             std::string &out,
-                             std::string &err) ;
-  bool runCommandOnSeparateThread(const TinyTask& arg_Task);
-
-  bool runSeparateProcess(TinyTask& arg_Task);
- 
-/*Low level Operations*/
+    /*Low level Operations*/
 
 } // namespace rat::system

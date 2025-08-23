@@ -92,13 +92,9 @@ int main() {
             } else if (cmd == "pid") {
                 fmt::print("PID: {}\n", getProcessId());
             } else if (cmd == "run") {
-                std::string cmdline; std::getline(iss, cmdline);
-                TinyTask task;
-                task.command = cmdline;
-                task.timeout_ms = 5;
-                runCommandOnSeparateThread(task);
-                fmt::print("{}\n", task.output_buffer);
-
+                //runCommandOnSeparateThread(task);
+                fmt::print("Not implimented yet\n");
+          
             } else {
                 fmt::print("Unknown command '{}'. Type 'help'.\n", cmd);
             }

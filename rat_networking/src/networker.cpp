@@ -3,19 +3,8 @@
 #include <iostream>
 #include <string>
 #include <filesystem>
+#include <chrono>
 
-using rat::networking::downloadFile;
-using rat::networking::uploadFile;
-using rat::networking::_getFilePathFromUrl;
-using rat::networking::NetworkingResponse;
-using rat::networking::NetworkingResponseStatus;
-
-/*
- * Commands:
- *   simple_download <url>
- *   download <url> <file>
- *   upload <url> <file>
- */
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cerr << "Usage:\n"
@@ -25,16 +14,24 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    rat::networking::Client curl_client;  // <-- fixed: actual object
+
     std::string command = argv[1];
+
+    auto start = std::chrono::steady_clock::now();
 
     if ((argc == 3) && (command == "simple_download")) {
         const std::string url = argv[2];
-        std::filesystem::path file_path = _getFilePathFromUrl(url);
+        std::filesystem::path file_path = rat::networking::_getFilePathFromUrl(url);
 
-        NetworkingResponse response = downloadFile(url, file_path);
-        if (response.status == NetworkingResponseStatus::SUCCESS) {
+        bool ok = curl_client.download(url, file_path);
+
+        auto end = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+        if (ok) {
             std::cout << "Download SUCCESS → " << file_path
-                      << " (" << response.duration << " ms)\n";
+                      << " (" << duration << " ms)\n";
         } else {
             std::cerr << "Download FAILED\n";
         }
@@ -43,10 +40,14 @@ int main(int argc, char* argv[]) {
         const std::string url = argv[2];
         const std::filesystem::path file_path = argv[3];
 
-        NetworkingResponse response = downloadFile(url, file_path);
-        if (response.status == NetworkingResponseStatus::SUCCESS) {
+        bool ok = curl_client.download(url, file_path);
+
+        auto end = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+        if (ok) {
             std::cout << "Download SUCCESS → " << file_path
-                      << " (" << response.duration << " ms)\n";
+                      << " (" << duration << " ms)\n";
         } else {
             std::cerr << "Download FAILED\n";
         }
@@ -55,10 +56,14 @@ int main(int argc, char* argv[]) {
         const std::string url = argv[2];
         const std::filesystem::path file_path = argv[3];
 
-        NetworkingResponse response = uploadFile(file_path, url);
-        if (response.status == NetworkingResponseStatus::SUCCESS) {
+        bool ok = curl_client.upload(file_path, url);
+
+        auto end = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+        if (ok) {
             std::cout << "Upload SUCCESS from " << file_path
-                      << " (" << response.duration << " ms)\n";
+                      << " (" << duration << " ms)\n";
         } else {
             std::cerr << "Upload FAILED\n";
         }
@@ -70,3 +75,4 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+

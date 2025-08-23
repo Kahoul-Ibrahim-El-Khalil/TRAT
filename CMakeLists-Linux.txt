@@ -32,7 +32,8 @@ endif()
 
 # === Tiny Process dependency ===
 if(NOT DEFINED TINY_PROCESS_PATH)
-    message(FATAL_ERROR "TINY_PROCESS_PATH must be defined (path to tiny-process-library install dir).")
+    message("Setting default TINY_PROCESS_PATH to be in the same root as the directory of the repository, otherwise define it")
+    set(TINY_PROCESS_PATH "${CMAKE_SOURCE_DIR}/../tiny-process-library")
 endif()
 
 set(TINY_PROCESS_HEADER "${TINY_PROCESS_PATH}/include" CACHE PATH "Tiny Process include dir")

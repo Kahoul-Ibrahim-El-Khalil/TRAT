@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
-
+#include <optional>
 
 namespace rat::system::rawdogger{
 

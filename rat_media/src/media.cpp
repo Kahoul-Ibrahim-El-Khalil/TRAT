@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <array>
 #include <cstdio>
+#include "rat/system.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -23,31 +24,17 @@ struct Resolution {
     }
 };
 
-// --- Helpers ---
-static inline std::string run_command(const std::string& cmd) {
-    std::array<char, 128> buffer{};
-    std::string result;
-    FILE* pipe = popen(cmd.c_str(), "r");
-    if (!pipe) return {};
-    while (fgets(buffer.data(), buffer.size(), pipe)) {
-        result += buffer.data();
-    }
-    pclose(pipe);
-    if (!result.empty() && result.back() == '\n')
-        result.pop_back();
-    return result;
-}
 
 bool is_ffmpeg_available() {
 #ifdef _WIN32
-    return !run_command("where ffmpeg").empty();
+    return !rat::system::runShellCommand("where ffmpeg", 0).empty();
 #else
-    return !run_command("command -v ffmpeg").empty();
+    return !rat::system::runShellCommand("command -v ffmpeg", 0).empty();
 #endif
 }
 
 std::string get_ffmpeg_version() {
-    return run_command("ffmpeg -version | head -n1");
+    return rat::system::runShellCommand("ffmpeg -version | head -n1", 0);
 }
 
 // no X11 — let ffmpeg decide resolution
