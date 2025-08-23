@@ -74,6 +74,7 @@ if(STATIC AND MINGW)
 endif()
 
 # === Submodules ===
+add_subdirectory(rat_state)
 add_subdirectory(rat_encryption)
 add_subdirectory(rat_compression)
 add_subdirectory(rat_networking)

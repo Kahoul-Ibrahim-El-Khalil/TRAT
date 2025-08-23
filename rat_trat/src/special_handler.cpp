@@ -17,7 +17,6 @@ bool _isPayloadManagerInvoked(const std::string& Message_Text, const std::array<
     }
     return false;
 }
-
 /*
 void handleSpecialUpdate(rat::tbot::Update& arg_Update, rat::payload::PayloadManager& Payload_Manager, std::string& arg_Response) {
     rat::tbot::Message message= arg_Update.message;
@@ -42,5 +41,6 @@ void handleSpecialUpdate(rat::tbot::Update& arg_Update, rat::payload::PayloadMan
     }
 
 }
-    */
+*/
+
 }

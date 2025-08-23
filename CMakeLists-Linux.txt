@@ -48,6 +48,7 @@ set_target_properties(tiny-process PROPERTIES
 
 
 # === Submodules ===
+add_subdirectory(rat_state)
 add_subdirectory(rat_encryption)
 add_subdirectory(rat_networking)
 add_subdirectory(rat_system)

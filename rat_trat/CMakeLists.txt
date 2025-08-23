@@ -1,9 +1,6 @@
 # rat_trat/CMakeLists.txt
 cmake_minimum_required(VERSION 3.25)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 # ======================================
 # Sources
 # ======================================
@@ -32,6 +29,7 @@ endif()
 # ======================================
 target_link_libraries(trat
     PRIVATE
+        rat_state
         rat_encryption
         rat_networking
         rat_system

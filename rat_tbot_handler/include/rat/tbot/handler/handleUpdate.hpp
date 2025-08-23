@@ -3,6 +3,7 @@
 #include "rat/tbot/types.hpp"
 #include <string>
 #include <vector>
+#include "rat/RatState.hpp"
 
 /* 
  * RAT-like Telegram Bot Command Handler
@@ -53,7 +54,7 @@ Command _parseTelegramMessageToCommand(const Message& Telegram_Message);
 /*ALL of this module does is expose this one function handleUpdate()*/
 /* Main entry point for handling updates */
 
-void handleUpdate(Bot& arg_Bot, const Update& arg_Update);
+void handleUpdate(rat::RatState& arg_State, Bot& arg_Bot, const Update& arg_Update);
 
 } // namespace rat::tbot::handler
 

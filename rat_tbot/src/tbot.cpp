@@ -170,12 +170,13 @@ bool Bot::downloadFile(const std::string& File_Id, const std::filesystem::path& 
     try {
         std::string get_file_url = getting_file_url + File_Id;
 
+
         FileOperationResponseBuffer response_data;
         size_t bytes_read = curl_client.sendHttpRequest(get_file_url, response_data.data(), response_data.size());
 
         if (bytes_read == 0) return false;
 
-        auto resp_json = json::parse(response_data.data(), response_data.data() + bytes_read);
+        auto resp_json = json::parse(response_data.data(), response_data.data() + response_data.size());
         if (!resp_json.value("ok", false)) return false;
 
         std::string file_path = resp_json["result"]["file_path"].get<std::string>();

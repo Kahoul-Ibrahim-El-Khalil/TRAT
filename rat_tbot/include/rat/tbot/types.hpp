@@ -30,6 +30,7 @@ struct File {
     File(const std::string& arg_Id, const std::string& Mime_Type, size_t arg_Size, std::optional<std::string> arg_Name = std::nullopt)
         : id(arg_Id), mime_type(Mime_Type), size(arg_Size), name(arg_Name) {}
 };
+
 struct Message {
     int64_t id;        // Message ID
     int64_t origin;    // User ID or Chat ID where message originated

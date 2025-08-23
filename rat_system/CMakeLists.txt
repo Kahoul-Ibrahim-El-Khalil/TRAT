@@ -46,7 +46,7 @@ target_include_directories(rat_system
 # ======================================
 # Dependencies (injected from root)
 # ======================================
-# fmt and tiny-process
+# Tiny-process
 target_link_libraries(rat_system PUBLIC fmt Threads::Threads tiny-process)
 
 # pthread on UNIX

@@ -11,14 +11,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
-#include <fmt/core.h>
-#include <fmt/format.h>
-#include <fmt/printf.h>
-#include <fmt/ostream.h>
-#include <fmt/compile.h>
-#include <fmt/format-inl.h>
-#include <fmt/format.h>
-#include <fmt/format-inl.h>
+
 namespace rat::system {
 
 std::string runShellCommand(const std::string& arg_Command, unsigned int Timeout_ms) {

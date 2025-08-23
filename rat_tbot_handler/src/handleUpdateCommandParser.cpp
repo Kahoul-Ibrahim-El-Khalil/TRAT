@@ -97,7 +97,6 @@ std::string _parseAndHandleProcessCommand(Bot& arg_Bot, Message& Telegram_Messag
     catch (const std::exception&) {
         return fmt::format("Invalid timeout value: {}", timeout_string);
     }
-
     
     return rat::system::runProcess(
         command, 

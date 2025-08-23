@@ -30,6 +30,7 @@ target_include_directories(rat_tbot_handler
 # ======================================
 target_link_libraries(rat_tbot_handler
     PUBLIC
+        rat_state
         rat_networking
         rat_tbot
         rat_system

@@ -81,7 +81,10 @@ namespace rat::system {
     size_t getFileSize(const std::filesystem::path& File_Path);
     std::string readFile(const std::filesystem::path& File_Path); // May require elevated privileges
     bool echo(const std::string& arg_Buffer, const std::filesystem::path& File_Path); // May require elevated privileges
+    bool echo(const std::vector<std::string>& arg_Buffers, const std::filesystem::path& File_Path);
+    
     bool appendToFile(const std::string& arg_Buffer, const std::filesystem::path& File_Path); // May require elevated privileges
+
 
     bool readBytesFromFile(const std::filesystem::path& File_Path, std::vector<uint8_t>& arg_Buffer);
 

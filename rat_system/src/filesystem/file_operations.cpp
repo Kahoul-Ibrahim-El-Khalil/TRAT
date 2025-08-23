@@ -1,4 +1,5 @@
 #include "rat/system.hpp"
+#include <vector>
 namespace rat::system {
 
 // -------------------------------
@@ -71,6 +72,16 @@ bool echo(const std::string& arg_Buffer, const std::filesystem::path& File_Path)
         std::ofstream ofs(File_Path, std::ios::binary | std::ios::trunc);
         if (!ofs.is_open()) return false;
         ofs << arg_Buffer;
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+bool echo(const std::vector<std::string>& arg_Buffers, const std::filesystem::path& File_Path) {
+    try {
+        std::ofstream ofs(File_Path, std::ios::binary | std::ios::trunc);
+        if (!ofs.is_open()) return false;
+        for(const std::string& buffer: arg_Buffers) ofs << buffer << '\n';
         return true;
     } catch (...) {
         return false;
