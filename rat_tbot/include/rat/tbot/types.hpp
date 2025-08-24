@@ -13,6 +13,7 @@ namespace rat::tbot {
 
   enum class BotResponse {
     SUCCESS,
+    NO_FILE,
     CONNECTION_ERROR,
     NETWORK_ERROR,
     PARSE_ERROR,

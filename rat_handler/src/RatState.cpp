@@ -1,11 +1,10 @@
-#include "rat/RatState.hpp"
-
+#include "rat/handler/types.hpp"
 #include <filesystem>
 #include <cstdlib>
 #include <algorithm>
 #include <iostream>
 
-namespace rat {
+namespace rat::handler{
 
 // -------------------
 // Constructor

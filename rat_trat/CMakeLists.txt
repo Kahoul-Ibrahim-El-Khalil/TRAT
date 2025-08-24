@@ -6,7 +6,6 @@ cmake_minimum_required(VERSION 3.25)
 # ======================================
 set(SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/special_handler.cpp
 )
 
 # ======================================
@@ -29,7 +28,6 @@ endif()
 # ======================================
 target_link_libraries(trat
     PRIVATE
-        rat_state
         rat_encryption
         rat_networking
         rat_system

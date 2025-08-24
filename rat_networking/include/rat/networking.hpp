@@ -1,3 +1,4 @@
+/*rat_networking/rat/include/networking.hpp*/
 #pragma once
 
 #include <cstring>
@@ -9,23 +10,24 @@
 #include <filesystem>
 #include <cstdint>
 #include <curl/curl.h>
+#include <map>
 
 namespace rat::networking {
 
 std::filesystem::path _getFilePathFromUrl(const std::string& arg_Url);
 
 struct BufferContext {
-    char*  buffer;     // pointer to fixed-size buffer
-    size_t capacity;   // total size available
-    size_t size;       // number of bytes written
+    char*  buffer;     
+    size_t capacity;   
+    size_t size;       
 };
 
 struct EasyCurlHandler {
     CURL*    curl;
     CURLcode state;
 
-    EasyCurlHandler();                           // Constructor
-    ~EasyCurlHandler();                          // Destructor
+    EasyCurlHandler();                           
+    ~EasyCurlHandler();                          
 
     // Type-safe setOption overloads
     CURLcode setOption(CURLoption Curl_Option, long value);
@@ -41,8 +43,16 @@ struct EasyCurlHandler {
     using WriteCallback = size_t(*)(void*, size_t, size_t, void*);
     CURLcode setWriteCallBackFunction(WriteCallback Call_Back);
 
-    CURLcode perform();                          // Perform the request
+    CURLcode perform();                          
     void reset();
+};
+
+struct MimeContext {
+    std::filesystem::path file_path;
+    std::string url;
+    std::map<std::string, std::string> fields_map;
+    std::string file_field_name = "document"; // default field name for file
+    std::string mime_type = "";               // optional MIME type
 };
 
 class Client : public EasyCurlHandler {          // Explicit public inheritance
@@ -57,10 +67,7 @@ public:
 
     bool upload(const std::filesystem::path& File_Path, const std::string& Uploading_Url);
 
-    bool uploadMimeFile(const std::filesystem::path& File_Path,
-                        const std::string& arg_Url,
-                        const std::string& Field_Name,
-                        const std::string& Mime_Type = "");
+    bool uploadMimeFile(const MimeContext& Mime_Context);
 
     std::vector<char> sendHttpRequest(const std::string& arg_Url);
 

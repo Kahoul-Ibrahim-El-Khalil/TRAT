@@ -23,7 +23,7 @@
 
 #include <fmt/core.h>
 #include <fmt/chrono.h>
-
+#include <future>
 #include "rat/system/types.hpp"
 
 namespace rat::system {
@@ -115,8 +115,8 @@ namespace rat::system {
         std::string stdout_str;
         std::string stderr_str;
     };
-
-    std::string runProcess(const std::string& arg_Command, unsigned int Timeout_ms, std::function<void(ProcessResult)> lambda_Callback);
+    std::future<rat::system::ProcessResult> runProcessAsync(const std::string& arg_Command, unsigned int Timeout_ms);
+    
 
     /*Low level Operations*/
 

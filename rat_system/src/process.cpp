@@ -12,6 +12,7 @@
 #include <chrono>
 #include <cstdio>
 
+#include "logging.hpp"
 namespace rat::system {
 
 std::string runShellCommand(const std::string& arg_Command, unsigned int Timeout_ms) {
@@ -48,62 +49,49 @@ std::string runShellCommand(const std::string& arg_Command, unsigned int Timeout
     return fmt::to_string(buffer);
 }
 
-std::string runProcess(
-    const std::string& arg_Command, 
-    unsigned int Timeout_ms, 
-    std::function<void(ProcessResult)> lambda_Callback) {
-    
-    try {
-        // Buffers for capturing stdout & stderr
-        auto stdout_buffer = std::make_shared<std::ostringstream>();
-        auto stderr_buffer = std::make_shared<std::ostringstream>();
+std::future<rat::system::ProcessResult> runProcessAsync(
+    const std::string& arg_Command,
+    unsigned int Timeout_ms)
+{
+    auto stdout_buffer = std::make_shared<std::ostringstream>();
+    auto stderr_buffer = std::make_shared<std::ostringstream>();
 
-        // Protects against race when process finishes while thread still running
-        auto process_ptr = std::make_shared<TinyProcessLib::Process>(
-            arg_Command,
-            "",
-            [stdout_buffer](const char *bytes, size_t n) {
-                stdout_buffer->write(bytes, n);
-            },
-            [stderr_buffer](const char *bytes, size_t n) {
-                stderr_buffer->write(bytes, n);
-            }
-        );
+    auto process_ptr = std::make_shared<TinyProcessLib::Process>(
+        arg_Command,
+        "",
+        [stdout_buffer](const char* bytes, size_t n){ stdout_buffer->write(bytes, n); },
+        [stderr_buffer](const char* bytes, size_t n){ stderr_buffer->write(bytes, n); }
+    );
 
-        std::thread([process_ptr, stdout_buffer, stderr_buffer, Timeout_ms, lambda_Callback]() {
+    return std::async(std::launch::async, [process_ptr, stdout_buffer, stderr_buffer, Timeout_ms]() {
+        rat::system::ProcessResult result;
+        try {
             int exit_code = -1;
-
             if (Timeout_ms > 0) {
                 auto start = std::chrono::steady_clock::now();
                 while (true) {
-                    if (process_ptr->try_get_exit_status(exit_code)) {
-                        break; // finished
-                    }
-              
+                    if (process_ptr->try_get_exit_status(exit_code)) break;
                     auto now = std::chrono::steady_clock::now();
                     if (std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() > Timeout_ms) {
                         process_ptr->kill();
                         exit_code = -1;
                         break;
                     }
-
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10)); // small sleep to avoid busy spin
-              }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
             } else {
-            exit_code = process_ptr->get_exit_status(); // wait indefinitely
-      }
-
-    // Build result
-    ProcessResult result;
-    result.exit_code   = exit_code;
-    result.stdout_str  = stdout_buffer->str();
-    result.stderr_str  = stderr_buffer->str();
-
-    // Invoke callback
-    lambda_Callback(result);
-      }).detach();        return "Process launched successfully";
-    } catch (const std::exception &ex) {
-        return fmt::format("Failed to start process: {}" , ex.what() );
-    }
+                exit_code = process_ptr->get_exit_status();
+            }
+            result.exit_code  = exit_code;
+            result.stdout_str = stdout_buffer->str();
+            result.stderr_str = stderr_buffer->str();
+        } catch (const std::exception& ex) {
+            result.exit_code  = -2;
+            result.stdout_str = "";
+            result.stderr_str = fmt::format("Exception: {}", ex.what());
+        }
+        return result;
+    });
 }
+
 }//namespace rat::system

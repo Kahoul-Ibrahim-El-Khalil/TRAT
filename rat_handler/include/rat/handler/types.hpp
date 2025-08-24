@@ -1,26 +1,16 @@
-#pragma once
-#include <unordered_map>
 #include <string>
-#include <filesystem>
-
-
-#pragma once
-#include <unordered_map>
-#include <string>
-#include <filesystem>
 #include <vector>
-#include <cstdlib>
-#include <optional>
+#include <unordered_map>
+#include <filesystem>
+#include <functional>
 
-namespace rat {
-
+namespace rat::handler {
 enum class HostOperatingSystem {
     WINDOWS,
     LINUX
 };
 
 struct RatState {
-
     // -------------------
     // Host / Environment Info
     // -------------------
@@ -73,9 +63,21 @@ struct RatState {
     std::vector<std::string> listDynamicGlobals() const;           // Return all dynamic global keys
     std::vector<std::string> listSystemGlobals() const;            // Return all system globals
 
-    bool hasUtility(const std::string& tool_name) const;           // Check if a tool is available
-    bool hasCommand(const std::string& cmd_name) const;            // Check if a dynamic command exists
-    bool hasGlobal(const std::string& key_name) const;             // Check if a dynamic global exists
+    bool hasUtility(const std::string& tool_name) const;           
+    bool hasCommand(const std::string& cmd_name) const;            
+    bool hasGlobal(const std::string& key_name) const;             
+   
 };
 
-} // namespace rat
+struct Command {
+    std::string directive;
+    std::vector<std::string> parameters;
+
+    Command() = default;   // <--- add this
+    Command(const std::string& arg_Directive, const std::vector<std::string>& arg_Parameters)
+        : directive(arg_Directive), parameters(arg_Parameters) {}
+};
+
+
+
+}//namespace rat::handler

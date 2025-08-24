@@ -1,18 +1,11 @@
-# rat_tbot_handler/CMakeLists.txt
-cmake_minimum_required(VERSION 3.25)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 # ======================================
 # Sources
 # ======================================
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(HANDLER_SRC
     ${SRC_DIR}/handleUpdate.cpp
-    ${SRC_DIR}/handleUpdateCommandParser.cpp
-    ${SRC_DIR}/handleMediaCommands.cpp
+    ${SRC_DIR}/handlers.cpp
+    ${SRC_DIR}/RatState.cpp
 )
 
 # ======================================
@@ -30,7 +23,6 @@ target_include_directories(rat_tbot_handler
 # ======================================
 target_link_libraries(rat_tbot_handler
     PUBLIC
-        rat_state
         rat_networking
         rat_tbot
         rat_system

