@@ -47,13 +47,11 @@ target_include_directories(rat_system
 # Dependencies (injected from root)
 # ======================================
 # Tiny-process
-target_link_libraries(rat_system PUBLIC fmt Threads::Threads tiny-process)
-
-# pthread on UNIX
-if(UNIX AND NOT APPLE)
-    target_link_libraries(rat_system PUBLIC pthread)
+if(WIN32)
+    target_link_libraries(rat_system PUBLIC fmt Threads::Threads tiny-process)
+else()
+    target_link_libraries(rat_system PUBLIC fmt pthread tiny-process)
 endif()
-
 # spdlog (if DEBUG=ON from root)
 if(DEBUG)
     target_link_libraries(rat_system PUBLIC spdlog::spdlog)

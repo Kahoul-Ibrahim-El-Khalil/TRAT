@@ -70,6 +70,8 @@ private:
     // Dispatcher - direct member function calls
   void dispatch();
 
+  void dynamic_command_dispatch();
+
 public:
     Handler(rat::tbot::Bot& arg_Bot):
         bot(arg_Bot),

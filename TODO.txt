@@ -1,4 +1,7 @@
-check the uplaoding file mechanism, the screenshots are takes but no able to be uploaded.
+
+the /get function malfunctions with none document files; 
+
+fix a bug withe !echo 10 "Hello" command not being indetified;
 
 the shelling capabilities are minimal, the path handling is autrachious, work on a mechanism that pipes the output to a file, and 
 uploades it directely, this way output of big commands is actually treatable.

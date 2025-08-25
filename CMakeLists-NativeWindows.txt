@@ -60,13 +60,16 @@ add_library(ZLIB::zlib ALIAS zlib)
 add_library(TINY::process ALIAS tiny-process)
 
 
-# === spdlog (only in debug mode, from MSYS2 env) ===
 if(DEBUG)
     find_package(spdlog REQUIRED)
-    message(STATUS "Debug mode enabled: adding -g -O0")
-    add_compile_options(-g -O0)
-endif()
+    message(STATUS "Debug mode enabled: adding -fsanitize=address -g -O0")
 
+    # Add flags for all targets
+    add_compile_options(-fsanitize=address -Wall -Werror -Wpedantic -g -O0)
+    add_link_options(-fsanitize=address)
+else()
+    add_compile_options(-O3)
+endif()
 # === Force static linking for MinGW ===
 if(STATIC AND MINGW)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".lib")

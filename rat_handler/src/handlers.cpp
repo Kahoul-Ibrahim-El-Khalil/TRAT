@@ -189,13 +189,22 @@ void Handler::parseAndHandleProcessCommand() {
             } else if (res.exit_code == -2) {
                 feedback = fmt::format("Process '{}' failed with exception:\n{}", cmd, res.stderr_str);
             } else {
-                feedback = fmt::format(
-                    "Process '{}' exited with code {}\nSTDOUT:\n{}\nSTDERR:\n{}",
-                    cmd,
-                    res.exit_code,
-                    res.stdout_str,
-                    res.stderr_str
-                );
+                if(res.stderr_str.empty()) {
+                    feedback = fmt::format(
+                        "Process '{}' exited with code {}\n{}",
+                        cmd,
+                        res.exit_code,
+                        res.stdout_str
+                    );
+                }else{
+                    feedback = fmt::format(
+                        "Process '{}' exited with code {}\nSTDERR:\n{}",
+                        cmd,
+                        res.exit_code,
+                        res.stderr_str
+                    );
+
+                }
             }
             DEBUG_LOG("[{}:{} {}] {}", __FILE__, __LINE__, __func__, feedback);
             bot_shared->sendMessage(feedback);
