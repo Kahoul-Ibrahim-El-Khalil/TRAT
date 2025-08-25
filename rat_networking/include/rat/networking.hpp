@@ -39,6 +39,7 @@ struct EasyCurlHandler {
     since curl_off_t is a typedef of long, there is no need to overload it.
     */
     CURLcode setUrl(const std::string& arg_Url);
+    CURLcode setUrl(const char* arg_Url);
 
     using WriteCallback = size_t(*)(void*, size_t, size_t, void*);
     CURLcode setWriteCallBackFunction(WriteCallback Call_Back);
@@ -70,9 +71,11 @@ public:
     bool uploadMimeFile(const MimeContext& Mime_Context);
 
     std::vector<char> sendHttpRequest(const std::string& arg_Url);
+    std::vector<char> sendHttpRequest(const char* arg_Url);
 
     /* Returns the actual bytes written into p_Buffer (truncates if response > Buffer_Size) */
     size_t sendHttpRequest(const std::string& arg_Url, char* p_Buffer, size_t Buffer_Size);
+    size_t sendHttpRequest(const char* arg_Url, char* p_Buffer, size_t Buffer_Size);
 
     bool downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer);
 };

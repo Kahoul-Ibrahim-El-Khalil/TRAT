@@ -60,6 +60,7 @@ public:
     void setOffset(); // only for bots handling updates, not for sender-only bots
 
     BotResponse sendMessage(const std::string& Text_Message) ;
+    BotResponse sendMessage(const char* Text_Message);
     
     BotResponse sendFile(const std::filesystem::path& File_Path, const std::string& arg_Caption = "");
     

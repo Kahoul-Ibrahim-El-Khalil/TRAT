@@ -6,6 +6,7 @@ build/
 # Ignore compiled static libraries
 *.a
 .clang*
+**/.cache
 .cmake*
 # Ignore executables / binaries
 *.out

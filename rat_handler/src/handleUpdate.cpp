@@ -26,19 +26,22 @@ void Handler::handleUpdate(rat::tbot::Update&& arg_Update) {
         DEBUG_LOG("Handling uploaded files to the bot");
         this->handleMessageWithUploadedFiles();
         return;
-    } 
+    }
+    if(t_message.text[0] != '!' && t_message.text[0] != '/') {
+        this->bot.sendMessage("Empty Message, an integrated command starts with /, a dynamic one with ! ");
+        return;
+    }
  // Example: dynamic command prefix, say messages starting with "!"
-    if (!t_message.text.empty() && t_message.text[0] == '!') {
-        this->dynamic_command_dispatch();
+    else if (t_message.text[0] == '!') {
+        this->dispatchDynamicCommand();
     }
 
-    // Check if message starts with "/"
-    else if (!t_message.text.empty() && t_message.text[0] == '/') {
-        this->dispatch();
+    else if (t_message.text[0] == '/') {
+        this->dispatchIntegratedCommand();
     }
 }
 
-void Handler::dynamic_command_dispatch() {
+void Handler::dispatchDynamicCommand() {
     std::string command_text = this->telegram_update.message.text;
 
     if (!command_text.starts_with("!")) {
@@ -78,7 +81,7 @@ void Handler::dynamic_command_dispatch() {
     this->parseAndHandleProcessCommand();
 }
 // Dispatch method
-void Handler::dispatch() {
+void Handler::dispatchIntegratedCommand() {
     // Parse once and store in class member for handlers that need it
     DEBUG_LOG("Dispatching commands based on the update {}", this->telegram_update.id);
     command = parseTelegramMessageToCommand();

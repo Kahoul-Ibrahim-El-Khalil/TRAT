@@ -5,6 +5,7 @@ set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(HANDLER_SRC
     ${SRC_DIR}/handleUpdate.cpp
     ${SRC_DIR}/handlers.cpp
+    ${SRC_DIR}/handleHelpCommand.cpp    
     ${SRC_DIR}/RatState.cpp
 )
 
@@ -23,6 +24,7 @@ target_include_directories(rat_tbot_handler
 # ======================================
 target_link_libraries(rat_tbot_handler
     PUBLIC
+        rat_encryption
         rat_networking
         rat_tbot
         rat_system

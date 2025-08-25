@@ -90,6 +90,10 @@ CURLcode EasyCurlHandler::setUrl(const std::string& arg_Url) {
     this->state = curl_easy_setopt(this->curl, CURLOPT_URL, arg_Url.c_str());
     return this->state;
 }
+CURLcode EasyCurlHandler::setUrl(const char* arg_Url) {
+    this->state = curl_easy_setopt(this->curl, CURLOPT_URL, arg_Url);
+    return this->state;
+}
 CURLcode EasyCurlHandler::setWriteCallBackFunction(WriteCallback Call_Back) {
     this->state = curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, Call_Back);
     return this->state;
@@ -253,25 +257,27 @@ bool Client::upload(const std::filesystem::path& File_Path, const std::string& U
 }
 
 bool Client::uploadMimeFile(const MimeContext& Mime_Context) {
+    DEBUG_LOG("Client::uploadMimeFile(const MimeContext& Mime_Context) was invoked, now inside its scope");
     if (!this->curl) {
         ERROR_LOG("CURL handle is not initialized");
         return false;
     }
-    
+    DEBUG_LOG("Check passed, curl instance exists");
     if (!std::filesystem::exists(Mime_Context.file_path)) {
         ERROR_LOG("File does not exist: %s", Mime_Context.file_path.string().c_str());
         return false;
     }
-    /*Reset the handle before any mime operation for safety*/
-    this->reset();
+    DEBUG_LOG("Check passed, file exists");
     curl_mime* mime = curl_mime_init(this->curl);
     if (!mime) {
         ERROR_LOG("Failed to create MIME structure");
         this->reset();
         return false;
     }
+    DEBUG_LOG("curl_mime* instance was created");
     // Add file part
     curl_mimepart* file_part = curl_mime_addpart(mime);
+    DEBUG_LOG("curl_mimepart* instance was created");
     if (!file_part) {
         ERROR_LOG("Failed to add file MIME part");
         curl_mime_free(mime);
@@ -325,7 +331,7 @@ bool Client::uploadMimeFile(const MimeContext& Mime_Context) {
             return false;
         }
     }
-    // Set CURL options with error checking
+    DEBUG_LOG("Setting curl options in networking::uploadMimeFile(MimeContext& ctx)");
     if (this->setUrl(Mime_Context.url) != CURLE_OK) {
         ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
         curl_mime_free(mime);
@@ -350,7 +356,7 @@ bool Client::uploadMimeFile(const MimeContext& Mime_Context) {
         this->reset();
         return false;
     }
-    if (this->setOption(CURLOPT_TIMEOUT, 30L) != CURLE_OK) {
+    if (this->setOption(CURLOPT_TIMEOUT, 0L) != CURLE_OK) {
         ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
         curl_mime_free(mime);
         this->reset();
@@ -419,7 +425,110 @@ std::vector<char> Client::sendHttpRequest(const std::string& arg_Url) {
     this->reset();
     return buffer;
 }
+std::vector<char> Client::sendHttpRequest(const char* arg_Url) {
+    std::vector<char> buffer;
+    if (!this->curl) {
+        ERROR_LOG("CURL handle is not initialized");
+        return buffer;
+    }
+    if (this->setUrl(arg_Url) != CURLE_OK) {
+        ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return buffer;
+    }
+    if (this->setWriteCallBackFunction(&_cbHeapWrite) != CURLE_OK) {
+        ERROR_LOG("Failed to set write callback: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return buffer;
+    }
+    if (this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&buffer)) != CURLE_OK) {
+        ERROR_LOG("Failed to set write data: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return buffer;
+    }
+    if (this->setOption(CURLOPT_SSL_VERIFYPEER, 1L) != CURLE_OK) {
+        ERROR_LOG("Failed to set SSL peer verification: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return buffer;
+    }
+    if (this->setOption(CURLOPT_SSL_VERIFYHOST, 2L) != CURLE_OK) {
+        ERROR_LOG("Failed to set SSL host verification: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return buffer;
+    }
+    if (this->setOption(CURLOPT_FOLLOWLOCATION, 1L) != CURLE_OK) {
+        ERROR_LOG("Failed to set follow location: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return buffer;
+    }
+    if (this->setOption(CURLOPT_TIMEOUT, 30L) != CURLE_OK) {
+        ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return buffer;
+    }
+    if (this->perform() != CURLE_OK) {
+        ERROR_LOG("HTTP request failed: %s", curl_easy_strerror(this->state));
+        buffer.clear();
+        this->reset();
+        return buffer;
+    }
+    this->reset();
+    return buffer;
+}
 size_t Client::sendHttpRequest(const std::string& arg_Url, char* p_Buffer, size_t Buffer_Size) {
+    if (!this->curl) {
+        ERROR_LOG("CURL handle is not initialized");
+        return 0;
+    }
+    if (!p_Buffer || Buffer_Size == 0) {
+        ERROR_LOG("Invalid buffer parameters");
+        return 0;
+    }
+    BufferContext ctx{p_Buffer, Buffer_Size, 0};
+    if (this->setUrl(arg_Url) != CURLE_OK) {
+        ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return 0;
+    }
+    if (this->setWriteCallBackFunction(&_cbStackWrite) != CURLE_OK) {
+        ERROR_LOG("Failed to set write callback: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return 0;
+    }
+    if (this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&ctx)) != CURLE_OK) {
+        ERROR_LOG("Failed to set write data: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return 0;
+    }
+    if (this->setOption(CURLOPT_SSL_VERIFYPEER, 1L) != CURLE_OK) {
+        ERROR_LOG("Failed to set SSL peer verification: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return 0;
+    }
+    if (this->setOption(CURLOPT_SSL_VERIFYHOST, 2L) != CURLE_OK) {
+        ERROR_LOG("Failed to set SSL host verification: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return 0;
+    }
+    if (this->setOption(CURLOPT_FOLLOWLOCATION, 1L) != CURLE_OK) {
+        ERROR_LOG("Failed to set follow location: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return 0;
+    }
+    if (this->setOption(CURLOPT_TIMEOUT, 30L) != CURLE_OK) {
+        ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return 0;
+    }
+    if (this->perform() != CURLE_OK) {
+        ERROR_LOG("HTTP request failed: %s", curl_easy_strerror(this->state));
+        this->reset();
+        return 0;
+    }
+    this->reset();
+    return ctx.size;
+}
+size_t Client::sendHttpRequest(const char* arg_Url, char* p_Buffer, size_t Buffer_Size) {
     if (!this->curl) {
         ERROR_LOG("CURL handle is not initialized");
         return 0;

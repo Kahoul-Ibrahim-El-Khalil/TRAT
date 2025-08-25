@@ -54,7 +54,6 @@ set_target_properties(curl PROPERTIES
     INTERFACE_LINK_LIBRARIES "zlib;ws2_32;bcrypt;crypt32;wldap32;normaliz"
 )
 add_library(CURL::libcurl ALIAS curl)
-# === extra aliases for consistency ===
 add_library(FMT::fmt ALIAS fmt)
 add_library(ZLIB::zlib ALIAS zlib)
 add_library(TINY::process ALIAS tiny-process)
@@ -62,11 +61,10 @@ add_library(TINY::process ALIAS tiny-process)
 
 if(DEBUG)
     find_package(spdlog REQUIRED)
-    message(STATUS "Debug mode enabled: adding -fsanitize=address -g -O0")
+    message(STATUS "Debug mode enabled: adding  -g -O0")
 
     # Add flags for all targets
-    add_compile_options(-fsanitize=address -Wall -Werror -Wpedantic -g -O0)
-    add_link_options(-fsanitize=address)
+    add_compile_options( -Wall -Werror -Wpedantic -g -O0)
 else()
     add_compile_options(-O3)
 endif()
