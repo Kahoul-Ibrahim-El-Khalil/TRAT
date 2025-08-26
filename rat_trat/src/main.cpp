@@ -15,8 +15,8 @@
 // --- Global state ---
 static uint32_t empty_updates_count = 0;
 static uint32_t sleep_timout_ms = 500;
-static std::string init_message;
 
+std::string init_message = "";
 
 
 // --- Forward declarations ---
@@ -34,6 +34,7 @@ int main(void) {
 // --- Reboots the bot on crash ---
 static void invasiveBotLoop() {
     while (true) {
+
         try {
             botLoop();
         } catch (const std::exception& e) {

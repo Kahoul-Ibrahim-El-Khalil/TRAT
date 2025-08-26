@@ -45,7 +45,10 @@ struct EasyCurlHandler {
     CURLcode setWriteCallBackFunction(WriteCallback Call_Back);
 
     CURLcode perform();                          
-    void reset();
+
+    
+    bool restart();
+
 };
 
 struct MimeContext {
@@ -58,9 +61,17 @@ struct MimeContext {
 
 class Client : public EasyCurlHandler {          // Explicit public inheritance
 private:
-    std::chrono::milliseconds action_duration{0};
+    uint8_t post_restart_operation_count = 0;
+    uint8_t operation_restart_bound;
+    bool is_fresh;
+    void reset();
 
 public:
+    Client(uint8_t Operation_Restart_Bound = 10) : operation_restart_bound(Operation_Restart_Bound), is_fresh(true){
+        if (this->operation_restart_bound == 0) {
+            this->operation_restart_bound = 1; // Ensure at least 1 operation
+        }
+    };
     bool download(const std::string& Downloading_Url, const std::filesystem::path& File_Path);
 
     /* Overloaded: extracts the file name from url and downloads to the current directory */

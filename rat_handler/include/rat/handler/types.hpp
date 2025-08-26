@@ -1,74 +1,32 @@
+#pragma once
+#include <filesystem>
+#include <cstdlib>
+#include <unordered_map>
+#include <algorithm>
+#include <iostream>
 #include <string>
 #include <vector>
-#include <unordered_map>
-#include <filesystem>
-#include <functional>
 
-namespace rat::handler {
-enum class HostOperatingSystem {
-    WINDOWS,
-    LINUX
-};
+namespace rat::handler{
 
 struct RatState {
-    // -------------------
-    // Host / Environment Info
-    // -------------------
-    HostOperatingSystem host_system;                    // Current host OS
-    std::vector<std::filesystem::path> custom_tool_dirs;
-    // -------------------
-    // Maps
-    // -------------------
-    std::unordered_map<std::string, std::string>    system_globals;   // OS-level or tool-level globals
-    /*
-    The hostname, the system drive,..
-    */
-    std::unordered_map<std::string, std::filesystem::path> system_utils;  // Dynamic tools (ffmpeg, curl, etc.)
-    std::unordered_map<std::string, std::string> dynamic_commands;        // User-defined commands
-    std::unordered_map<std::string, std::string> dynamic_globals;         // User-defined globals
+    std::unordered_map<std::string, std::filesystem::path> command_path_map;
 
-    // -------------------
-    // Constructor
-    // -------------------
+    std::vector<uint8_t> payload;
+    std::string payload_key;
+    
     RatState();
 
-    // -------------------
-    // System utilities
-    // -------------------
-    void scanSystemPathsForUtilities();                            // Scan system PATH for executables
-    void scanDirectoryForUtilities(const std::filesystem::path& dir, bool prioritize = false); // Scan a directory
-    void detectCommonUtilities();                                   // Preload common tools: ffmpeg, curl, wget
-    void addCustomToolDir(const std::filesystem::path& dir);       // Add a custom directory and scan
-    std::filesystem::path getUtilityPath(const std::string& arg_Name) const;
+    std::filesystem::path getToolPath(const std::string& arg_Tool) const;
+    bool hasTool(const std::string& arg_Tool) const;
 
-    // -------------------
-    // Dynamic commands
-    // -------------------
-    void addCommand(const std::string& Command_Key, const std::string& Command_Literal);
-    std::string getCommand(const std::string& Command_Key) const;
-    void resetCommands();                                          // Clear all dynamic commands
+    void addCommand(const std::string& arg_Key, const std::string& arg_Literal);
+    std::string getCommand(const std::string& arg_Key) const;
 
-    // -------------------
-    // Dynamic globals
-    // -------------------
-    void setGlobal(const std::string& arg_Key, const std::string& arg_Value);
-    std::string getGlobal(const std::string& arg_Key) const;
-    void resetGlobals();                                           // Clear all dynamic globals
+    std::string listDynamicTools() const;
 
-    // -------------------
-    // Utility / Helper methods
-    // -------------------
-    std::vector<std::string> listDynamicTools() const;             // Return all keys from system_utils
-    std::vector<std::string> listDynamicCommands() const;          // Return all dynamic command keys
-    std::vector<std::string> listDynamicGlobals() const;           // Return all dynamic global keys
-    std::vector<std::string> listSystemGlobals() const;            // Return all system globals
-
-    bool hasUtility(const std::string& tool_name) const;           
-    bool hasCommand(const std::string& cmd_name) const;            
-    bool hasGlobal(const std::string& key_name) const;             
-   
+    std::filesystem::path findExecutable(const std::string& arg_Tool) const;
 };
-
 struct Command {
     std::string directive;
     std::vector<std::string> parameters;
@@ -78,6 +36,4 @@ struct Command {
         : directive(arg_Directive), parameters(arg_Parameters) {}
 };
 
-
-
-}//namespace rat::handler
+} // namespace rat

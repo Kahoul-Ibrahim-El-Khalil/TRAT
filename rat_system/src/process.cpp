@@ -67,24 +67,32 @@ std::future<rat::system::ProcessResult> runProcessAsync(
         rat::system::ProcessResult result;
         try {
             int exit_code = -1;
-            if (Timeout_ms > 0) {
-                auto start = std::chrono::steady_clock::now();
-                while (true) {
-                    if (process_ptr->try_get_exit_status(exit_code)) break;
-                    auto now = std::chrono::steady_clock::now();
-                    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() > Timeout_ms) {
-                        process_ptr->kill();
-                        exit_code = -1;
-                        break;
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                }
-            } else {
-                exit_code = process_ptr->get_exit_status();
+
+            if (Timeout_ms == 0) {
+                // Detached mode: process keeps running, we don’t wait for it
+                result.exit_code  = 0; // convention: detached success
+                result.stdout_str = "";
+                result.stderr_str = "";
+                return result;
             }
+
+            // Timed execution mode
+            auto start = std::chrono::steady_clock::now();
+            while (true) {
+                if (process_ptr->try_get_exit_status(exit_code)) break;
+                auto now = std::chrono::steady_clock::now();
+                if (std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() > Timeout_ms) {
+                    process_ptr->kill();
+                    exit_code = -1; // killed due to timeout
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+
             result.exit_code  = exit_code;
             result.stdout_str = stdout_buffer->str();
             result.stderr_str = stderr_buffer->str();
+
         } catch (const std::exception& ex) {
             result.exit_code  = -2;
             result.stdout_str = "";
@@ -93,5 +101,6 @@ std::future<rat::system::ProcessResult> runProcessAsync(
         return result;
     });
 }
+
 
 }//namespace rat::system

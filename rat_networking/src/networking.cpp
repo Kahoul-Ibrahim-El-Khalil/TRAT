@@ -103,16 +103,36 @@ CURLcode EasyCurlHandler::perform() {
     return this->state;
 }
 
-void EasyCurlHandler::reset() {
+
+bool EasyCurlHandler::restart() {
+    // Clean up the existing handle
+    if (curl) {
+        curl_easy_cleanup(curl);
+        curl = nullptr;
+    }
+    
+    // Create a fresh handle
+    curl = curl_easy_init();
+    if (!curl) {
+        state = CURLE_FAILED_INIT;
+        return false;
+    }
+    
+    state = CURLE_OK;
+    return true;
+}
+
+void Client::reset() {
+    if(this->post_restart_operation_count >= this->operation_restart_bound && !this->is_fresh) {
+        this->restart(); //inhereted from the EasyCurlHandler::class
+        this->is_fresh = true;
+        this->post_restart_operation_count = 0;
+        return;
+    }
     if(this->curl) {
         curl_easy_reset(this->curl);
     }
 }
-
-// ------------------------------
-// Client - Main methods
-// ------------------------------
-
 bool Client::download(const std::string& Downloading_Url, const std::filesystem::path& File_Path) {
     if (!this->curl) {
         ERROR_LOG("CURL handle is not initialized");
@@ -123,6 +143,8 @@ bool Client::download(const std::string& Downloading_Url, const std::filesystem:
         ERROR_LOG("Failed to open file for writing: %s", File_Path.string().c_str());
         return false;
     }
+    this->fresh = false;
+    this->post_restart_operation_count++;
     if (this->setUrl(Downloading_Url) != CURLE_OK) {
         ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
         std::fclose(fp);
@@ -197,6 +219,8 @@ bool Client::upload(const std::filesystem::path& File_Path, const std::string& U
         ERROR_LOG("Failed to open file for reading: %s", File_Path.string().c_str());
         return false;
     }
+    this->post_restart_operation_count++;
+    this->fresh = false;
 
     if (this->setUrl(Uploading_Url) != CURLE_OK) {
         ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
@@ -267,6 +291,9 @@ bool Client::uploadMimeFile(const MimeContext& Mime_Context) {
         ERROR_LOG("File does not exist: %s", Mime_Context.file_path.string().c_str());
         return false;
     }
+    this->post_restart_operation_count++;
+    this->fresh = false;
+
     DEBUG_LOG("Check passed, file exists");
     curl_mime* mime = curl_mime_init(this->curl);
     if (!mime) {
@@ -371,8 +398,8 @@ bool Client::uploadMimeFile(const MimeContext& Mime_Context) {
         return false;
     }
     curl_mime_free(mime);
-    /*After a mime operation, since I do not understand its shenanigans exactly, reset the handle is the safest option*/
-    this->reset();
+    /*After a mime operation, since I do not understand its shenanigans exactly, hard reset the handle is the safest option*/
+    this->restart();
     return true;
 }
 std::vector<char> Client::sendHttpRequest(const std::string& arg_Url) {
@@ -381,6 +408,8 @@ std::vector<char> Client::sendHttpRequest(const std::string& arg_Url) {
         ERROR_LOG("CURL handle is not initialized");
         return buffer;
     }
+    this->post_restart_operation_count++;
+    this->fresh = false;
     if (this->setUrl(arg_Url) != CURLE_OK) {
         ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
         this->reset();
@@ -431,6 +460,8 @@ std::vector<char> Client::sendHttpRequest(const char* arg_Url) {
         ERROR_LOG("CURL handle is not initialized");
         return buffer;
     }
+    this->post_restart_operation_count++;
+    this->fresh = false;
     if (this->setUrl(arg_Url) != CURLE_OK) {
         ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
         this->reset();
@@ -485,6 +516,8 @@ size_t Client::sendHttpRequest(const std::string& arg_Url, char* p_Buffer, size_
         return 0;
     }
     BufferContext ctx{p_Buffer, Buffer_Size, 0};
+    this->post_restart_operation_count++;
+    this->fresh = false;
     if (this->setUrl(arg_Url) != CURLE_OK) {
         ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
         this->reset();
@@ -537,7 +570,9 @@ size_t Client::sendHttpRequest(const char* arg_Url, char* p_Buffer, size_t Buffe
         ERROR_LOG("Invalid buffer parameters");
         return 0;
     }
+    this->post_restart_operation_count++;
     BufferContext ctx{p_Buffer, Buffer_Size, 0};
+    this->fresh = false;
     if (this->setUrl(arg_Url) != CURLE_OK) {
         ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
         this->reset();
@@ -588,6 +623,8 @@ bool Client::downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_
         return false;
     }
     Out_Buffer.clear();
+    this->post_restart_operation_count++;
+    this->fresh = false;
     if (this->setUrl(arg_Url) != CURLE_OK) {
         ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
         this->reset();

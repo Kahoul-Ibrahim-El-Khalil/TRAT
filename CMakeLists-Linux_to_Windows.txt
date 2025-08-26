@@ -71,7 +71,7 @@ add_subdirectory(rat_encryption)
 add_subdirectory(rat_networking)
 add_subdirectory(rat_system)
 add_subdirectory(rat_tbot)
-add_subdirectory(rat_tbot_handler)
+add_subdirectory(rat_handler)
 add_subdirectory(rat_trat)
 
 # === Link system libraries ===

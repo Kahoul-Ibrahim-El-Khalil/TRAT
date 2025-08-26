@@ -32,7 +32,7 @@ target_link_libraries(trat
         rat_networking
         rat_system
         rat_tbot
-        rat_tbot_handler
+        rat_handler
 )
 
 
