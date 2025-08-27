@@ -17,6 +17,8 @@ struct RatState {
     
     RatState();
 
+    std::string screenshot_format = "jpg";
+
     std::filesystem::path getToolPath(const std::string& arg_Tool) const;
     bool hasTool(const std::string& arg_Tool) const;
 

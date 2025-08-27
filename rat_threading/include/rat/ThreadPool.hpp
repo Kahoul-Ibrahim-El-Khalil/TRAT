@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <functional>
 #include <future>
+#include <cstdint>
 
 namespace rat {
 
@@ -23,7 +24,6 @@ auto enqueue(T task) -> std::future<decltype(task())> {
     using return_type = decltype(task());
 
     auto wrapper = std::make_shared<std::packaged_task<return_type()>>(std::move(task));
-
     {
         std::lock_guard<std::mutex> lock(queue_mutex);
         if (stopFlag) {
@@ -31,12 +31,10 @@ auto enqueue(T task) -> std::future<decltype(task())> {
         }
         tasks.emplace([=] { (*wrapper)(); });
     }
-
     condVar.notify_one();
     return wrapper->get_future();
 }
-
-
+uint8_t getPendingWorkersCount();
 private:
     std::vector<std::thread> workers;
     std::queue<std::function<void()>> tasks;

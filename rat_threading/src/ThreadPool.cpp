@@ -1,4 +1,5 @@
 #include "rat/ThreadPool.hpp"
+#include <sys/types.h>
 #include <vector>
 #include <queue>
 #include <thread>
@@ -24,6 +25,9 @@ void ThreadPool::dropUnfinished() {
     std::swap(tasks, empty); // clear task queue
 }
 
+uint8_t ThreadPool::getPendingWorkersCount() {
+    return static_cast<uint8_t>( this->workers.size() );
+}
 void ThreadPool::start(size_t Num_Threads) {
     for (size_t i = 0; i < Num_Threads; ++i) {
         workers.emplace_back([this] {
