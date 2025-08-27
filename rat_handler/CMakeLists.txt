@@ -31,6 +31,7 @@ target_link_libraries(rat_handler
     PUBLIC
         rat_encryption
         rat_networking
+        rat_threading
         rat_tbot
         rat_system
         rat_media

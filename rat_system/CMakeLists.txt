@@ -57,6 +57,7 @@ if(DEBUG)
     target_link_libraries(rat_system PUBLIC spdlog::spdlog)
     target_compile_definitions(rat_system PUBLIC DEBUG)
 endif()
+target_link_libraries(rat_system PUBLIC rat_threading)
 
 # ======================================
 # Debug shell executable (for standalone builds only)
