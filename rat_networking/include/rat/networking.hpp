@@ -46,8 +46,9 @@ struct EasyCurlHandler {
 
     CURLcode perform();                          
 
-    
-    bool restart();
+    void resetOptions(); 
+    /*Destroys the handle, clean it and re-init it*/
+    bool hardResetHandle();
 
 };
 
@@ -72,21 +73,44 @@ public:
             this->operation_restart_bound = 1; // Ensure at least 1 operation
         }
     };
-    bool download(const std::string& Downloading_Url, const std::filesystem::path& File_Path);
+    
+    bool download(const char* Downloading_Url, const std::filesystem::path& File_Path);
+    
+    inline bool download(const std::string& Downloading_Url, const std::filesystem::path& File_Path) {
+        return this->download(Downloading_Url.c_str());    
+    }
 
-    /* Overloaded: extracts the file name from url and downloads to the current directory */
-    bool download(const std::string& Download_Url);
+    inline bool download(const char* Downloading_Url) {
+        auto path = std::filesystem::current_path() / _getFilePathFromUrl(Downloading_Url);
+        return this->download(Downloading_Url, path);
+    }
+    inline bool download(const std::string& Downloading_Url) {
+        return this->download(Downloading_Url.c_str());
+    }
 
-    bool upload(const std::filesystem::path& File_Path, const std::string& Uploading_Url);
 
+    bool upload(const std::filesystem::path& File_Path, const char* Uploading_Url);
+    inline bool upload(const std::filesystem::path& File_Path, const std::string& Uploading_Url) {
+        return this->upload(File_Path, Uploading_Url.c_str());
+    }
+
+    
     bool uploadMimeFile(const MimeContext& Mime_Context);
 
-    std::vector<char> sendHttpRequest(const std::string& arg_Url);
+    
     std::vector<char> sendHttpRequest(const char* arg_Url);
+    inline std::vector<char> sendHttpRequest(const std::string& arg_Url) {
+        return this->sendHttpRequest(arg_Url.c_str());   
+    }
 
+
+    
     /* Returns the actual bytes written into p_Buffer (truncates if response > Buffer_Size) */
-    size_t sendHttpRequest(const std::string& arg_Url, char* p_Buffer, size_t Buffer_Size);
+    
     size_t sendHttpRequest(const char* arg_Url, char* p_Buffer, size_t Buffer_Size);
+    inline size_t sendHttpRequest(const std::string& arg_Url, char* p_Buffer, size_t Buffer_Size) {
+        return this->sendHttpRequest(arg_Url.c_str(), p_Buffer, Buffer_Size);
+    }
 
     bool downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer);
 };

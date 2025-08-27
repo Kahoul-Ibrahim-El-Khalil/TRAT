@@ -89,7 +89,7 @@ static inline Update _parseJsonToUpdate(nlohmann::json&& update_json) {
 
 // ------------------------ Bot methods ------------------------
 
-Bot::Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timemout)
+BaseBot::BaseBot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timeout)
     : token(arg_Token),
       master_id(Master_Id),
       last_update_id(0),
@@ -106,11 +106,10 @@ Bot::Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Conne
     
     this->sending_voice_url        = fmt::format("{}{}/sendVoice", TELEGRAM_BOT_API_BASE_URL, token);
     this->getting_file_url         = fmt::format("{}{}/getFile?file_id=", TELEGRAM_BOT_API_BASE_URL, token);
-    this->getting_update_url       = fmt::format("{}{}/getUpdates?timeout={}&limit=1", TELEGRAM_BOT_API_BASE_URL, token, Telegram_Connection_Timemout);
 }
 
 /*This is the root of the bug of the asynchronous /get behavior not functioning, I ingored constructing those links */
-Bot::Bot(const Bot& Other_Bot)
+BaseBot::BaseBot(const BaseBot& Other_Bot)
     : token(Other_Bot.token),
       master_id(Other_Bot.master_id),
       last_update_id(Other_Bot.last_update_id),
@@ -122,28 +121,33 @@ Bot::Bot(const Bot& Other_Bot)
       sending_audio_url(Other_Bot.sending_audio_url),        
       sending_video_url(Other_Bot.sending_video_url),        
       sending_voice_url(Other_Bot.sending_voice_url),            
-      getting_update_url(Other_Bot.getting_update_url),
       getting_file_url(Other_Bot.getting_file_url),
       curl_client()   // <-- copy underlying client too
     {
         this->setOffset();
     }
 
-std::string Bot::getToken() const { 
+std::string BaseBot::getToken() const { 
     return token; 
 }
-int64_t Bot::getMasterId() const {
+int64_t BaseBot::getMasterId() const {
     return master_id; 
 }
-int64_t Bot::getLastUpdateId() const { 
+int64_t BaseBot::getLastUpdateId() const { 
     return last_update_id; 
 }
+void BaseBot::setLastUpdateId(int64_t arg_Id) { 
+    last_update_id = arg_Id; 
+}
 
-void Bot::setUpdateIterval(uint16_t Update_Interval) {
+void BaseBot::setUpdateIterval(uint16_t Update_Interval) {
     update_interval = Update_Interval;
 }
 
-void Bot::setOffset() {
+std::string BaseBot::getBotFileUrl() const {
+   return this->getting_file_url; 
+}
+void BaseBot::setOffset() {
     try {
         std::string init_url = fmt::format("{}{}/getUpdates?offset=-1&limit=1", TELEGRAM_BOT_API_BASE_URL, token);
 
@@ -168,10 +172,7 @@ void Bot::setOffset() {
         ERROR_LOG("Failed to get latest update ID: {}", e.what());
     }
 }
-std::string Bot::getBotFileUrl(void) {
-    return this->getting_file_url;
-}
-BotResponse Bot::sendMessage(const std::string& Text_Message) {
+BotResponse BaseBot::sendMessage(const std::string& Text_Message) {
     try {
         char* escaped = curl_easy_escape(nullptr, Text_Message.c_str(), static_cast<int>(Text_Message.size()));
         if (!escaped) return BotResponse::UNKNOWN_ERROR;
@@ -194,7 +195,7 @@ BotResponse Bot::sendMessage(const std::string& Text_Message) {
         return BotResponse::CONNECTION_ERROR;
     }
 }
-BotResponse Bot::sendMessage(const char* Text_Message) {
+BotResponse BaseBot::sendMessage(const char* Text_Message) {
     try {
         if (!Text_Message) return BotResponse::UNKNOWN_ERROR;
 
@@ -225,7 +226,7 @@ BotResponse Bot::sendMessage(const char* Text_Message) {
     }
 }
 
-BotResponse Bot::sendFile(const std::filesystem::path& File_Path, const std::string& arg_Caption) {
+BotResponse BaseBot::sendFile(const std::filesystem::path& File_Path, const std::string& arg_Caption) {
     try {
         if (!std::filesystem::exists(File_Path)) {
             ERROR_LOG("sendFile: file does not exist: {}", File_Path.string());
@@ -305,7 +306,7 @@ BotResponse Bot::sendFile(const std::filesystem::path& File_Path, const std::str
 }
 
 
-BotResponse Bot::sendPhoto(const std::filesystem::path& Photo_Path, const std::string& arg_Caption) {
+BotResponse BaseBot::sendPhoto(const std::filesystem::path& Photo_Path, const std::string& arg_Caption) {
     try {
         DEBUG_LOG("Uploading photo: {}", Photo_Path.string());
         
@@ -329,7 +330,7 @@ BotResponse Bot::sendPhoto(const std::filesystem::path& Photo_Path, const std::s
     }
 }
 // ------------------------ Audio ------------------------
-BotResponse Bot::sendAudio(const std::filesystem::path& Audio_Path, const std::string& arg_Caption) {
+BotResponse BaseBot::sendAudio(const std::filesystem::path& Audio_Path, const std::string& arg_Caption) {
     try {
         DEBUG_LOG("Uploading audio: {}", Audio_Path.string());
 
@@ -361,7 +362,7 @@ BotResponse Bot::sendAudio(const std::filesystem::path& Audio_Path, const std::s
 }
 
 // ------------------------ Video ------------------------
-BotResponse Bot::sendVideo(const std::filesystem::path& Video_Path, const std::string& arg_Caption) {
+BotResponse BaseBot::sendVideo(const std::filesystem::path& Video_Path, const std::string& arg_Caption) {
     try {
         DEBUG_LOG("Uploading video: {}", Video_Path.string());
 
@@ -392,7 +393,7 @@ BotResponse Bot::sendVideo(const std::filesystem::path& Video_Path, const std::s
 }
 
 // ------------------------ Voice ------------------------
-BotResponse Bot::sendVoice(const std::filesystem::path& Voice_Path, const std::string& arg_Caption) {
+BotResponse BaseBot::sendVoice(const std::filesystem::path& Voice_Path, const std::string& arg_Caption) {
     try {
         DEBUG_LOG("Uploading voice message: {}", Voice_Path.string());
 
@@ -423,7 +424,7 @@ BotResponse Bot::sendVoice(const std::filesystem::path& Voice_Path, const std::s
 }
 
 
-bool Bot::downloadFile(const std::string& File_Id, const std::filesystem::path& Out_Path) {
+bool BaseBot::downloadFile(const std::string& File_Id, const std::filesystem::path& Out_Path) {
     try {
         std::string get_file_url = fmt::format("{}{}", getting_file_url, File_Id);
 
@@ -454,11 +455,18 @@ bool Bot::downloadFile(const std::string& File_Id, const std::filesystem::path& 
         return false;
     }
 }
+
+Bot::Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timeout)
+    : BaseBot(arg_Token, Master_Id, Telegram_Connection_Timeout)
+{
+    this->getting_update_url = fmt::format("{}{}/getUpdates?timeout={}&limit=1", TELEGRAM_BOT_API_BASE_URL, arg_Token, Telegram_Connection_Timeout);
+}
+
 Update Bot::getUpdate() {
     try {
-        std::string url = fmt::format("{}&offset={}&limit=1", getting_update_url, last_update_id + 1);
+        std::string url = fmt::format("{}&offset={}&limit=1", getting_update_url, this->getLastUpdateId() + 1);
 
-        DEBUG_LOG("Polling updates with offset: {}", last_update_id + 1);
+        DEBUG_LOG("Polling updates with offset: {}", this->getLastUpdateId()+ 1);
 
         UpdateBuffer update_buffer;
         size_t bytes_read = curl_client.sendHttpRequest(url, update_buffer.data(), update_buffer.size());
@@ -479,7 +487,7 @@ Update Bot::getUpdate() {
         nlohmann::json update_json = std::move(resp_json["result"][0]);
         Update update = _parseJsonToUpdate(std::move(update_json));
 
-        last_update_id = update.id;
+        this->setLastUpdateId(update.id);
         return update;
 
     } catch (const std::exception& e) {
@@ -489,4 +497,3 @@ Update Bot::getUpdate() {
 }
 
 } // namespace rat::tbot
-

