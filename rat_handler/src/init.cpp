@@ -24,10 +24,8 @@ void Handler::initCurlClient(uint8_t Operation_Restart_Bound) {
     this->curl_client = std::make_unique<::rat::networking::Client>(Operation_Restart_Bound);
     this->bot->sendMessage("Handler's Curl client has been initialized");
 }
-void Handler::initThreadPools(uint8_t Number_Networking_Threads, uint8_t Number_Process_Threads, uint8_t Number_Timer_Threads) {
-    this->networking_pool = std::make_unique<::rat::ThreadPool>(Number_Networking_Threads);
+void Handler::initThreadPools(uint8_t Number_Process_Threads, uint8_t Number_Timer_Threads) {
     this->process_pool = std::make_unique<::rat::ThreadPool>(Number_Process_Threads);
     this->timer_pool = std::make_unique<::rat::ThreadPool>(Number_Timer_Threads);
 }
-
 }//rat::handler

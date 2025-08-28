@@ -113,16 +113,6 @@ namespace rat::system {
     
     std::future<std::string> runShellCommand(const std::string& arg_Command, unsigned int Timeout_ms, ::rat::ThreadPool* Timer_Pool);    
     
-    struct ProcessResult {
-        int exit_code;
-        std::string stdout_str;
-        std::string stderr_str;
-    };
-    
-    std::future<rat::system::ProcessResult> runProcessAsync(const std::string& arg_Command, unsigned int Timeout_ms);
-    std::future<rat::system::ProcessResult> runProcessAsync(const std::string& arg_Command, unsigned int Timeout_ms, ::rat::ThreadPool* Timer_Pool);
-   
-
-    /*Low level Operations*/
+   /*Low level Operations*/
 
 } // namespace rat::system

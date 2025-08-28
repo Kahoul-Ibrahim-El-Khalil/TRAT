@@ -1,14 +1,4 @@
-
-the /get function malfunctions with none document files; 
-
-fix a bug withe !echo 10 "Hello" command not being indetified;
-
-the shelling capabilities are minimal, the path handling is autrachious, work on a mechanism that pipes the output to a file, and 
-uploades it directely, this way output of big commands is actually treatable.
-
-same thing with scripting, instead of scripting commands indifinitely, work on an intuitive mechanism to executes scripts in the shell directely.
-
-impliment extendable command logic dependent on the tooling found in the system path, this way I can actually dynamically have 
-commands, for instance it will search for all commands in the usr/ directory on linux and on windows all the things in windows path, become extendible commands, this is an unordered map of key, paths values, and a special handler must be implimented for such behavior
-
+screenshots taken are not being deleted.
+integrate the payload logic.
+integerate downloading and adding paths of extendible tools.
 

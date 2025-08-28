@@ -25,7 +25,6 @@ set(SYSTEM_SRC
     ${SRC_DIR}/filesystem/navigation.cpp
     ${SRC_DIR}/filesystem/queries.cpp
     ${SRC_DIR}/os-process.cpp
-    ${SRC_DIR}/process.cpp
     ${SRC_DIR}/time.cpp
     ${SRC_DIR}/privilege.cpp
     ${SRC_DIR}/rawdogger/rawdogger.cpp
@@ -47,11 +46,8 @@ target_include_directories(rat_system
 # Dependencies (injected from root)
 # ======================================
 # Tiny-process
-if(WIN32)
-    target_link_libraries(rat_system PUBLIC fmt Threads::Threads tiny-process)
-else()
-    target_link_libraries(rat_system PUBLIC fmt pthread tiny-process)
-endif()
+
+target_link_libraries(rat_system PUBLIC fmt)
 # spdlog (if DEBUG=ON from root)
 if(DEBUG)
     target_link_libraries(rat_system PUBLIC spdlog::spdlog)

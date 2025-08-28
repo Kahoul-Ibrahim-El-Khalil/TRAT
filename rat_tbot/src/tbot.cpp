@@ -316,10 +316,9 @@ BotResponse BaseBot::sendPhoto(const std::filesystem::path& Photo_Path, const st
         ctx.file_field_name = "photo";
         ctx.fields_map = {
             {"chat_id", std::to_string(master_id)}
-            // Can add more fields like "caption", "parse_mode", etc.
         };
         
-        bool result = curl_client.uploadMimeFile(ctx);
+        bool result = this->curl_client.uploadMimeFile(ctx);
         if (!result) {
             ERROR_LOG("Failed at uploading {}", Photo_Path.string());
         }

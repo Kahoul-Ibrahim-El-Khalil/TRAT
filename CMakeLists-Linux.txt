@@ -23,33 +23,17 @@ find_package(CURL REQUIRED)
 # spdlog
 if(DEBUG)
     find_package(spdlog REQUIRED)
-    message(STATUS "Debug mode enabled: adding -fsanitize=address -g -O0")
+    message(STATUS "Debug mode enabled: adding -g -O0")
 
     # Add flags for all targets
-    add_compile_options(-fsanitize=address -Wall -Werror -Wpedantic -g -O0)
-    add_link_options(-fsanitize=address)
+    add_compile_options(-Wall -Werror -Wpedantic -g -O0)
 else()
-    add_compile_options(-Ofast)
+    add_compile_options(-Ofast -O2)
 endif()
-
-# === Tiny Process dependency ===
-if(NOT DEFINED TINY_PROCESS_PATH)
-    message("Setting default TINY_PROCESS_PATH to be in the same root as the directory of the repository, otherwise define it")
-    set(TINY_PROCESS_PATH "${CMAKE_SOURCE_DIR}/../tiny-process-library")
-endif()
-
-set(TINY_PROCESS_HEADER "${TINY_PROCESS_PATH}/include" CACHE PATH "Tiny Process include dir")
-set(TINY_PROCESS_LIBRARY_ARCHIVE "${TINY_PROCESS_PATH}/lib/libtiny-process-library.a" CACHE FILEPATH "Tiny Process static library")
-
-# Create an imported target for easier usage in submodules
-add_library(tiny-process STATIC IMPORTED GLOBAL)
-set_target_properties(tiny-process PROPERTIES
-    IMPORTED_LOCATION "${TINY_PROCESS_LIBRARY_ARCHIVE}"
-    INTERFACE_INCLUDE_DIRECTORIES "${TINY_PROCESS_HEADER}"
-)
 
 
 # === Submodules ===
+add_subdirectory(rat_process)
 add_subdirectory(rat_encryption)
 add_subdirectory(rat_networking)
 add_subdirectory(rat_threading)

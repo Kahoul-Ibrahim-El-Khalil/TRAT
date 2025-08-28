@@ -38,13 +38,6 @@ set_target_properties(zlib PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${STATIC_INCLUDE}"
 )
 
-# tiny-process
-add_library(tiny-process STATIC IMPORTED GLOBAL)
-set_target_properties(tiny-process PROPERTIES
-    IMPORTED_LOCATION "${STATIC_LIB}/libtiny-process-library.a"
-    INTERFACE_INCLUDE_DIRECTORIES "${STATIC_INCLUDE}"   # <- so #include <tiny-process-library/process.hpp> works
-)
-
 # curl
 add_library(curl STATIC IMPORTED GLOBAL)
 set_target_properties(curl PROPERTIES
@@ -77,6 +70,7 @@ endif()
 # === Submodules ===
 add_subdirectory(rat_encryption)
 add_subdirectory(rat_compression)
+add_subdirectory(rat_process)
 add_subdirectory(rat_networking)
 add_subdirectory(rat_system)
 add_subdirectory(rat_tbot)

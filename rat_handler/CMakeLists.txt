@@ -30,6 +30,7 @@ target_include_directories(rat_handler
 # ======================================
 target_link_libraries(rat_handler
     PUBLIC
+        rat_process
         rat_encryption
         rat_networking
         rat_threading

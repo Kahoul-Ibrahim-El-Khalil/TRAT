@@ -59,15 +59,14 @@ void Handler::dispatchDynamicCommand() {
     boost::trim(rest);
 
     // Lookup in map
-    auto it = this->state->command_path_map.find(directive);
-    if (it == this->state->command_path_map.end()) {
+    auto it = this->state.command_path_map.find(directive);
+    if (it == this->state.command_path_map.end()) {
         this->bot->sendMessage(fmt::format("Unknown command: '{}'", directive));
         return;
     }
 
-    std::filesystem::path& real_path = it->second;
+    std::filesystem::path& real_path = it->path;
 
-    // Rewrite update message into /process form
     // "/process <timeout> <real_path> <args>"
     std::string new_message = fmt::format("{}{}", "/process " , rest);
     new_message.insert(new_message.find(' ', 9) + 1, real_path.string() + " "); 

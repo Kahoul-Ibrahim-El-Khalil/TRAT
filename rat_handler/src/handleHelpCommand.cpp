@@ -52,6 +52,6 @@ void Handler::handleHelpCommand() {
 }
 
 void Handler::handleMenuCommand() {
-    this->bot->sendMessage(this->state->listDynamicTools());
+    this->bot->sendMessage(this->state.listDynamicTools());
 }
 } // namespace rat::handler

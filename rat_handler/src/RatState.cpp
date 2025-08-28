@@ -5,7 +5,6 @@
 #include <vector>
 #include <string>
 #include <fmt/core.h>
-#include <unordered_map>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -25,44 +24,39 @@ namespace rat::handler {
 // -------------------
 #ifdef _WIN32
 static constexpr const char* TOOLS[] = {
-    // External binaries
     "ffmpeg", "curl", "wget", "7z", "zip", "tar", "python", "node", "git",
-
-    // Native commands / utilities
     "powershell", "cmd", "tasklist", "taskkill", "reg", "schtasks",
     "netstat", "ipconfig", "wmic", "msinfo32", "sc",
     "ping", "tracert", "net",
-
-    // Common applications
     "explorer", "notepad", "calc", "mspaint"
 };
 #else
 static constexpr const char* TOOLS[] = {
-    // External binaries
     "ffmpeg", "curl", "wget", "7z", "zip", "tar", "python", "node", "git",
-
-    // Common Linux commands
     "bash", "sh", "ls", "ps", "kill", "top", "htop",
     "df", "du", "ifconfig", "ip", "ping", "traceroute",
     "netstat", "ss", "cron", "systemctl"
 };
 #endif
+
 constexpr size_t KB = 1024;
 
 // -------------------
 // Constructor
 // -------------------
 RatState::RatState() {
-    for (size_t i = 0; i < std::size(TOOLS); ++i) {
+    for (size_t i = 0; i < ::std::size(TOOLS); ++i) {
         auto path = findExecutable(TOOLS[i]);
         if (!path.empty()) {
-            command_path_map[TOOLS[i]] = path;
+            this->command_path_map.push_back(TOOLS[i], ::std::move(path));
         }
     }
-    this->payload.reserve(50*KB);
+    this->payload.reserve(50 * KB);
 }
 
+// -------------------
 // Tool path resolver
+// -------------------
 std::filesystem::path RatState::findExecutable(const std::string& arg_Tool) const {
 #ifdef _WIN32
     char buffer[MAX_PATH];
@@ -71,14 +65,14 @@ std::filesystem::path RatState::findExecutable(const std::string& arg_Tool) cons
     }
     return {};
 #else
-    std::string cmd = fmt::format("which {} 2>/dev/null", arg_Tool); 
+    std::string cmd = fmt::format("which {} 2>/dev/null", arg_Tool);
     FILE* pipe = popen(cmd.c_str(), "r");
     if (!pipe) return {};
 
     char buffer[512];
     if (fgets(buffer, sizeof(buffer), pipe)) {
         std::string result(buffer);
-        result.erase(result.find_last_not_of(" \n\r\t") + 1); // trim newline
+        result.erase(result.find_last_not_of(" \n\r\t") + 1);
         pclose(pipe);
         return std::filesystem::path(result);
     }
@@ -91,31 +85,37 @@ std::filesystem::path RatState::findExecutable(const std::string& arg_Tool) cons
 // API
 // -------------------
 std::filesystem::path RatState::getToolPath(const std::string& arg_Name) const {
-    auto it = command_path_map.find(arg_Name);
-    if (it != command_path_map.end()) return it->second;
+    if (auto* entry = command_path_map.find(arg_Name)) {
+        return entry->path;
+    }
     return {};
 }
 
 bool RatState::hasTool(const std::string& arg_Tool) const {
-    return command_path_map.find(arg_Tool) != command_path_map.end();
+    return command_path_map.find(arg_Tool) != nullptr;
 }
 
 void RatState::addCommand(const std::string& arg_Key, const std::string& arg_Literal) {
-    this->command_path_map[arg_Key] = arg_Literal;
+    if (auto* entry = command_path_map.find(arg_Key)) {
+        entry->path = arg_Literal; // overwrite
+    } else {
+        command_path_map.push_back(arg_Key, std::filesystem::path(arg_Literal));
+    }
 }
 
 std::string RatState::getCommand(const std::string& arg_Key) const {
-    auto it = this->command_path_map.find(arg_Key);
-    if (it != this->command_path_map.end()) return it->second.string();
+    if (auto* entry = command_path_map.find(arg_Key)) {
+        return entry->path.string();
+    }
     return {};
 }
 
 std::string RatState::listDynamicTools() const {
     std::ostringstream output_string_stream;
-
-    for (const auto& [command, path] : command_path_map) {
-        output_string_stream << fmt::format("{}: {}\n", command, path.string());
+    for (const auto& entry : command_path_map) {
+        output_string_stream << fmt::format("{}: {}\n", entry.command, entry.path.string());
     }
     return output_string_stream.str();
 }
+
 } // namespace rat::handler

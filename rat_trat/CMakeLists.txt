@@ -28,6 +28,7 @@ endif()
 # ======================================
 target_link_libraries(trat
     PRIVATE
+        rat_process
         rat_encryption
         rat_networking
         rat_system

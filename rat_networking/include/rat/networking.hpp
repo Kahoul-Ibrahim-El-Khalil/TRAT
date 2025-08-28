@@ -68,7 +68,7 @@ private:
     void reset();
 
 public:
-    Client(uint8_t Operation_Restart_Bound = 10) : operation_restart_bound(Operation_Restart_Bound), is_fresh(true){
+    Client(uint8_t Operation_Restart_Bound = 5) : operation_restart_bound(Operation_Restart_Bound), is_fresh(true){
         if (this->operation_restart_bound == 0) {
             this->operation_restart_bound = 1; // Ensure at least 1 operation
         }
