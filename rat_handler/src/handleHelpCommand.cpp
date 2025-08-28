@@ -47,11 +47,11 @@ void Handler::handleHelpCommand() {
     );
 
     // safe: array is null-terminated because XOR_STRING ENCRYPTED_HELP_MESSAGE the '\0'
-    this->bot.sendMessage(message.data());
+    this->bot->sendMessage(message.data());
     //this->bot.sendMessage(ENCRYPTED_HELP_MESSAGE.data());
 }
 
 void Handler::handleMenuCommand() {
-    this->bot.sendMessage(this->state.listDynamicTools());
+    this->bot->sendMessage(this->state->listDynamicTools());
 }
 } // namespace rat::handler

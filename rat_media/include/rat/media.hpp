@@ -8,10 +8,24 @@
 #include <algorithm>  // ← ADD THIS for std::find
 #include <fmt/core.h>
 #include <vector>
-#include "rat/media.hpp"
+
 namespace rat::media::screenshot {
 
-struct Resolution;
+struct Resolution {
+    uint16_t width;
+    uint16_t height;
+
+    Resolution(uint16_t arg_Width, uint16_t arg_Height)
+      :
+        width(arg_Width),
+        height(arg_Height){};
+    std::string toString() const {
+        return fmt::format("{}x{}", width, height);
+    }
+    double getRatio() const {
+        return static_cast<double>(width) / static_cast<double>(height);
+    }
+};
 
 struct ImageConfig;
 

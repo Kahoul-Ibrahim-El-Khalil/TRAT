@@ -48,6 +48,7 @@ public:
     rat::networking::Client curl_client;
 
     // Constructors
+    BaseBot() {};
     BaseBot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timeout = 20);
     BaseBot(const BaseBot& Other_Bot); // constructs new Client with its own CURL handle, copies everything, very expensive
 
@@ -82,6 +83,7 @@ private:
     std::string getting_update_url;
     
 public:
+    Bot() {};
     Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timeout = 20);
 
     Update getUpdate(); // override if BaseBot has virtual equivalent

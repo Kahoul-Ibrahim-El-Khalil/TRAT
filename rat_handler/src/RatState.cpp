@@ -1,5 +1,4 @@
 #include "rat/handler/types.hpp"  // Make sure we include the declaration
-
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
@@ -8,7 +7,6 @@
 #include <fmt/core.h>
 #include <unordered_map>
 
-
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -16,14 +14,9 @@
 #include <unistd.h>
 #endif
 
-
-
 #include <filesystem>
 #include <sstream>
 #include <cstdio>
-
-
-
 
 namespace rat::handler {
 

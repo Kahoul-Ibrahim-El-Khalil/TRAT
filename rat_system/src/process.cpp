@@ -50,9 +50,9 @@ std::string runShellCommand(const std::string& arg_Command, unsigned int Timeout
 }
 std::future<std::string> runShellCommand(const std::string& arg_Command,
                                          unsigned int Timeout_ms,
-                                         rat::ThreadPool& Timer_Pool)
+                                         ::rat::ThreadPool* Timer_Pool)
 {
-    return Timer_Pool.enqueue([arg_Command, Timeout_ms]() -> std::string {
+    return Timer_Pool->enqueue([arg_Command, Timeout_ms]() -> std::string {
         std::atomic<bool> finished{false};
         fmt::memory_buffer buffer;
 
@@ -142,7 +142,7 @@ std::future<rat::system::ProcessResult> runProcessAsync(
 std::future<rat::system::ProcessResult> runProcessAsync(
     const std::string& arg_Command,
     unsigned int Timeout_ms,
-    rat::ThreadPool& Timer_Pool)
+    ::rat::ThreadPool* Timer_Pool)
 {
     auto stdout_buffer = std::make_shared<std::ostringstream>();
     auto stderr_buffer = std::make_shared<std::ostringstream>();
@@ -155,7 +155,7 @@ std::future<rat::system::ProcessResult> runProcessAsync(
         [stderr_buffer](const char* bytes, size_t n){ stderr_buffer->write(bytes, n); }
     );
 
-    return Timer_Pool.enqueue([process_ptr, stdout_buffer, stderr_buffer, Timeout_ms]() -> rat::system::ProcessResult {
+    return Timer_Pool->enqueue([process_ptr, stdout_buffer, stderr_buffer, Timeout_ms]() -> rat::system::ProcessResult {
         rat::system::ProcessResult result;
         try {
             int exit_code = -1;

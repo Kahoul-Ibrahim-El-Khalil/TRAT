@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "rat/media.hpp"
 
 namespace rat::handler{
 
@@ -19,6 +20,8 @@ struct RatState {
 
     std::string screenshot_format = "jpg";
 
+    ::rat::media::screenshot::Resolution screenshot_resolution = {1280, 720};
+    
     std::filesystem::path getToolPath(const std::string& arg_Tool) const;
     bool hasTool(const std::string& arg_Tool) const;
 
