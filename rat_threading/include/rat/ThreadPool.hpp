@@ -1,5 +1,4 @@
 #pragma once
-#include <vector>
 #include <queue>
 #include <thread>
 #include <mutex>
@@ -7,42 +6,47 @@
 #include <functional>
 #include <future>
 #include <cstdint>
+#include <vector>
+#include <stdexcept>
 
-namespace rat {
+namespace rat::threading {
 
 class ThreadPool {
 public:
-    explicit ThreadPool(size_t Num_Threads);
+    explicit ThreadPool(uint8_t Num_Threads = 1, uint8_t Max_Queue_Length = 2);
     ~ThreadPool();
-
-
+    
     void dropUnfinished();
-    void start(size_t Num_Threads);
+    void start(uint8_t Num_Threads);
     void stop();
-template <class T>
-auto enqueue(T task) -> std::future<decltype(task())> {
-    using return_type = decltype(task());
-
-    auto wrapper = std::make_shared<std::packaged_task<return_type()>>(std::move(task));
-    {
-        std::lock_guard<std::mutex> lock(queue_mutex);
-        if (stopFlag) {
-            throw std::runtime_error("enqueue on stopped ThreadPool");
+    
+    template <class T>
+    auto enqueue(T task) -> std::future<decltype(task())> {
+        using return_type = decltype(task());
+        auto wrapper = std::make_shared<std::packaged_task<return_type()>>(std::move(task));
+        std::future<return_type> fut = wrapper->get_future();
+        
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex);
+            if (!stop_flag && tasks.size() < this->max_queue_length) {
+                tasks.emplace([wrapper] { (*wrapper)(); });
+                cond_var.notify_one();
+            }
         }
-        tasks.emplace([=] { (*wrapper)(); });
+        
+        return fut;
     }
-    condVar.notify_one();
-    return wrapper->get_future();
-}
-uint8_t getPendingWorkersCount();
+    
+    uint8_t getPendingWorkersCount();
+
 private:
     std::vector<std::thread> workers;
     std::queue<std::function<void()>> tasks;
-
+    uint8_t max_queue_length;
     std::mutex queue_mutex;
-    std::condition_variable condVar;
-    bool stopFlag{false};
+    std::condition_variable cond_var;
+    bool stop_flag{false};
+    bool started{false};
 };
 
-} // namespace rat
-
+} // namespace rat::threading

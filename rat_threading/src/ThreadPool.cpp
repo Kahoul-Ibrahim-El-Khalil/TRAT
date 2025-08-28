@@ -1,17 +1,9 @@
 #include "rat/ThreadPool.hpp"
-#include <sys/types.h>
-#include <vector>
-#include <queue>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <functional>
-#include <future>
-#include <stdexcept>
 
-namespace rat {
+namespace rat::threading {
 
-ThreadPool::ThreadPool(size_t Num_Threads) {
+ThreadPool::ThreadPool(uint8_t Num_Threads, uint8_t Max_Queue_Length) 
+    : max_queue_length(Max_Queue_Length) {
     this->start(Num_Threads);
 }
 
@@ -26,30 +18,43 @@ void ThreadPool::dropUnfinished() {
 }
 
 uint8_t ThreadPool::getPendingWorkersCount() {
-    return static_cast<uint8_t>( this->workers.size() );
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    return static_cast<uint8_t>(tasks.size());
 }
-void ThreadPool::start(size_t Num_Threads) {
-    for (size_t i = 0; i < Num_Threads; ++i) {
+
+void ThreadPool::start(uint8_t Num_Threads) {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    
+    // Prevent multiple starts
+    if (started) {
+        return;
+    }
+    
+    stop_flag = false;
+    started = true;
+    
+    for (uint8_t i = 0; i < Num_Threads; ++i) {
         workers.emplace_back([this] {
             for (;;) {
                 std::function<void()> task;
-
                 {
                     std::unique_lock<std::mutex> lock(queue_mutex);
-                    condVar.wait(lock, [this] { return stopFlag || !tasks.empty(); });
-
-                    if (stopFlag && tasks.empty())
-                        return; // exit thread
-
+                    cond_var.wait(lock, [this] { return stop_flag || !tasks.empty(); });
+                    
+                    if (stop_flag && tasks.empty())
+                        return;
+                    
                     if (!tasks.empty()) {
-                        task = std::move(tasks.front());
+                        task = std::move(tasks.front()); // assign to local variable
                         tasks.pop();
                     } else {
                         continue;
                     }
                 }
-
-                if (task) task();
+                
+                if (task) {
+                    task();
+                }
             }
         });
     }
@@ -58,14 +63,23 @@ void ThreadPool::start(size_t Num_Threads) {
 void ThreadPool::stop() {
     {
         std::lock_guard<std::mutex> lock(queue_mutex);
-        stopFlag = true;
+        if (!started) {
+            return;
+        }
+        stop_flag = true;
+        started = false;
     }
-    condVar.notify_all();
-
+    
+    cond_var.notify_all();
+    
     for (std::thread &worker : workers) {
-        if (worker.joinable())
+        if (worker.joinable()) {
             worker.join();
+        }
     }
+    
+    // Clear workers vector after joining all threads
+    workers.clear();
 }
 
-} // namespace rat
+} // namespace rat::threading

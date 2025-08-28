@@ -12,7 +12,7 @@
 namespace rat::handler {
 
 void Handler::parseTelegramMessageToCommand() {
-    std::string message_text = telegram_update.message.text;
+    std::string message_text = telegram_update->message.text;
     __normalizeWhiteSpaces(message_text);
 
     auto tokens = splitArguments(message_text);

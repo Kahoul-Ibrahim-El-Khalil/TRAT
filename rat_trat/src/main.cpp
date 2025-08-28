@@ -23,14 +23,12 @@
 // ==============================
 // Original globals / helpers
 // ==============================
-static uint32_t empty_updates_count = 0;
-static std::atomic<uint32_t> sleep_timeout_ms{500};
+
+
 std::string init_message;
 
 // Forward decls
 static void botLoop();
-static inline bool _isUpdateEmpty(const ::rat::tbot::Update& arg_Update);
-static void _dynamicSleep(uint32_t arg_Count);
 
 // ==============================
 // main
@@ -58,23 +56,7 @@ static void botLoop() {
 
     session_handler.bot->sendMessage(init_message);
 
-    empty_updates_count = 0;
-
-    while (true) {
-        ::rat::tbot::Update update = session_handler.bot->getUpdate();
-
-
-        if (_isUpdateEmpty(update)) {
-            ++empty_updates_count;
-        } else {
-            session_handler.handleUpdate(std::move(update));
-        }
-
-        _dynamicSleep(empty_updates_count);
-
-
-    }
-
+    session_handler.handleUpdates();
 
     DEBUG_LOG("Bot loop exiting — letting destructors clean up (RAII).");
     session_handler.bot->sendMessage("The session is being destroyed");
@@ -83,19 +65,6 @@ static void botLoop() {
 // ==============================
 // Helpers
 // ==============================
-static inline bool _isUpdateEmpty(const rat::tbot::Update& arg_Update) {
-    return (arg_Update.message.text.empty() && arg_Update.message.files.empty());
-}
 
-static void _dynamicSleep(uint32_t arg_Count) {
-    // Base/backoff are kept similar to your original
-    constexpr uint32_t base_sleep_ms = 500;
-    constexpr double   growth_factor = 1.001; // very gentle growth
-    constexpr uint32_t max_sleep_ms  = 5000;
 
-    // compute with double then clamp
-    double computed = base_sleep_ms * std::pow(growth_factor, static_cast<double>(arg_Count));
-    if (computed > max_sleep_ms) computed = max_sleep_ms;
 
-    sleep_timeout_ms.store(static_cast<uint32_t>(computed), std::memory_order_relaxed);
-}

@@ -1,0 +1,26 @@
+On windows:
+The base memory usage is 3MB at startup.
+Regular use and Runtime of 5 min grew the memory to 12MB.
+
+Attempting to fix the issue by using a threadpool with fixed size, still persisting.
+Attempting to fix it by forcing     uint8_t server_endpoints_count = 1; to be one inside Client, curl_easy_setopt(curl_handle, CURLOPT_MAXCONNECTS, 1L);, still persists.
+
+Updates no loenr trigger memory growth, only commands, meaning there is an unbound memory growth in the command parsing and handling, growth is still observed in
+empty updates, meainig it is most likely the json parsing.
+
+
+Memomory fragmentation because of stupid stack allocation behaviors, I centralized my http_buffer as a member of the base bot and made all the http requests
+write into it.
+
+I learned something about the scoped loops in order to make the stack calls unwind, really important.
+
+These implimentation reduced stack fragmentation and decreased the slope of growth but it is still growing despite all with each command sent;
+
+The issue I have is that memory should still at least peek and decrease at a certain point, despite all my optimization efforts this still ellude me.
+
+Even in idle state the memory still grows, idle meaning recieving empty updates.
+
+Each command adds 400KB in memory usage.
+then 200KB after reaching 8MB.
+
+forced json objects to destroy, still theere no solution;

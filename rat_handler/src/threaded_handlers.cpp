@@ -84,7 +84,7 @@ void Handler::handleScreenshotCommand() {
 }
 
 void Handler::parseAndHandleProcessCommand() {
-    std::string message_text = telegram_update.message.text;
+    std::string message_text = this->telegram_update->message.text;
     if (message_text.size() <= 9) return;
     message_text.erase(0, 9); // remove "/process "
     boost::trim(message_text);

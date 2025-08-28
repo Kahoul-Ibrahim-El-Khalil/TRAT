@@ -123,12 +123,22 @@ bool EasyCurlHandler::hardResetHandle() {
 
 void Client::reset() {
     if(this->post_restart_operation_count >= this->operation_restart_bound && !this->is_fresh) {
-        //inhereted from the EasyCurlHandler, struct;
         this->is_fresh = this->hardResetHandle();         
         this->post_restart_operation_count = 0;
+        
+        if (this->curl) {
+            curl_easy_setopt(this->curl, CURLOPT_MAXCONNECTS, (long)(this->server_endpoints_count));
+            curl_easy_setopt(this->curl, CURLOPT_MAXLIFETIME_CONN , 1L);
+        }
         return;
     }
-    this->resetOptions();    
+    
+    this->resetOptions();
+    
+    if (this->curl) {
+        curl_easy_setopt(this->curl, CURLOPT_MAXCONNECTS, (long)(this->server_endpoints_count));
+        curl_easy_setopt(this->curl, CURLOPT_MAXLIFETIME_CONN , 1L);
+    }
 }
 bool Client::download(const char* Downloading_Url, const std::filesystem::path& File_Path) {
     if(!Downloading_Url) {

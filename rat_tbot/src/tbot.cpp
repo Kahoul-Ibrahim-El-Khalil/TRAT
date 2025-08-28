@@ -12,12 +12,23 @@
 namespace rat::tbot {
 
 // ------------------------ Helpers ------------------------
+inline void moveAndDestroy(nlohmann::json&& json_obj) {
+    // Move the object into this function (takes ownership)
+    nlohmann::json local_obj = std::move(json_obj);
+    
+    // Explicitly clear and destroy
+    local_obj.clear();          // Clear contents
+    local_obj = nullptr;        // Set to null
+    // local_obj goes out of scope here and is destroyed
+}
 
 // Change from rvalue reference to const reference
-static inline File _parseFileFromJson(const nlohmann::json& file_json) {
+static inline File _parseFileFromJson(nlohmann::json&& file_json) {
+    // Use get() with move semantics - safer than get_ref<>
     std::string file_id = file_json.value("file_id", "");
     std::string mime_type = file_json.value("mime_type", "");
     size_t file_size = 0;
+    std::optional<std::string> name = std::nullopt;
 
     if (file_json.contains("file_size")) {
         if (file_json["file_size"].is_number_unsigned()) {
@@ -29,11 +40,10 @@ static inline File _parseFileFromJson(const nlohmann::json& file_json) {
         }
     }
 
-    std::optional<std::string> name = std::nullopt;
     if (file_json.contains("file_name")) {
         name = file_json["file_name"].get<std::string>();
     }
-
+    moveAndDestroy(std::move(file_json)) ;
     return File{std::move(file_id), std::move(mime_type), file_size, std::move(name)};
 }
 
@@ -41,8 +51,8 @@ static inline Update _parseJsonToUpdate(nlohmann::json&& update_json) {
     Update update{};
     update.id = update_json.value("update_id", 0);
 
-    // Find the message object
-    const nlohmann::json* message_ptr = nullptr;
+    // Find the message object using pointer to avoid copy
+    nlohmann::json* message_ptr = nullptr;
     if (update_json.contains("message")) {
         message_ptr = &update_json["message"];
     } else if (update_json.contains("edited_message")) {
@@ -53,35 +63,35 @@ static inline Update _parseJsonToUpdate(nlohmann::json&& update_json) {
 
     if (!message_ptr) return update;
 
-    const auto& msg = *message_ptr;
+    // Move the entire message object instead of copying
     Message message{};
-    message.id = msg.value("message_id", 0);
-    message.origin = msg.value("from", nlohmann::json::object()).value("id", 0);
+    message.id = message_ptr->value("message_id", 0);
+    message.origin = message_ptr->value("from", nlohmann::json::object()).value("id", 0);
 
-    // prefer text, fallback to caption
-    if (msg.contains("text")) {
-        message.text = msg.value("text", "");
-    } else if (msg.contains("caption")) {
-        message.text = msg.value("caption", "");
-    }
-
-    // Handle photos (use largest size) - use const reference
-    if (msg.contains("photo") && msg["photo"].is_array() && !msg["photo"].empty()) {
-        const auto& photo = msg["photo"].back();
-        message.files.emplace_back(_parseFileFromJson(photo)); // No std::move needed
+    // Use get_ref to get references to avoid copies, then move
+    if (message_ptr->contains("text")) {
+        message.text = std::move(message_ptr->at("text").get_ref<std::string&>());
+    } else if (message_ptr->contains("caption")) {
+        message.text = std::move(message_ptr->at("caption").get_ref<std::string&>());
     }
 
-    // Handle other file types - use const reference
-    if (msg.contains("document")) {
-        message.files.emplace_back(_parseFileFromJson(msg["document"])); // No std::move
-    }
-    if (msg.contains("audio")) {
-        message.files.emplace_back(_parseFileFromJson(msg["audio"])); // No std::move
-    }
-    if (msg.contains("video")) {
-        message.files.emplace_back(_parseFileFromJson(msg["video"])); // No std::move
+    // Handle files - use move semantics
+    if (message_ptr->contains("photo") && (*message_ptr)["photo"].is_array() && !(*message_ptr)["photo"].empty()) {
+        auto& photo = (*message_ptr)["photo"].back();
+        message.files.emplace_back(_parseFileFromJson(std::move(photo)));
     }
 
+    // Handle other file types with move
+    auto handle_file = [&message](nlohmann::json& json, const char* key) {
+        if (json.contains(key)) {
+            message.files.emplace_back(_parseFileFromJson(std::move(json[key])));
+        }
+    };
+
+    handle_file(*message_ptr, "document");
+    handle_file(*message_ptr, "audio");
+    handle_file(*message_ptr, "video");
+    moveAndDestroy(std::move(update_json)) ;
     update.message = std::move(message);
     return update;
 }
@@ -151,11 +161,10 @@ void BaseBot::setOffset() {
     try {
         std::string init_url = fmt::format("{}{}/getUpdates?offset=-1&limit=1", TELEGRAM_BOT_API_BASE_URL, token);
 
-        UpdateBuffer init_buffer;
-        size_t bytes_read = curl_client.sendHttpRequest(init_url, init_buffer.data(), init_buffer.size());
+        size_t bytes_read = curl_client.sendHttpRequest(init_url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE);
 
         if (bytes_read > 0) {
-            auto resp_json = nlohmann::json::parse(init_buffer.data(), init_buffer.data() + bytes_read);
+            auto resp_json = nlohmann::json::parse(this->http_buffer, this->http_buffer + bytes_read);
 
             if (resp_json.value("ok", false) &&
                 resp_json.contains("result") &&
@@ -182,14 +191,14 @@ BotResponse BaseBot::sendMessage(const std::string& Text_Message) {
 
         DEBUG_LOG("Sending message: {}", url);
 
-        MessageResponseBuffer response_buffer;
-        size_t bytes_read = curl_client.sendHttpRequest(url, response_buffer.data(), response_buffer.size());
+        size_t bytes_read = curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE);
 
         if (bytes_read == 0) return BotResponse::CONNECTION_ERROR;
 
-        auto resp = nlohmann::json::parse(response_buffer.data(), response_buffer.data() + bytes_read);
-        return resp.value("ok", false) ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
-
+        auto resp = nlohmann::json::parse(this->http_buffer, this->http_buffer + bytes_read);
+        auto result = resp.value("ok", false) ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
+        moveAndDestroy(std::move(resp));
+        return result;
     } catch (const std::exception& e) {
         ERROR_LOG("sendMessage exception: {}", e.what());
         return BotResponse::CONNECTION_ERROR;
@@ -212,13 +221,14 @@ BotResponse BaseBot::sendMessage(const char* Text_Message) {
 
         DEBUG_LOG("Sending message: {}", url);
 
-        MessageResponseBuffer response_buffer;
-        size_t bytes_read = curl_client.sendHttpRequest(url.c_str(), response_buffer.data(), response_buffer.size());
+        size_t bytes_read = curl_client.sendHttpRequest(url.c_str(), this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE);
 
         if (bytes_read == 0) return BotResponse::CONNECTION_ERROR;
 
-        auto resp = nlohmann::json::parse(response_buffer.data(), response_buffer.data() + bytes_read);
-        return resp.value("ok", false) ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
+        auto resp = nlohmann::json::parse(this->http_buffer, this->http_buffer + bytes_read);
+        BotResponse result = resp.value("ok", false) ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
+        moveAndDestroy(std::move(resp)) ;
+        return result;
 
     } catch (const std::exception& e) {
         ERROR_LOG("sendMessage exception: {}", e.what());
@@ -427,15 +437,14 @@ bool BaseBot::downloadFile(const std::string& File_Id, const std::filesystem::pa
     try {
         std::string get_file_url = fmt::format("{}{}", getting_file_url, File_Id);
 
-        FileOperationResponseBuffer response_data;
-        size_t bytes_read = this->curl_client.sendHttpRequest(get_file_url, response_data.data(), response_data.size());
+        size_t bytes_read = curl_client.sendHttpRequest(get_file_url.c_str(), this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE);
 
         if (bytes_read == 0) return false;
         
         DEBUG_LOG("Bytes that were retrieved from the https request {}", bytes_read);
         
         // Move the parsed JSON
-        auto resp_json = nlohmann::json::parse(response_data.data(), response_data.data() + bytes_read);
+        auto resp_json = nlohmann::json::parse(this->http_buffer, this->http_buffer + bytes_read);
         if (!resp_json.value("ok", false)) return false;
 
         // Move the file_path string
@@ -448,6 +457,7 @@ bool BaseBot::downloadFile(const std::string& File_Id, const std::filesystem::pa
         if (!ofs) return false;
 
         ofs.write(file_data.data(), file_data.size());
+        moveAndDestroy(std::move(resp_json)) ;
         return true;
     } catch (const std::exception& e) {
         ERROR_LOG("downloadFile exception: {}", e.what());
@@ -465,20 +475,15 @@ Update Bot::getUpdate() {
     try {
         std::string url = fmt::format("{}&offset={}&limit=1", getting_update_url, this->getLastUpdateId() + 1);
 
-        DEBUG_LOG("Polling updates with offset: {}", this->getLastUpdateId()+ 1);
-
-        UpdateBuffer update_buffer;
-        size_t bytes_read = curl_client.sendHttpRequest(url, update_buffer.data(), update_buffer.size());
+        size_t bytes_read = curl_client.sendHttpRequest(url.c_str(), this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE);
 
         if (bytes_read == 0) return {};
 
-        // Parse and move the JSON to avoid unnecessary copies
-        auto resp_json = nlohmann::json::parse(update_buffer.data(), update_buffer.data() + bytes_read);
+        // Parse and MOVE the JSON to avoid the double memory overhead
+        nlohmann::json resp_json = nlohmann::json::parse(this->http_buffer, this->http_buffer + bytes_read);
 
-        if (!resp_json.value("ok", false) ||
-            !resp_json.contains("result") ||
-            !resp_json["result"].is_array() ||
-            resp_json["result"].empty()) {
+        if (!resp_json.value("ok", false) || !resp_json.contains("result") || 
+            !resp_json["result"].is_array() || resp_json["result"].empty()) {
             return {};
         }
 
@@ -487,6 +492,7 @@ Update Bot::getUpdate() {
         Update update = _parseJsonToUpdate(std::move(update_json));
 
         this->setLastUpdateId(update.id);
+        moveAndDestroy(std::move(resp_json));
         return update;
 
     } catch (const std::exception& e) {

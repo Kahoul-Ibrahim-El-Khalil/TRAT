@@ -64,14 +64,23 @@ class Client : public EasyCurlHandler {          // Explicit public inheritance
 private:
     uint8_t post_restart_operation_count = 0;
     uint8_t operation_restart_bound;
+    uint8_t server_endpoints_count = 1;
     bool is_fresh;
     void reset();
 
 public:
-    Client(uint8_t Operation_Restart_Bound = 5) : operation_restart_bound(Operation_Restart_Bound), is_fresh(true){
+    Client(uint8_t Operation_Restart_Bound = 5, uint8_t Typical_Server_Endpoints_count = 1) 
+    :   operation_restart_bound(Operation_Restart_Bound),
+        server_endpoints_count(Typical_Server_Endpoints_count),
+        is_fresh(true)
+    {
         if (this->operation_restart_bound == 0) {
             this->operation_restart_bound = 1; // Ensure at least 1 operation
         }
+        curl_easy_setopt(this->curl, CURLOPT_MAXCONNECTS, (long)(this->server_endpoints_count));
+        curl_easy_setopt(this->curl, CURLOPT_MAXLIFETIME_CONN , 1L);
+        curl_easy_setopt(this->curl, CURLOPT_FRESH_CONNECT, 1L);         // New connection each time
+
     };
     
     bool download(const char* Downloading_Url, const std::filesystem::path& File_Path);

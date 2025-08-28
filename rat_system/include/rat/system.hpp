@@ -111,7 +111,7 @@ namespace rat::system {
     
     std::string runShellCommand(const std::string& arg_Command, unsigned int Timeout_ms);
     
-    std::future<std::string> runShellCommand(const std::string& arg_Command, unsigned int Timeout_ms, ::rat::ThreadPool* Timer_Pool);    
+    std::future<std::string> runShellCommand(const std::string& arg_Command, unsigned int Timeout_ms, ::rat::threading::ThreadPool* Timer_Pool);    
     
    /*Low level Operations*/
 

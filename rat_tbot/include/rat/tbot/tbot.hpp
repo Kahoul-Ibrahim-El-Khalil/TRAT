@@ -13,18 +13,14 @@
 
 #define KB 1024
 
-#define TELEGRAM_BOT_API_MESSAGE_RESPONSE_BUFFER_SIZE      (4 * KB)
-#define TELEGRAM_BOT_API_FILE_OPERATION_RESPONSE_BUFFER_SIZE (8 * KB)
-#define TELEGRAM_BOT_API_UPDATE_BUFFER_SIZE                (64 * KB)
+#define HTTP_RESPONSE_BUFFER_SIZE 64 * KB
 
 #define TELEGRAM_BOT_API_BASE_URL "https://api.telegram.org/bot"
 #define TELEGRAM_API_URL          "https://api.telegram.org"
 
 namespace rat::tbot {
 
-using MessageResponseBuffer       = std::array<char, TELEGRAM_BOT_API_MESSAGE_RESPONSE_BUFFER_SIZE>;
-using FileOperationResponseBuffer = std::array<char, TELEGRAM_BOT_API_FILE_OPERATION_RESPONSE_BUFFER_SIZE>;
-using UpdateBuffer                = std::array<char, TELEGRAM_BOT_API_UPDATE_BUFFER_SIZE>;
+
 
 class BaseBot {
 
@@ -42,7 +38,8 @@ private:
     std::string sending_voice_url;
 
     std::string getting_file_url;
-
+protected:
+    char http_buffer[HTTP_RESPONSE_BUFFER_SIZE] = {};
 public:
     /* This is because the bot gets copied inside certain threads, use its client to limit creating another handler */
     rat::networking::Client curl_client;
