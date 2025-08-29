@@ -6,4 +6,6 @@ add_library(rat_process STATIC ${SRCS})
 
 target_include_directories(rat_process
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+           ${CMAKE_SOURCE_DIR}/rat_threading/include
 )
+target_link_directories(rat_process PUBLIC rat_threading)

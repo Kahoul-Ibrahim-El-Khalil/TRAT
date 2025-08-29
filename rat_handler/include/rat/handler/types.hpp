@@ -85,6 +85,8 @@ struct CommandPathStaticArray{
 
 struct RatState {
     CommandPathStaticArray<64> command_path_map;  // fixed-capacity container
+    CommandPathStaticArray<32> user_defined_command_path_map;
+
     std::vector<uint8_t> payload;
 
     std::string payload_key;

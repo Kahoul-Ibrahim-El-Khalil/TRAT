@@ -1,15 +1,22 @@
 /*rat_handler/src/handlers.cpp*/
 #include "rat/Handler.hpp"
+#include <chrono>
 #include <cstdint>
 #include <vector>
 #include <sstream>
 #include <fmt/core.h>
 #include <fmt/chrono.h>
+#include "rat/process.hpp"
 #include <filesystem>
 #include <algorithm>
 #include "logging.hpp"
 
 namespace rat::handler {
+#ifdef _WIN32
+constexpr char FETCHING_LITERAL[] =  "where";
+#else
+constexpr char FETCHING_LITERAL[] = "which";
+#endif
 
 void Handler::parseTelegramMessageToCommand() {
     std::string message_text = telegram_update->message.text;
@@ -55,17 +62,26 @@ void Handler::handleDropCommand() {
         return;
     }
 
-    const uint8_t n_pending_timers = this->timer_pool->getPendingWorkersCount();
-    const uint8_t n_pending_processes = this->process_pool->getPendingWorkersCount();  
+    const uint8_t n_pending_short_processes = this->short_process_pool->getPendingWorkersCount();
+    const uint8_t n_pending_long_processes = this->long_process_pool->getPendingWorkersCount();  
 
-    this->process_pool->dropUnfinished();
-    this->timer_pool->dropUnfinished();
+    this->long_process_pool->dropUnfinished();
+    this->short_process_pool->dropUnfinished();
 
     this->bot->sendMessage(fmt::format(
-        "Dropped {} pending timer tasks\n{} pending process tasks",
-        n_pending_timers,
-        n_pending_processes
+        "Dropped {} pending short tasks\n{} pending long tasks",
+        n_pending_short_processes,
+        n_pending_long_processes
     ));
 }
 
+void Handler::handleFetchCommand() {
+    if(!this->command.parameters.empty()) return;
+    const std::string& parameter = this->command.parameters[0];
+//    const auto& user_command_path_map = this->state.user_defined_command_path_map;
+    
+    std::string result;
+    const std::string  command = fmt::format("{} {}", FETCHING_LITERAL ,parameter);
+    this->bot->sendMessage(command);
+}
 } // namespace rat::handler

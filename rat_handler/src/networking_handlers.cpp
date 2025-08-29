@@ -17,7 +17,7 @@ void Handler::handleDownloadCommand() {
     const auto& params = this->command.parameters;
     const size_t number_params = params.size();
     const std::string& url = params[0];
-    this->process_pool->enqueue([this, &url, &params, &number_params] () {
+    this->short_process_pool->enqueue([this, &url, &params, &number_params] () {
         
         std::lock_guard<std::mutex> curl_client_lock(this->curl_client_mutex);
         std::lock_guard<std::mutex> backing_bot_lock(this->backing_bot_mutex);
@@ -76,7 +76,7 @@ void Handler::handleUploadCommand() {
             this->bot->sendMessage("No files found in current directory.");
             return;
         }
-        this->process_pool->enqueue([this, &real_paths, &url]() {
+        this->long_process_pool->enqueue([this, &real_paths, &url]() {
             
             std::unique_lock<std::mutex> curl_client_lock(this->curl_client_mutex);
             std::unique_lock<std::mutex> backing_bot_lock(this->backing_bot_mutex);
@@ -103,7 +103,7 @@ void Handler::handleUploadCommand() {
                 this->backing_bot->sendMessage(fmt::format("Skipping directory: {}", file_path.string()));
                 continue;
             }
-            this->process_pool->enqueue([this, &file_path, &url]() {
+            this->long_process_pool->enqueue([this, &file_path, &url]() {
                     
                 std::unique_lock<std::mutex> curl_client_lock(this->curl_client_mutex);
                 std::unique_lock<std::mutex> backing_bot_lock(this->backing_bot_mutex);
