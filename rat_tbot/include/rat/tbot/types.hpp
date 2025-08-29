@@ -1,3 +1,4 @@
+/*rat_tbot/include/tbot/tbot.hpp*/
 #pragma once
 
 #include <cstdint>
@@ -8,6 +9,7 @@
 #include <deque>
 #include <optional>
 #include "logging.hpp"
+#include <simdjson.h>
 
 namespace rat::tbot {
 

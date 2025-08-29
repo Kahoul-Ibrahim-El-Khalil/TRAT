@@ -3,7 +3,9 @@
 # Sources
 # ======================================
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(TBOT_SOURCES ${SRC_DIR}/tbot.cpp)
+set(TBOT_SOURCES ${SRC_DIR}/BaseBot.cpp
+                 ${SRC_DIR}/Bot.cpp
+)
 
 # ======================================
 # Library target (controlled by root: BUILD_STATIC)
@@ -13,13 +15,15 @@ add_library(rat_tbot STATIC ${TBOT_SOURCES})
 target_include_directories(rat_tbot
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+        ${CMAKE_SOURCE_DIR}/simdjson
+      )
 
 # ======================================
 # Dependencies (all injected by root)
 # ======================================
 target_link_libraries(rat_tbot
     PUBLIC
+        libsimdjson
         rat_networking        # internal dependency
         fmt              # from root
 )

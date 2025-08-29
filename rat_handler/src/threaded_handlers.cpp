@@ -45,6 +45,7 @@ void Handler::handleGetCommand() {
             
             DEBUG_LOG("Async upload {}", file_path.string());
             std::lock_guard<std::mutex> lock(this->backing_bot_mutex);
+            this->backing_bot->sendMessage(fmt::format("File: {} will be uploaded", file_path.string()));
             auto resp = this->backing_bot->sendFile(file_path);
             
             if (resp != rat::tbot::BotResponse::SUCCESS) {
@@ -125,6 +126,4 @@ void Handler::parseAndHandleProcessCommand() {
         );
     });
 }
-
-
 }//namespace rat::handler

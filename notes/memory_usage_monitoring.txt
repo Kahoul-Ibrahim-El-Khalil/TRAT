@@ -24,3 +24,10 @@ Each command adds 400KB in memory usage.
 then 200KB after reaching 8MB.
 
 forced json objects to destroy, still theere no solution;
+
+The bug has been fixed, it was after all the nlohman::json library, switched to smidjson, and centralized the buffer as an 
+attribute of the bot to reduce stack fragmentation, added a scope {} in the main bot loop to ensure that the stack unwinds.
+
+centralized everything inside the handler including the dynamic sleep, the tool is stable right now.
+
+calling /process cause a spike that goes up and never returns, this too could be an issue, or it is the os.

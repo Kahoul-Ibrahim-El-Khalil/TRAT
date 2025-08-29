@@ -31,7 +31,7 @@ void Handler::_dynamicSleep() {
         computed = max_sleep_ms;  // ← Apply the maximum limit
     }
     
-    this->sleep_timeout_ms.store(static_cast<uint32_t>(computed), std::memory_order_relaxed);
+    this->sleep_timeout_ms = computed;
 }
 
 void Handler::handleUpdates() {
@@ -71,10 +71,8 @@ void Handler::handleUpdates() {
                 this->dispatchIntegratedCommand();
             }
         }
-        
-        // Tiny sleep to prevent tight looping
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(this->sleep_timeout_ms));
 }
 
 void Handler::dispatchDynamicCommand() {
