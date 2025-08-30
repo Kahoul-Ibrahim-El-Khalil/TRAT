@@ -13,113 +13,8 @@
 
 namespace rat::networking {
 
-// ------------------------------
-// Helpers
-// ------------------------------
-
-std::filesystem::path _getFilePathFromUrl(const std::string& arg_Url) {
-    std::string filename = arg_Url.substr(arg_Url.find_last_of("/\\") + 1);
-    if (filename.empty()) filename = "downloaded_file";
-    return std::filesystem::path(filename);
-}
-
-// Callbacks (prefixed with _ as requested)
-static size_t _cbHeapWrite(void* p_Contents, size_t arg_Size, size_t arg_Nmemb, void* p_User) {
-    auto* buffer = static_cast<std::vector<char>*>(p_User);
-    const size_t total_size = arg_Size * arg_Nmemb;
-    const char* src = static_cast<const char*>(p_Contents);
-    buffer->insert(buffer->end(), src, src + total_size);
-    return total_size;
-}
-
-static size_t _cbFileWrite(void* p_Contents, size_t arg_Size, size_t arg_Nmemb, void* p_User) {
-    FILE* fp = static_cast<FILE*>(p_User);
-    return std::fwrite(p_Contents, arg_Size, arg_Nmemb, fp);
-}
-
-static size_t _cbStackWrite(void* p_Contents, size_t arg_Size, size_t arg_Nmemb, void* p_User) {
-    const size_t total_size = arg_Size * arg_Nmemb;
-    auto* context = static_cast<BufferContext*>(p_User);
-
-    const size_t space_left = (context->capacity > context->size) ? (context->capacity - context->size) : 0;
-    const size_t copy_size  = (total_size < space_left) ? total_size : space_left;
-
-    if (copy_size > 0) {
-        std::memcpy(context->buffer + context->size, p_Contents, copy_size);
-        context->size += copy_size;
-    }
-
-    // Returning fewer bytes than provided tells libcurl we handled only part of it (truncate)
-    return copy_size;
-}
-
-static size_t _cbVectorUint8Write(void* p_Contents, size_t arg_Size, size_t arg_Nmemb, void* p_User) {
-    auto* buffer = static_cast<std::vector<uint8_t>*>(p_User);
-    const size_t total_size = arg_Size * arg_Nmemb;
-    const uint8_t* src = static_cast<const uint8_t*>(p_Contents);
-    buffer->insert(buffer->end(), src, src + total_size);
-    return total_size;
-}
-
-// ------------------------------
-// EasyCurlHandler
-// ------------------------------
-
-EasyCurlHandler::EasyCurlHandler()
-    : curl(curl_easy_init()), state(CURLE_OK) {}
-
-EasyCurlHandler::~EasyCurlHandler() {
-    if (this->curl) {
-        curl_easy_cleanup(this->curl);
-        this->curl = nullptr;
-    }
-}
-CURLcode EasyCurlHandler::setOption(CURLoption Curl_Option, long value) {
-    this->state = curl_easy_setopt(this->curl, Curl_Option, value);
-    return this->state;
-}
-CURLcode EasyCurlHandler::setOption(CURLoption Curl_Option, const char* value) {
-    this->state = curl_easy_setopt(this->curl, Curl_Option, value);
-    return this->state;
-}
-CURLcode EasyCurlHandler::setOption(CURLoption Curl_Option, void* value) {
-    this->state = curl_easy_setopt(this->curl, Curl_Option, value);
-    return this->state;
-}
-CURLcode EasyCurlHandler::setUrl(const std::string& arg_Url) {
-    this->state = curl_easy_setopt(this->curl, CURLOPT_URL, arg_Url.c_str());
-    return this->state;
-}
-CURLcode EasyCurlHandler::setUrl(const char* arg_Url) {
-    this->state = curl_easy_setopt(this->curl, CURLOPT_URL, arg_Url);
-    return this->state;
-}
-CURLcode EasyCurlHandler::setWriteCallBackFunction(WriteCallback Call_Back) {
-    this->state = curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, Call_Back);
-    return this->state;
-}
-CURLcode EasyCurlHandler::perform() {
-    this->state = curl_easy_perform(this->curl);
-    return this->state;
-}
-void EasyCurlHandler::resetOptions() {
-    if(this->curl) {
-        curl_easy_reset(this->curl);
-    }
-}
-bool EasyCurlHandler::hardResetHandle() {
-    if (this->curl) {
-        curl_easy_cleanup(this->curl);
-        this->curl = nullptr;
-    }
-    this->curl = curl_easy_init();
-    if (!this->curl) {
-        this->state = CURLE_FAILED_INIT;
-        return false;
-    }
-    this->state = CURLE_OK;
-    return true;
-}
+constexpr long CONNECTION_TIMEOUT = 2L;
+constexpr long OPERATION_TIMEOUT  = 10L;
 
 void Client::reset() {
     if(this->post_restart_operation_count >= this->operation_restart_bound && !this->is_fresh) {
@@ -192,7 +87,8 @@ bool Client::download(const char* Downloading_Url, const std::filesystem::path& 
         this->reset();
         return false;
     }
-    if (this->setOption(CURLOPT_TIMEOUT, 30L) != CURLE_OK) {
+    if ( (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) || 
+         (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK) )  {
         ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
         std::fclose(fp);
         this->reset();
@@ -237,7 +133,8 @@ bool Client::upload(const std::filesystem::path& File_Path, const char* Uploadin
         this->reset();
         return false;
     }
-    if (this->setOption(CURLOPT_UPLOAD, 1L) != CURLE_OK) {
+     if (this->setOption(CURLOPT_UPLOAD, 1L) != CURLE_OK ||
+        curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, _cbWriteDiscard) != CURLE_OK)  {
         ERROR_LOG("Failed to set upload option: %s", curl_easy_strerror(this->state));
         std::fclose(fp);
         this->reset();
@@ -270,7 +167,8 @@ bool Client::upload(const std::filesystem::path& File_Path, const char* Uploadin
         return false;
     }
     
-    if (this->setOption(CURLOPT_TIMEOUT, 30L) != CURLE_OK) {
+    if ( (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) || 
+         (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK) ) {
         ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
         std::fclose(fp);
         this->reset();
@@ -374,6 +272,13 @@ bool Client::uploadMimeFile(const MimeContext& Mime_Context) {
         this->reset();
         return false;
     }
+    //This is a must be otherwise the response will be given to the standard output
+    if (curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, _cbWriteDiscard) != CURLE_OK) {
+        ERROR_LOG("Failed to set writefunction: %s", curl_easy_strerror(this->state));
+        curl_mime_free(mime);
+        this->reset();
+        return false;
+    }
     if (this->setOption(CURLOPT_MIMEPOST, static_cast<void*>(mime)) != CURLE_OK) {
         ERROR_LOG("Failed to set MIME post option: %s", curl_easy_strerror(this->state));
         curl_mime_free(mime);
@@ -392,7 +297,8 @@ bool Client::uploadMimeFile(const MimeContext& Mime_Context) {
         this->reset();
         return false;
     }
-    if (this->setOption(CURLOPT_TIMEOUT, 0L) != CURLE_OK) {
+    if ( (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) || 
+         (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK) ) { 
         ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
         curl_mime_free(mime);
         this->reset();
@@ -453,7 +359,8 @@ std::vector<char> Client::sendHttpRequest(const char* arg_Url) {
         this->reset();
         return buffer;
     }
-    if (this->setOption(CURLOPT_TIMEOUT, 30L) != CURLE_OK) {
+    if ( (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) || 
+         (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK) )  {
         ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
         this->reset();
         return buffer;
@@ -514,7 +421,8 @@ size_t Client::sendHttpRequest(const char* arg_Url, char* p_Buffer, size_t Buffe
         this->reset();
         return 0;
     }
-    if (this->setOption(CURLOPT_TIMEOUT, 30L) != CURLE_OK) {
+    if ( (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) || 
+         (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK) ) {
         ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
         this->reset();
         return 0;
@@ -566,7 +474,8 @@ bool Client::downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_
         this->reset();
         return false;
     }
-    if (this->setOption(CURLOPT_TIMEOUT, 30L) != CURLE_OK) {
+    if ( (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) || 
+         (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK) ) {
         ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
         this->reset();
         return false;

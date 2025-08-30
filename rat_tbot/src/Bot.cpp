@@ -2,7 +2,9 @@
 #include "rat/tbot/tbot.hpp"
 #include "rat/tbot/types.hpp"
 #include "simdjson.h"
+#include <chrono>
 #include <fmt/core.h>
+#include <thread>
 
 namespace rat::tbot {
 
@@ -206,8 +208,10 @@ Update Bot::getUpdate() {
 
     this->recieved_data_size = curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
 
-    if (this->recieved_data_size == 0) return {};
-    
+    if (this->recieved_data_size == 0) {
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        return {};
+    }
     /*Set the padding bytes to 0*/
     std::memset(this->http_buffer + this->recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
 

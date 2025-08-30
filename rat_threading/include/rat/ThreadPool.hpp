@@ -38,6 +38,7 @@ public:
     }
     
     uint8_t getPendingWorkersCount();
+    uint8_t getWorkersSize();
 
 private:
     std::vector<std::thread> workers;

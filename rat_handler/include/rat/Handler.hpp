@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <array>
+#include <thread>
 #include <vector>
 #include <cstdint>
 #include <mutex>
@@ -39,6 +40,7 @@ public:
 private:
     ThreadPool_uPtr long_process_pool;
     ThreadPool_uPtr short_process_pool;
+    ThreadPool_uPtr secondary_helper_pool;
     
     std::mutex curl_client_mutex; 
     std::mutex backing_bot_mutex;
@@ -143,7 +145,7 @@ public:
     void initMainBot(const char* arg_Token);
     void initBackingBot(const char* arg_Token);
     void initCurlClient(uint8_t Operation_Restart_Bound = 5);
-    void initThreadPools(uint8_t Number_Long_Process_Threads = 1, uint8_t Number_Short_Process_Threads = 2);
+    void initThreadPools(uint8_t Number_Long_Process_Threads = 1, uint8_t Number_Short_Process_Threads = 2, uint8_t Number_Helper_Threads = 2);
     // Handle Telegram update
     
     void handleUpdates();

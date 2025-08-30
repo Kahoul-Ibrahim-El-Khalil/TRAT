@@ -185,8 +185,8 @@ BotResponse BaseBot::sendFile(const std::filesystem::path& File_Path, const std:
         else ctx.mime_type             = "application/octet-stream"; // fallback
 
         DEBUG_LOG("sendFile: mime_type resolved to '{}'", ctx.mime_type);
-
         DEBUG_LOG("sendFile: invoking uploadMimeFile() for {}", File_Path.string());
+        
         const bool result = this->curl_client.uploadMimeFile(ctx);
 
         if (!result) {

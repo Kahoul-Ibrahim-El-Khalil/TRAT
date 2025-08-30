@@ -11,7 +11,9 @@ ThreadPool::ThreadPool(uint8_t Num_Threads, uint8_t Max_Queue_Length)
 ThreadPool::~ThreadPool() {
     this->stop();
 }
-
+uint8_t ThreadPool::getWorkersSize() {
+    return this->workers.size();
+}
 void ThreadPool::dropUnfinished() {
     std::lock_guard<std::mutex> lock(queue_mutex);
     std::queue<std::function<void()>> empty;
