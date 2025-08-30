@@ -58,13 +58,12 @@ void Handler::handleUploadCommand() {
         return;
     }
 
-    std::string url = std::move(this->command.parameters.back());
-    this->command.parameters.pop_back(); // remove it from parameters
+    const std::string& url = this->command.parameters[0];
 
-    std::vector<std::string> paths = std::move(this->command.parameters);
+    const std::vector<std::string>& paths = this->command.parameters;
 
     // Handle "*" meaning all files in current directory
-    if (paths.size() == 1 && paths[0] == "*") {
+    if (paths.size() - 1 == 1 && paths[1] == "*") {
         std::vector<std::filesystem::path> real_paths;
 
         for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::current_path())) {
@@ -92,8 +91,8 @@ void Handler::handleUploadCommand() {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         });
     } else {
-        for (auto& p : paths) {
-            std::filesystem::path file_path(std::move(p));
+        for (auto it = paths.begin() + 1 ; it != paths.end(); ++it) {
+            std::filesystem::path file_path(std::move(*it));
 
             if (!std::filesystem::exists(file_path)) {
                 this->backing_bot->sendMessage(fmt::format("File does not exist: {}", file_path.string()));

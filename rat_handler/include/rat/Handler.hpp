@@ -1,4 +1,7 @@
 /*include/rat/Handler.hpp*/
+/*
+ * This module is responsible for bringing everything togther, it basically take commans for the bots and its client,
+ * */
 #pragma once
 #include "rat/handler/types.hpp"
 #include "rat/ThreadPool.hpp"

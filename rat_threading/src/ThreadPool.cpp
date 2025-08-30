@@ -1,5 +1,6 @@
 #include "rat/ThreadPool.hpp"
 
+#include "logging.hpp"
 namespace rat::threading {
 
 ThreadPool::ThreadPool(uint8_t Num_Threads, uint8_t Max_Queue_Length) 
@@ -23,8 +24,8 @@ uint8_t ThreadPool::getPendingWorkersCount() {
 }
 
 void ThreadPool::start(uint8_t Num_Threads) {
+    DEBUG_LOG("Starting Thread Pool of {} size", Num_Threads);
     std::lock_guard<std::mutex> lock(queue_mutex);
-    
     // Prevent multiple starts
     if (started) {
         return;
@@ -41,20 +42,15 @@ void ThreadPool::start(uint8_t Num_Threads) {
                     std::unique_lock<std::mutex> lock(queue_mutex);
                     cond_var.wait(lock, [this] { return stop_flag || !tasks.empty(); });
                     
-                    if (stop_flag && tasks.empty())
-                        return;
+                    if (stop_flag && tasks.empty())   return;
                     
                     if (!tasks.empty()) {
                         task = std::move(tasks.front()); // assign to local variable
                         tasks.pop();
-                    } else {
-                        continue;
-                    }
+                    } else continue;
                 }
-                
-                if (task) {
-                    task();
-                }
+                DEBUG_LOG("Pushing the task into the worker thread"); 
+                if (task) task();
             }
         });
     }
@@ -74,11 +70,11 @@ void ThreadPool::stop() {
     
     for (std::thread &worker : workers) {
         if (worker.joinable()) {
+            DEBUG_LOG("Joining the worker thread");
             worker.join();
         }
     }
-    
-    // Clear workers vector after joining all threads
+    DEBUG_LOG("All worker threads joined"); 
     workers.clear();
 }
 
