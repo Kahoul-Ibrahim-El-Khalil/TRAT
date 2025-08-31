@@ -146,12 +146,13 @@ Message Bot::parseMessage(simdjson::ondemand::value& message_val) {
     
     return message;
 }
-Update Bot::parseJsonToUpdate() {
+Update Bot::parseJsonToUpdate(const size_t Json_Buffer_Size) {
     Update update{};
     
     try {
         // Parse the JSON from our buffer
-        simdjson::ondemand::document doc = simdjson_parser.iterate(this->http_buffer, this->recieved_data_size + simdjson::SIMDJSON_PADDING);
+        simdjson::ondemand::parser simdjson_parser(Json_Buffer_Size + simdjson::SIMDJSON_PADDING);
+        simdjson::ondemand::document doc = simdjson_parser.iterate(this->http_buffer, Json_Buffer_Size + simdjson::SIMDJSON_PADDING);
         
         // Check if response is OK
         bool ok;
@@ -161,7 +162,6 @@ Update Bot::parseJsonToUpdate() {
             return {};
         }
         
-        // Get the result array
         simdjson::ondemand::value result_val;
         if (doc["result"].get(result_val) != simdjson::SUCCESS) {
             DEBUG_LOG("No result field in response");
@@ -179,14 +179,12 @@ Update Bot::parseJsonToUpdate() {
             simdjson::ondemand::object update_obj;
             if (result_item.get_object().get(update_obj) != simdjson::SUCCESS) continue;
             
-            // Extract update_id
             int64_t update_id;
             if (update_obj["update_id"].get(update_id) != simdjson::SUCCESS) continue;
             
             update.id = update_id;
             this->setLastUpdateId(update.id);
             
-            // Extract message
             simdjson::ondemand::value message_val;
             if (update_obj["message"].get(message_val) == simdjson::SUCCESS) {
                 update.message = this->parseMessage(message_val);
@@ -206,15 +204,15 @@ Update Bot::getUpdate() {
 
     DEBUG_LOG("Polling updates with offset: {}", this->last_update_id + 1);
 
-    this->recieved_data_size = curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
+    const size_t recieved_data_size = curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
 
-    if (this->recieved_data_size == 0) {
+    if (recieved_data_size == 0) {
         std::this_thread::sleep_for(std::chrono::seconds(2));
         return {};
     }
     /*Set the padding bytes to 0*/
-    std::memset(this->http_buffer + this->recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
+    std::memset(this->http_buffer + recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
 
-    return this->parseJsonToUpdate();
+    return this->parseJsonToUpdate(recieved_data_size);
 }
 }//namespace rat::tbot

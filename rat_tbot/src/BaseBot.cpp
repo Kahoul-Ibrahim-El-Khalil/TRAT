@@ -51,7 +51,6 @@ BaseBot::BaseBot(const BaseBot& Other_Bot)
         this->update_interval = Other_Bot.update_interval;
 
         this->last_update_id = Other_Bot.last_update_id;
-
     }
 
 std::string BaseBot::getToken() const { 
@@ -74,30 +73,74 @@ void BaseBot::setUpdateIterval(uint16_t Update_Interval) {
 std::string BaseBot::getBotFileUrl() const {
    return this->getting_file_url; 
 }
-void BaseBot::setOffset() {
-    try {
-        const std::string init_url = fmt::format("{}{}/getUpdates?offset=-1&limit=1", TELEGRAM_BOT_API_BASE_URL, token);
 
-        this->recieved_data_size = this->curl_client.sendHttpRequest(init_url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
-        if(this->recieved_data_size == 0) {
-            return;
-        }
-        std::memset(this->http_buffer + this->recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
-        simdjson::ondemand::document doc = simdjson_parser.iterate(this->http_buffer,  this->recieved_data_size + simdjson::SIMDJSON_PADDING);
-            
-        if (doc["ok"].get_bool()) {
-            simdjson::ondemand::array results = doc["result"].get_array();
-                
-            for (auto result : results) {
-                last_update_id = result["update_id"].get_int64();
-                DEBUG_LOG("Initialized with latest update_id: {}", last_update_id);
-                break; // Only need the first result
-            }
-        }
-    } catch (const std::exception& e) {
-        ERROR_LOG("Failed to get latest update ID: {}", e.what());
+void BaseBot::setOffset() {
+    const std::string init_url = fmt::format(
+        "{}{}/getUpdates?offset=-1&limit=1",
+        TELEGRAM_BOT_API_BASE_URL, token
+    );
+
+    // Request updates
+    const size_t received_size = this->curl_client.sendHttpRequest(
+        init_url,
+        this->http_buffer,
+        HTTP_RESPONSE_BUFFER_SIZE // ensure sendHttpRequest never exceeds this
+    );
+
+    if (received_size == 0) {
+        ERROR_LOG("Failed to fetch updates (empty response).");
+        return;
+    }
+
+    // Add simdjson padding
+    std::memset(this->http_buffer + received_size, 0, simdjson::SIMDJSON_PADDING);
+
+    // Parser
+    simdjson::ondemand::parser parser;
+    simdjson::ondemand::document doc;
+    auto error = parser.iterate(
+        this->http_buffer,
+        received_size,
+        received_size + simdjson::SIMDJSON_PADDING
+    ).get(doc);
+
+    if (error) {
+        ERROR_LOG("Failed to parse JSON (code={}): {}", int(error), simdjson::error_message(error));
+        return;
+    }
+
+    // Validate "ok"
+    auto ok = doc["ok"].get_bool();
+    if (ok.error() || !ok.value_unsafe()) {
+        ERROR_LOG("Telegram API response missing or invalid 'ok' field.");
+        return;
+    }
+
+    // Extract "result"
+    auto results = doc["result"].get_array();
+    if (results.error()) {
+        ERROR_LOG("Telegram API response missing 'result' array.");
+        return;
+    }
+
+    // If no updates, that's fine (new bot, idle state, etc.)
+    if (results.begin() == results.end()) {
+        DEBUG_LOG("No updates available yet, offset not set.");
+        return;
+    }
+
+    // Since limit=1, there’s at most one element
+    auto result = *results.begin();
+    auto update_id = result["update_id"].get_int64();
+    if (!update_id.error() && update_id.value() > 0) {
+        this->last_update_id = update_id.value();
+        DEBUG_LOG("Initialized with latest update_id: {}", this->last_update_id);
+    } else {
+        ERROR_LOG("Failed to extract update_id from Telegram response.");
     }
 }
+
+
 
 BotResponse BaseBot::sendMessage(const std::string& Text_Message) {
     try {
@@ -109,13 +152,15 @@ BotResponse BaseBot::sendMessage(const std::string& Text_Message) {
 
         DEBUG_LOG("Sending message: {}", url);
 
-        this->recieved_data_size = this->curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
+        const size_t recieved_data_size = this->curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
 
-        if (this->recieved_data_size == simdjson::SIMDJSON_PADDING) return BotResponse::CONNECTION_ERROR;
+        if (recieved_data_size == 0) return BotResponse::CONNECTION_ERROR;
         
-        std::memset(this->http_buffer + this->recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
-        // Use simdjson instead of nlohmann
-        simdjson::ondemand::document doc = simdjson_parser.iterate(http_buffer, this->recieved_data_size + simdjson::SIMDJSON_PADDING);
+        std::memset(this->http_buffer + recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
+        
+        
+        simdjson::ondemand::parser simdjson_parser(recieved_data_size + simdjson::SIMDJSON_PADDING);
+        simdjson::ondemand::document doc = simdjson_parser.iterate(http_buffer, recieved_data_size + simdjson::SIMDJSON_PADDING);
         const bool ok = doc["ok"].get_bool();
         
         return ok ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
@@ -329,20 +374,21 @@ bool BaseBot::downloadFile(const std::string& File_Id, const std::filesystem::pa
     try {
         std::string get_file_url = fmt::format("{}{}", getting_file_url, File_Id);
         
-        this->recieved_data_size= this->curl_client.sendHttpRequest(get_file_url.c_str(), this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
+        const size_t recieved_data_size= this->curl_client.sendHttpRequest(get_file_url.c_str(), this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
 
-        if (this->recieved_data_size == 0) return false;
+        if (recieved_data_size == 0) return false;
         
-        DEBUG_LOG("Bytes that were retrieved from the https request {}", this->recieved_data_size);
+        DEBUG_LOG("Bytes that were retrieved from the https request {}", recieved_data_size);
         
         // Use simdjson instead of nlohmann
-        std::memset(this->http_buffer + this->recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
-        simdjson::ondemand::document doc = simdjson_parser.iterate(http_buffer, this->recieved_data_size);
+        std::memset(this->http_buffer + recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
+        simdjson::ondemand::parser simdjson_parser(recieved_data_size + simdjson::SIMDJSON_PADDING);
+        simdjson::ondemand::document doc = simdjson_parser.iterate(http_buffer, recieved_data_size);
         const bool ok = doc["ok"].get_bool();
         if (!ok) return false;
 
-        std::string_view file_path = doc["result"]["file_path"].get_string();
-        std::string file_url = fmt::format("{}/file/bot{}/{}", TELEGRAM_API_URL, token, file_path);
+        const std::string_view file_path = doc["result"]["file_path"].get_string();
+        const std::string file_url = fmt::format("{}/file/bot{}/{}", TELEGRAM_API_URL, token, file_path);
 
         const auto file_data = this->curl_client.sendHttpRequest(file_url);
 

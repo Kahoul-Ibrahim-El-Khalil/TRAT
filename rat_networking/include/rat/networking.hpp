@@ -53,6 +53,7 @@ private:
     uint8_t post_restart_operation_count = 0;
     uint8_t operation_restart_bound;
     uint8_t server_endpoints_count = 1;
+    
     bool is_fresh;
     void reset();
 
@@ -97,12 +98,13 @@ public:
     }
     /* Returns the actual bytes written into p_Buffer (truncates if response > Buffer_Size) */
     
-    size_t sendHttpRequest(const char* arg_Url, char* p_Buffer, size_t Buffer_Size);
-    inline size_t sendHttpRequest(const std::string& arg_Url, char* p_Buffer, size_t Buffer_Size) {
+    NetworkingResult sendHttpRequest(const char* arg_Url, char* p_Buffer, const size_t Buffer_Size);
+    inline NetworkingResult sendHttpRequest(const std::string& arg_Url, char* p_Buffer, const size_t Buffer_Size) {
         return this->sendHttpRequest(arg_Url.c_str(), p_Buffer, Buffer_Size);
     }
 
-    bool downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer);
+    
+    CURLcode downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer);
 };
 
 

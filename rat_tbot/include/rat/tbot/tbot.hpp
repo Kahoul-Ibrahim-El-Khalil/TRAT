@@ -14,12 +14,11 @@
 
 #define KB 1024
 
-#define HTTP_RESPONSE_BUFFER_SIZE 64 * KB
-#define TELEGRAM_BOT_API_BASE_URL "https://api.telegram.org/bot"
-#define TELEGRAM_API_URL          "https://api.telegram.org"
-
 namespace rat::tbot {
 
+constexpr size_t HTTP_RESPONSE_BUFFER_SIZE = 64 * KB;
+constexpr char TELEGRAM_BOT_API_BASE_URL[] = "https://api.telegram.org/bot";
+constexpr char TELEGRAM_API_URL[] = "https://api.telegram.org";
 
 
 class BaseBot {
@@ -40,10 +39,7 @@ private:
 protected:
     int64_t last_update_id;
     
-    simdjson::ondemand::parser simdjson_parser;
-
     char http_buffer[HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING] = {0};
-    size_t recieved_data_size  = 0;
     
 public:
     /* This is because the bot gets copied inside certain threads, use its client to limit creating another handler */
@@ -89,7 +85,7 @@ protected:
 
     Message parseMessage(simdjson::ondemand::value& message_val);
 
-    Update parseJsonToUpdate();
+    Update parseJsonToUpdate(const size_t Json_Buffer_Size);
 public:
     Bot() {};
     Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timeout = 20);

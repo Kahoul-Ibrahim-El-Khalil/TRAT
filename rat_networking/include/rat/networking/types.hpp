@@ -6,6 +6,7 @@
 #include <map>
 #include <filesystem>
 #include <cstdlib>
+#include <curl/curl.h>
 
 namespace rat::networking {
 struct BufferContext {
@@ -21,4 +22,10 @@ struct MimeContext {
     std::string file_field_name = "document"; // default field name for file
     std::string mime_type = "";               // optional MIME type
 };
+
+struct NetworkingResult {
+    CURLcode curl_code;
+    size_t size;
+};
+
 }
