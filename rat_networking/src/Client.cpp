@@ -1,4 +1,4 @@
-/*rat_networking/src/networking.cpp*/
+/* rat_networking/src/networking.cpp */
 #include "rat/networking.hpp"
 #include <fstream>
 #include <iostream>
@@ -35,489 +35,359 @@ void Client::reset() {
         curl_easy_setopt(this->curl, CURLOPT_MAXLIFETIME_CONN , 1L);
     }
 }
-bool Client::download(const char* Downloading_Url, const std::filesystem::path& File_Path) {
+
+NetworkingResult Client::download(const char* Downloading_Url, const std::filesystem::path& File_Path) {
+    NetworkingResult result{ CURLE_OK, 0 };
+
     if(!Downloading_Url) {
         ERROR_LOG("Downloading_Url is nullptr");
-        return false;
-    }
-    if (!this->curl) {
-        ERROR_LOG("CURL handle is not initialized");
-        return false;
-    }
-    FILE* fp = std::fopen(File_Path.string().c_str(), "wb");
-    if (!fp) {
-        ERROR_LOG("Failed to open file for writing: %s", File_Path.string().c_str());
-        return false;
-    }
-    this->is_fresh = false;
-    this->post_restart_operation_count++;
-    if (this->setOption(CURLOPT_URL, Downloading_Url) != CURLE_OK) {
-        ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    if (this->setWriteCallBackFunction(&_cbFileWrite) != CURLE_OK) {
-        ERROR_LOG("Failed to set write callback: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    if (this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(fp)) != CURLE_OK) {
-        ERROR_LOG("Failed to set write data: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    if (this->setOption(CURLOPT_FOLLOWLOCATION, 1L) != CURLE_OK) {
-        ERROR_LOG("Failed to set follow location: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    if (this->setOption(CURLOPT_SSL_VERIFYPEER, 1L) != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL peer verification: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    if (this->setOption(CURLOPT_SSL_VERIFYHOST, 2L) != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL host verification: %s", curl_easy_strerror(this->state)); 
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    if ( (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) || 
-         (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK) )  {
-        ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    // Only perform if all options were set successfully
-    if (this->perform() != CURLE_OK) {
-        ERROR_LOG("Download failed: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    std::fclose(fp);
-    this->reset();
-    return true;
-}
-
-bool Client::upload(const std::filesystem::path& File_Path, const char* Uploading_Url) {
-    if(!Uploading_Url) {
-        ERROR_LOG("Uploading_Url is nullptr");
-        return false;
-    }
-    if (!this->curl) {
-        ERROR_LOG("CURL handle is not initialized");
-        return false;
-    }
-    if (!std::filesystem::exists(File_Path)) {
-        ERROR_LOG("File does not exist: %s", File_Path.string().c_str());
-        return false;
-    }
-    FILE* fp = std::fopen(File_Path.string().c_str(), "rb");
-    if (!fp) {
-        ERROR_LOG("Failed to open file for reading: %s", File_Path.string().c_str());
-        return false;
-    }
-    this->post_restart_operation_count++;
-    this->is_fresh = false;
-
-    if (this->setUrl(Uploading_Url) != CURLE_OK) {
-        ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-     if (this->setOption(CURLOPT_UPLOAD, 1L) != CURLE_OK ||
-        curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, _cbWriteDiscard) != CURLE_OK)  {
-        ERROR_LOG("Failed to set upload option: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    if (this->setOption(CURLOPT_READDATA, static_cast<void*>(fp)) != CURLE_OK) {
-        ERROR_LOG("Failed to set read data: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    
-    curl_off_t file_size = static_cast<curl_off_t>(std::filesystem::file_size(File_Path));
-    if (this->setOption(CURLOPT_INFILESIZE_LARGE, file_size) != CURLE_OK) {
-        ERROR_LOG("Failed to set file size: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    if (this->setOption(CURLOPT_SSL_VERIFYPEER, 1L) != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL peer verification: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    if (this->setOption(CURLOPT_SSL_VERIFYHOST, 2L) != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL host verification: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    
-    if ( (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) || 
-         (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK) ) {
-        ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-
-    // Only perform if all options were set successfully
-    if (this->perform() != CURLE_OK) {
-        ERROR_LOG("Upload failed: %s", curl_easy_strerror(this->state));
-        std::fclose(fp);
-        this->reset();
-        return false;
-    }
-    std::fclose(fp);
-    this->reset();
-    return true;
-}
-
-bool Client::uploadMimeFile(const MimeContext& Mime_Context) {
-    DEBUG_LOG("Client::uploadMimeFile(const MimeContext& Mime_Context) was invoked, now inside its scope");
-    if (!this->curl) {
-        ERROR_LOG("CURL handle is not initialized");
-        return false;
-    }
-    DEBUG_LOG("Check passed, curl instance exists");
-    if (!std::filesystem::exists(Mime_Context.file_path)) {
-        ERROR_LOG("File does not exist: %s", Mime_Context.file_path.string().c_str());
-        return false;
-    }
-    this->post_restart_operation_count++;
-    this->is_fresh = false;
-
-    DEBUG_LOG("Check passed, file exists");
-    curl_mime* mime = curl_mime_init(this->curl);
-    if (!mime) {
-        ERROR_LOG("Failed to create MIME structure");
-        this->reset();
-        return false;
-    }
-    DEBUG_LOG("curl_mime* instance was created");
-    // Add file part
-    curl_mimepart* file_part = curl_mime_addpart(mime);
-    DEBUG_LOG("curl_mimepart* instance was created");
-    if (!file_part) {
-        ERROR_LOG("Failed to add file MIME part");
-        curl_mime_free(mime);
-        this->reset();
-        return false;
-    }
-    CURLcode result = curl_mime_name(file_part, Mime_Context.file_field_name.c_str());
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set file field name: %s", curl_easy_strerror(result));
-        curl_mime_free(mime);
-        this->reset();
-        return false;
-    }
-    result = curl_mime_filedata(file_part, Mime_Context.file_path.string().c_str());
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set file data: %s", curl_easy_strerror(result));
-        curl_mime_free(mime);
-        this->reset();
-        return false;
-    }
-    if (!Mime_Context.mime_type.empty()) {
-        result = curl_mime_type(file_part, Mime_Context.mime_type.c_str());
-        if (result != CURLE_OK) {
-            ERROR_LOG("Failed to set MIME type: %s", curl_easy_strerror(result));
-            curl_mime_free(mime);
-            this->reset();
-            return false;
-        }
-    }
-    // Add all form fields from the map
-    for (const auto& [field_name, field_value] : Mime_Context.fields_map) {
-        curl_mimepart* field_part = curl_mime_addpart(mime);
-        if (!field_part) {
-            ERROR_LOG("Failed to add field part for: %s", field_name.c_str());
-            curl_mime_free(mime);
-            this->reset();
-            return false;
-        }
-        result = curl_mime_name(field_part, field_name.c_str());
-        if (result != CURLE_OK) {
-            ERROR_LOG("Failed to set field name %s: %s", field_name.c_str(), curl_easy_strerror(result));
-            curl_mime_free(mime);
-            this->reset();
-            return false;
-        }
-        result = curl_mime_data(field_part, field_value.c_str(), CURL_ZERO_TERMINATED);
-        if (result != CURLE_OK) {
-            ERROR_LOG("Failed to set field data for %s: %s", field_name.c_str(), curl_easy_strerror(result));
-            curl_mime_free(mime);
-            this->reset();
-            return false;
-        }
-    }
-    DEBUG_LOG("Setting curl options in networking::uploadMimeFile(MimeContext& ctx)");
-    if (this->setUrl(Mime_Context.url) != CURLE_OK) {
-        ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
-        curl_mime_free(mime);
-        this->reset();
-        return false;
-    }
-    //This is a must be otherwise the response will be given to the standard output
-    if (curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, _cbWriteDiscard) != CURLE_OK) {
-        ERROR_LOG("Failed to set writefunction: %s", curl_easy_strerror(this->state));
-        curl_mime_free(mime);
-        this->reset();
-        return false;
-    }
-    if (this->setOption(CURLOPT_MIMEPOST, static_cast<void*>(mime)) != CURLE_OK) {
-        ERROR_LOG("Failed to set MIME post option: %s", curl_easy_strerror(this->state));
-        curl_mime_free(mime);
-        this->reset();
-        return false;
-    }
-    if (this->setOption(CURLOPT_SSL_VERIFYPEER, 1L) != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL peer verification: %s", curl_easy_strerror(this->state));
-        curl_mime_free(mime);
-        this->reset();
-        return false;
-    }
-    if (this->setOption(CURLOPT_SSL_VERIFYHOST, 2L) != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL host verification: %s", curl_easy_strerror(this->state));
-        curl_mime_free(mime);
-        this->reset();
-        return false;
-    }
-    if ( (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) || 
-         (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK) ) { 
-        ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
-        curl_mime_free(mime);
-        this->reset();
-        return false;
-    }
-
-    // Perform the request if all options were set successfully
-    if (this->perform() != CURLE_OK) {
-        ERROR_LOG("MIME upload failed: %s", curl_easy_strerror(this->state));
-        curl_mime_free(mime);
-        this->reset();
-        return false;
-    }
-    curl_mime_free(mime);
-    /*After a mime operation, since I do not understand its shenanigans exactly, hard reset the handle is the safest option*/
-    this->hardResetHandle();
-    return true;
-}
-std::vector<char> Client::sendHttpRequest(const char* arg_Url) {
-    if(!arg_Url) {
-        ERROR_LOG("arg_Url is nullptr");
-        return {};
-    }
-    std::vector<char> buffer;
-    if (!this->curl) {
-        ERROR_LOG("CURL handle is not initialized");
-        return buffer;
-    }
-    this->post_restart_operation_count++;
-    this->is_fresh = false;
-    if (this->setUrl(arg_Url) != CURLE_OK) {
-        ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return buffer;
-    }
-    if (this->setWriteCallBackFunction(&_cbHeapWrite) != CURLE_OK) {
-        ERROR_LOG("Failed to set write callback: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return buffer;
-    }
-    if (this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&buffer)) != CURLE_OK) {
-        ERROR_LOG("Failed to set write data: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return buffer;
-    }
-    if (this->setOption(CURLOPT_SSL_VERIFYPEER, 1L) != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL peer verification: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return buffer;
-    }
-    if (this->setOption(CURLOPT_SSL_VERIFYHOST, 2L) != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL host verification: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return buffer;
-    }
-    if (this->setOption(CURLOPT_FOLLOWLOCATION, 1L) != CURLE_OK) {
-        ERROR_LOG("Failed to set follow location: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return buffer;
-    }
-    if ( (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) || 
-         (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK) )  {
-        ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return buffer;
-    }
-    if (this->perform() != CURLE_OK) {
-        ERROR_LOG("HTTP request failed: %s", curl_easy_strerror(this->state));
-        buffer.clear();
-        this->reset();
-        return buffer;
-    }
-    this->reset();
-    return buffer;
-}
-
-NetworkingResult Client::sendHttpRequest(const char* arg_Url, char* p_Buffer, size_t Buffer_Size) {
-    ::rat::networking::NetworkingResult result = {0};
-    if(!arg_Url || !p_Buffer || Buffer_Size == 0) {
-        ERROR_LOG("arg_Url is nullptr");
         result.curl_code = CURLE_BAD_FUNCTION_ARGUMENT;
-        result.size = 0;
         return result;
     }
     if (!this->curl) {
         ERROR_LOG("CURL handle is not initialized");
         result.curl_code = CURLE_FAILED_INIT;
-        result.size = 0;
-        result
+        return result;
     }
+    FILE* fp = std::fopen(File_Path.string().c_str(), "wb");
+    if (!fp) {
+        ERROR_LOG("Failed to open file for writing: %s", File_Path.string().c_str());
+        result.curl_code = CURLE_WRITE_ERROR;
+        return result;
+    }
+
+    this->is_fresh = false;
+    this->post_restart_operation_count++;
+
+    if ((result.curl_code = this->setOption(CURLOPT_URL, Downloading_Url)) != CURLE_OK ||
+        (result.curl_code = this->setWriteCallBackFunction(&_cbFileWrite)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(fp))) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_FOLLOWLOCATION, 1L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
+        
+        ERROR_LOG("Download setup failed: %s", curl_easy_strerror(result.curl_code));
+        std::fclose(fp);
+        this->reset();
+        return result;
+    }
+
+    result.curl_code = this->perform();
+    if (result.curl_code != CURLE_OK) {
+        ERROR_LOG("Download failed: %s", curl_easy_strerror(result.curl_code));
+        std::fclose(fp);
+        this->reset();
+        return result;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    result.size = std::ftell(fp);
+    std::fclose(fp);
+
+    this->reset();
+    return result;
+}
+
+NetworkingResult Client::upload(const std::filesystem::path& File_Path, const char* Uploading_Url) {
+    NetworkingResult result{ CURLE_OK, 0 };
+
+    if(!Uploading_Url) {
+        ERROR_LOG("Uploading_Url is nullptr");
+        result.curl_code = CURLE_BAD_FUNCTION_ARGUMENT;
+        return result;
+    }
+    if (!this->curl) {
+        ERROR_LOG("CURL handle is not initialized");
+        result.curl_code = CURLE_FAILED_INIT;
+        return result;
+    }
+    if (!std::filesystem::exists(File_Path)) {
+        ERROR_LOG("File does not exist: %s", File_Path.string().c_str());
+        result.curl_code = CURLE_READ_ERROR;
+        return result;
+    }
+    FILE* fp = std::fopen(File_Path.string().c_str(), "rb");
+    if (!fp) {
+        ERROR_LOG("Failed to open file for reading: %s", File_Path.string().c_str());
+        result.curl_code = CURLE_READ_ERROR;
+        return result;
+    }
+
+    this->post_restart_operation_count++;
+    this->is_fresh = false;
+
+    if ((result.curl_code = this->setUrl(Uploading_Url)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_UPLOAD, 1L)) != CURLE_OK ||
+        (result.curl_code = curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, _cbWriteDiscard)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_READDATA, static_cast<void*>(fp))) != CURLE_OK) {
+        
+        ERROR_LOG("Failed to configure upload: %s", curl_easy_strerror(result.curl_code));
+        std::fclose(fp);
+        this->reset();
+        return result;
+    }
+
+    curl_off_t file_size = static_cast<curl_off_t>(std::filesystem::file_size(File_Path));
+    if ((result.curl_code = this->setOption(CURLOPT_INFILESIZE_LARGE, file_size)) != CURLE_OK) {
+        ERROR_LOG("Failed to set file size: %s", curl_easy_strerror(result.curl_code));
+        std::fclose(fp);
+        this->reset();
+        return result;
+    }
+
+    if ((result.curl_code = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
+        
+        ERROR_LOG("Failed to set security/timeouts: %s", curl_easy_strerror(result.curl_code));
+        std::fclose(fp);
+        this->reset();
+        return result;
+    }
+
+    result.curl_code = this->perform();
+    if (result.curl_code != CURLE_OK) {
+        ERROR_LOG("Upload failed: %s", curl_easy_strerror(result.curl_code));
+        std::fclose(fp);
+        this->reset();
+        return result;
+    }
+
+    result.size = std::filesystem::file_size(File_Path);
+
+    std::fclose(fp);
+    this->reset();
+    return result;
+}
+
+NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context) {
+    NetworkingResult result{ CURLE_OK, 0 };
+
+    if (!this->curl) {
+        ERROR_LOG("CURL handle is not initialized");
+        result.curl_code = CURLE_FAILED_INIT;
+        return result;
+    }
+    if (!std::filesystem::exists(Mime_Context.file_path)) {
+        ERROR_LOG("File does not exist: %s", Mime_Context.file_path.string().c_str());
+        result.curl_code = CURLE_READ_ERROR;
+        return result;
+    }
+
+    this->post_restart_operation_count++;
+    this->is_fresh = false;
+
+    curl_mime* mime = curl_mime_init(this->curl);
+    if (!mime) {
+        ERROR_LOG("Failed to create MIME structure");
+        result.curl_code = CURLE_OUT_OF_MEMORY;
+        this->reset();
+        return result;
+    }
+
+    curl_mimepart* file_part = curl_mime_addpart(mime);
+    if (!file_part) {
+        ERROR_LOG("Failed to add file MIME part");
+        curl_mime_free(mime);
+        result.curl_code = CURLE_OUT_OF_MEMORY;
+        this->reset();
+        return result;
+    }
+
+    if ((result.curl_code = curl_mime_name(file_part, Mime_Context.file_field_name.c_str())) != CURLE_OK ||
+        (result.curl_code = curl_mime_filedata(file_part, Mime_Context.file_path.string().c_str())) != CURLE_OK) {
+        ERROR_LOG("Failed to set file MIME part: %s", curl_easy_strerror(result.curl_code));
+        curl_mime_free(mime);
+        this->reset();
+        return result;
+    }
+
+    if (!Mime_Context.mime_type.empty()) {
+        if ((result.curl_code = curl_mime_type(file_part, Mime_Context.mime_type.c_str())) != CURLE_OK) {
+            ERROR_LOG("Failed to set MIME type: %s", curl_easy_strerror(result.curl_code));
+            curl_mime_free(mime);
+            this->reset();
+            return result;
+        }
+    }
+
+    for (const auto& [field_name, field_value] : Mime_Context.fields_map) {
+        curl_mimepart* field_part = curl_mime_addpart(mime);
+        if (!field_part) {
+            ERROR_LOG("Failed to add field part for: %s", field_name.c_str());
+            result.curl_code = CURLE_OUT_OF_MEMORY;
+            curl_mime_free(mime);
+            this->reset();
+            return result;
+        }
+        if ((result.curl_code = curl_mime_name(field_part, field_name.c_str())) != CURLE_OK ||
+            (result.curl_code = curl_mime_data(field_part, field_value.c_str(), CURL_ZERO_TERMINATED)) != CURLE_OK) {
+            ERROR_LOG("Failed to set field data for %s: %s", field_name.c_str(), curl_easy_strerror(result.curl_code));
+            curl_mime_free(mime);
+            this->reset();
+            return result;
+        }
+    }
+
+    if ((result.curl_code = this->setUrl(Mime_Context.url)) != CURLE_OK ||
+        (result.curl_code = curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, _cbWriteDiscard)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_MIMEPOST, static_cast<void*>(mime))) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
+        
+        ERROR_LOG("Failed to configure MIME upload: %s", curl_easy_strerror(result.curl_code));
+        curl_mime_free(mime);
+        this->reset();
+        return result;
+    }
+
+    result.curl_code = this->perform();
+    if (result.curl_code != CURLE_OK) {
+        ERROR_LOG("MIME upload failed: %s", curl_easy_strerror(result.curl_code));
+        curl_mime_free(mime);
+        this->reset();
+        return result;
+    }
+
+    result.size = std::filesystem::file_size(Mime_Context.file_path);
+
+    curl_mime_free(mime);
+    this->hardResetHandle();
+    return result;
+}
+
+NetworkingResult Client::sendHttpRequest(const char* arg_Url, std::vector<char>& arg_Buffer) {
+    NetworkingResult result{ CURLE_OK, 0 };
+    arg_Buffer.clear();
+
+    if(!arg_Url) {
+        ERROR_LOG("arg_Url is nullptr");
+        result.curl_code = CURLE_BAD_FUNCTION_ARGUMENT;
+        return result;
+    }
+    if (!this->curl) {
+        ERROR_LOG("CURL handle is not initialized");
+        result.curl_code = CURLE_FAILED_INIT;
+        return result;
+    }
+
+    this->post_restart_operation_count++;
+    this->is_fresh = false;
+
+    if ((result.curl_code = this->setUrl(arg_Url)) != CURLE_OK ||
+        (result.curl_code = this->setWriteCallBackFunction(&_cbHeapWrite)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&arg_Buffer))) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_FOLLOWLOCATION, 1L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
+        
+        ERROR_LOG("HTTP setup failed: %s", curl_easy_strerror(result.curl_code));
+        this->reset();
+        return result;
+    }
+
+    result.curl_code = this->perform();
+    if (result.curl_code != CURLE_OK) {
+        ERROR_LOG("HTTP request failed: %s", curl_easy_strerror(result.curl_code));
+        arg_Buffer.clear();
+        this->reset();
+        return result;
+    }
+
+    result.size = arg_Buffer.size();
+    this->reset();
+    return result;
+}
+
+NetworkingResult Client::sendHttpRequest(const char* arg_Url, char* p_Buffer, size_t Buffer_Size) {
+    NetworkingResult result{ CURLE_OK, 0 };
+
+    if(!arg_Url || !p_Buffer || Buffer_Size == 0) {
+        ERROR_LOG("Bad arguments to sendHttpRequest");
+        result.curl_code = CURLE_BAD_FUNCTION_ARGUMENT;
+        return result;
+    }
+    if (!this->curl) {
+        ERROR_LOG("CURL handle is not initialized");
+        result.curl_code = CURLE_FAILED_INIT;
+        return result;
+    }
+
     BufferContext ctx{p_Buffer, Buffer_Size, 0};
     this->post_restart_operation_count++;
     this->is_fresh = false;
-    result = this->setUrl(arg_Url);
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
+
+    if ((result.curl_code = this->setUrl(arg_Url)) != CURLE_OK ||
+        (result.curl_code = this->setWriteCallBackFunction(&_cbStackWrite)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&ctx))) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_FOLLOWLOCATION, 1L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
+        
+        ERROR_LOG("Failed to configure HTTP request: %s", curl_easy_strerror(result.curl_code));
         this->reset();
         return result;
     }
-    result = this->setWriteCallBackFunction(&_cbStackWrite);
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set write callback: %s", curl_easy_strerror(this->state));
+
+    result.curl_code = this->perform();
+    if (result.curl_code != CURLE_OK) {
+        ERROR_LOG("HTTP request failed: %s", curl_easy_strerror(result.curl_code));
         this->reset();
         return result;
     }
-    result = this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&ctx));
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set write data: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L);
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL peer verification: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L);
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL host verification: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = this->setOption(CURLOPT_FOLLOWLOCATION, 1L);
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set follow location: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = (this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT) != CURLE_OK) 
-    if (result != CURLE_OK)  {
-        ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT);
-    if (result != CURLE_OK)  {
-        ERROR_LOG("Failed to set connection timeout: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = this->perform();
-    if (result != CURLE_OK) {
-        ERROR_LOG("HTTP request failed: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result.curl_code = CURLE_OK;
+
     result.size = ctx.size;
     this->reset();
     return result;
 }
 
-CURLcode Client::downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer) {
+NetworkingResult Client::downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer) {
+    NetworkingResult result{ CURLE_OK, 0 };
+    Out_Buffer.clear();
+
     if (!this->curl) {
         ERROR_LOG("CURL handle is not initialized");
-        return false;
+        result.curl_code = CURLE_FAILED_INIT;
+        return result;
     }
 
-    Out_Buffer.clear();
     this->post_restart_operation_count++;
     this->is_fresh = false;
-    CURLcode result;
-    result = this->setUrl(arg_Url);
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set URL: %s", curl_easy_strerror(this->state));
+
+    if ((result.curl_code = this->setUrl(arg_Url)) != CURLE_OK ||
+        (result.curl_code = this->setWriteCallBackFunction(&_cbVectorUint8Write)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&Out_Buffer))) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_FOLLOWLOCATION, 1L)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
+        
+        ERROR_LOG("DownloadData setup failed: %s", curl_easy_strerror(result.curl_code));
         this->reset();
         return result;
     }
-    result = this->setWriteCallBackFunction(&_cbVectorUint8Write);
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set write callback: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }    
-    result = this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&Out_Buffer));
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set write data: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L);
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL peer verification: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L);
-    if (result != CURLE_OK) {
-        ERROR_LOG("Failed to set SSL host verification: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = this->setOption(CURLOPT_FOLLOWLOCATION, 1L);
-    if ( result != CURLE_OK) {
-        ERROR_LOG("Failed to set follow location: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = this->setOption(CURLOPT_TIMEOUT, ::rat::networking::OPERATION_TIMEOUT);
-    if(result != CURLE_OK) {
-        ERROR_LOG("Failed to set timeout: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = (this->setOption(CURLOPT_CONNECTTIMEOUT, ::rat::networking::CONNECTION_TIMEOUT) != CURLE_OK);
-    if ( result != CURLE_OK ) {
-        ERROR_LOG("Failed to set connection timeout: %s", curl_easy_strerror(this->state));
-        this->reset();
-        return result;
-    }
-    result = this->perform();
-    if (result != CURLE_OK) {
-        ERROR_LOG("Download data failed: %s", curl_easy_strerror(this->state));
+
+    result.curl_code = this->perform();
+    if (result.curl_code != CURLE_OK) {
+        ERROR_LOG("Download data failed: %s", curl_easy_strerror(result.curl_code));
         Out_Buffer.clear();
         this->reset();
         return result;
     }
+
+    result.size = Out_Buffer.size();
     this->reset();
-    return CURLE_OK;
+    return result;
 }
+
 } // namespace rat::networking

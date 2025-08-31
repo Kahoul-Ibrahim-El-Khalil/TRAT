@@ -151,7 +151,7 @@ Update Bot::parseJsonToUpdate(const size_t Json_Buffer_Size) {
     
     try {
         // Parse the JSON from our buffer
-        simdjson::ondemand::parser simdjson_parser(Json_Buffer_Size + simdjson::SIMDJSON_PADDING);
+        simdjson::ondemand::parser simdjson_parser(Json_Buffer_Size);
         simdjson::ondemand::document doc = simdjson_parser.iterate(this->http_buffer, Json_Buffer_Size + simdjson::SIMDJSON_PADDING);
         
         // Check if response is OK
@@ -204,15 +204,13 @@ Update Bot::getUpdate() {
 
     DEBUG_LOG("Polling updates with offset: {}", this->last_update_id + 1);
 
-    const size_t recieved_data_size = curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
+    const auto response = this->curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
 
-    if (recieved_data_size == 0) {
+    if (response.size == 0 || response.curl_code != CURLE_OK) {
         std::this_thread::sleep_for(std::chrono::seconds(2));
         return {};
     }
-    /*Set the padding bytes to 0*/
-    std::memset(this->http_buffer + recieved_data_size, 0, simdjson::SIMDJSON_PADDING);
 
-    return this->parseJsonToUpdate(recieved_data_size);
+    return this->parseJsonToUpdate(response.size);
 }
 }//namespace rat::tbot

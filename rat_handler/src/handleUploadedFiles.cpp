@@ -63,7 +63,7 @@ void Handler::handlePayloadCommand() {
     // Construct file URL (adjust depending on your bot API)
     const std::string file_url = fmt::format("{}{}", this->bot->getBotFileUrl(), file_id);
     this->bot->sendMessage("Downloading the Payload...");
-    if (!this->bot->curl_client.downloadData(file_url, this->state.payload)) {
+    if (this->bot->curl_client.downloadData(file_url, this->state.payload).curl_code != CURLE_OK) {
         this->bot->sendMessage("Failed to download payload.");
         return;
     }

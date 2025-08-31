@@ -30,8 +30,8 @@ int main(void) {
         DEBUG_LOG("Iteration {}", iteration++);
         
         // 1. Network operation
-        size_t bytes_written = client.sendHttpRequest(update_url.c_str(), buffer.data(), BUFFER_SIZE);
-        std::cout << "Response: " << std::string(buffer.data(), bytes_written) << "\n";
+        const auto response = client.sendHttpRequest(update_url.c_str(), buffer.data(), BUFFER_SIZE);
+        std::cout << "Response: " << std::string(buffer.data(), response.size) << "\n";
         
         
         // 3. Send response

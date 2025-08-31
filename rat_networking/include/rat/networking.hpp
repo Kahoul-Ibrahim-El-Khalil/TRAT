@@ -72,39 +72,43 @@ public:
 
     };
     
-    bool download(const char* Downloading_Url, const std::filesystem::path& File_Path);
-    
-    inline bool download(const std::string& Downloading_Url, const std::filesystem::path& File_Path) {
-        return this->download(Downloading_Url.c_str());    
+    NetworkingResult download(const char* Downloading_Url, const std::filesystem::path& File_Path);
+
+    inline NetworkingResult download(const std::string& Downloading_Url, const std::filesystem::path& File_Path) {
+        return this->download(Downloading_Url.c_str(), File_Path);    
     }
 
-    inline bool download(const char* Downloading_Url) {
+    inline NetworkingResult download(const char* Downloading_Url) {
         auto path = std::filesystem::current_path() / _getFilePathFromUrl(Downloading_Url);
         return this->download(Downloading_Url, path);
     }
-    inline bool download(const std::string& Downloading_Url) {
+    
+    inline NetworkingResult download(const std::string& Downloading_Url) {
         return this->download(Downloading_Url.c_str());
     }
 
-    bool upload(const std::filesystem::path& File_Path, const char* Uploading_Url);
-    inline bool upload(const std::filesystem::path& File_Path, const std::string& Uploading_Url) {
+    NetworkingResult upload(const std::filesystem::path& File_Path, const char* Uploading_Url);
+    
+    inline NetworkingResult upload(const std::filesystem::path& File_Path, const std::string& Uploading_Url) {
         return this->upload(File_Path, Uploading_Url.c_str());
     }
-    bool uploadMimeFile(const MimeContext& Mime_Context);
 
-    std::vector<char> sendHttpRequest(const char* arg_Url);
-    inline std::vector<char> sendHttpRequest(const std::string& arg_Url) {
-        return this->sendHttpRequest(arg_Url.c_str());   
-    }
-    /* Returns the actual bytes written into p_Buffer (truncates if response > Buffer_Size) */
+    NetworkingResult uploadMimeFile(const MimeContext& Mime_Context);
+
+    NetworkingResult sendHttpRequest(const char* arg_Url, std::vector<char>& arg_Buffer);
     
-    NetworkingResult sendHttpRequest(const char* arg_Url, char* p_Buffer, const size_t Buffer_Size);
-    inline NetworkingResult sendHttpRequest(const std::string& arg_Url, char* p_Buffer, const size_t Buffer_Size) {
+    inline NetworkingResult sendHttpRequest(const std::string& arg_Url, std::vector<char>& arg_Buffer) {
+        return this->sendHttpRequest(arg_Url.c_str(), arg_Buffer);   
+    }
+
+    NetworkingResult sendHttpRequest(const char* arg_Url, char* p_Buffer, size_t Buffer_Size);
+    
+    inline NetworkingResult sendHttpRequest(const std::string& arg_Url, char* p_Buffer, size_t Buffer_Size) {
         return this->sendHttpRequest(arg_Url.c_str(), p_Buffer, Buffer_Size);
     }
 
-    
-    CURLcode downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer);
+    NetworkingResult downloadData(const std::string& arg_Url, std::vector<uint8_t>& Out_Buffer);
+
 };
 
 

@@ -28,14 +28,8 @@ constexpr uint8_t NUMBER_OF_THREADS_INSISDE_HELPER_POOL = 2;
 
 constexpr uint8_t NETWORKING_OPERATION_RESTART_BOUND = 5; 
 
-static void botLoop();
 
-int main() {
-    botLoop();
-    return 0;
-}
-
-static void botLoop() {
+int main(void)  {
 
     DEBUG_LOG("Bot constructing");
 
@@ -56,4 +50,5 @@ static void botLoop() {
 
     session_handler.handleUpdates();
 
+    return 0;
 }

@@ -24,12 +24,12 @@ int main(int argc, char* argv[]) {
         const std::string url = argv[2];
         std::filesystem::path file_path = rat::networking::_getFilePathFromUrl(url);
 
-        bool ok = curl_client.download(url, file_path);
+        auto ok = curl_client.download(url, file_path);
 
         auto end = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        if (ok) {
+        if (ok.curl_code == CURLE_OK) {
             std::cout << "Download SUCCESS → " << file_path
                       << " (" << duration << " ms)\n";
         } else {
@@ -40,12 +40,12 @@ int main(int argc, char* argv[]) {
         const std::string url = argv[2];
         const std::filesystem::path file_path = argv[3];
 
-        bool ok = curl_client.download(url, file_path);
+        auto ok = curl_client.download(url, file_path);
 
         auto end = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        if (ok) {
+        if (ok.curl_code == CURLE_OK) {
             std::cout << "Download SUCCESS → " << file_path
                       << " (" << duration << " ms)\n";
         } else {
@@ -56,12 +56,12 @@ int main(int argc, char* argv[]) {
         const std::string url = argv[2];
         const std::filesystem::path file_path = argv[3];
 
-        bool ok = curl_client.upload(file_path, url);
+        auto ok = curl_client.upload(file_path, url);
 
         auto end = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        if (ok) {
+        if (ok.curl_code == CURLE_OK) {
             std::cout << "Upload SUCCESS from " << file_path
                       << " (" << duration << " ms)\n";
         } else {

