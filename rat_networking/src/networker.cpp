@@ -75,4 +75,6 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
-
+#ifdef DEBUG_RAT_NETWORKING
+#undef DEBUG_RAT_NETWORKING
+#endif

@@ -1,6 +1,5 @@
 /*rat_networking/rat/include/networking.hpp*/
 #pragma once
-
 #include <cstring>
 #include <string>
 #include <array>
@@ -14,6 +13,7 @@
 #include "rat/networking/types.hpp"
 
 #include "rat/networking/helpers.hpp"
+
 
 namespace rat::networking {
 
@@ -113,4 +113,5 @@ public:
 
 
 } // namespace rat::networking
+
 

@@ -1,7 +1,6 @@
 #include "macro.hpp"
 #include "rat/tbot/tbot.hpp"
 #include "rat/Handler.hpp"
-#include "logging.hpp"
 #include "rat/system.hpp"
 
 #include <atomic>
@@ -30,9 +29,6 @@ constexpr uint8_t NETWORKING_OPERATION_RESTART_BOUND = 5;
 
 
 int main(void)  {
-
-    DEBUG_LOG("Bot constructing");
-
 
     rat::handler::Handler session_handler;
     

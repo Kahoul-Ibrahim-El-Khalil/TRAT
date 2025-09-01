@@ -1,4 +1,3 @@
-#include "logging.hpp"
 #include "rat/networking.hpp"
 #include <chrono>
 #include <string>
@@ -6,6 +5,11 @@
 #include <fmt/core.h>
 #include <iostream>
 
+#include "rat/tbot/debug.hpp"
+#ifdef DEBUG_RAT_TBOT
+
+static unsigned int iteration = 0;
+#endif
 #define TELEGRAM_BOT_API_BASE_URL "https://api.telegram.org/bot"
 
 const std::string TOKEN = "5598026972:AAFtLSUld27ImilkcOppvGMFgSAPXozEgVo"; 
@@ -25,7 +29,7 @@ int main(void) {
     DEBUG_LOG("Starting combined memory test");
     DEBUG_LOG("Monitoring: 1 network call + 1 JSON parse per iteration");
     
-    int iteration = 0;
+    
     while (true) {
         DEBUG_LOG("Iteration {}", iteration++);
         
@@ -44,3 +48,8 @@ int main(void) {
     
     return 0;
 }
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_TBOT
+    #undef DEBUG_RAT_TBOT
+#endif

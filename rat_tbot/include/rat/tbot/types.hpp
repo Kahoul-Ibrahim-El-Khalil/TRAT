@@ -8,7 +8,6 @@
 #include <vector>
 #include <deque>
 #include <optional>
-#include "logging.hpp"
 #include <simdjson.h>
 
 namespace rat::tbot {

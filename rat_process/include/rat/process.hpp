@@ -5,6 +5,8 @@
 #include <functional>
 #include "rat/ThreadPool.hpp"
 #include <mutex>
+#include <atomic>
+
 namespace rat::process {
 
 struct ProcessResult {
@@ -26,7 +28,7 @@ struct ProcessContext {
 };
 
 
-void runAsyncProcess(ProcessContext& Process_Context);
+void runAsyncProcess(ProcessContext& Process_Context, std::atomic<pid_t>& Process_Id);
 
 }//namespace rat::process
 

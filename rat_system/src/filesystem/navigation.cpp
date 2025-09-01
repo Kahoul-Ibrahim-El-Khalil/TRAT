@@ -1,11 +1,6 @@
 #include "rat/system.hpp"
 namespace rat::system {
 
-// -------------------------------
-// Filesystem Navigation
-// -------------------------------
-
-// Change current working directory
 std::string cd(const std::filesystem::path& arg_Path) {
     try {
         if (!std::filesystem::exists(arg_Path) || !isDir(arg_Path)) {

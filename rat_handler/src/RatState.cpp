@@ -17,11 +17,10 @@
 #include <sstream>
 #include <cstdio>
 
+#include "rat/handler/debug.hpp"
+
 namespace rat::handler {
 
-// -------------------
-// Tool lists
-// -------------------
 #ifdef _WIN32
 static constexpr const char* TOOLS[] = {
     "ffmpeg", "curl", "wget", "7z", "zip", "tar", "python", "node", "git",
@@ -119,3 +118,9 @@ std::string RatState::listDynamicTools() const {
 }
 
 } // namespace rat::handler
+
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_HANDLER
+    #undef DEBUG_RAT_HANDLER
+#endif

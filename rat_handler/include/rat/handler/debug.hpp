@@ -1,10 +1,9 @@
-/*include/logging.hpp */
 #pragma once
 
-#ifdef DEBUG
+#ifdef DEBUG_RAT_HANDLER
     #include <spdlog/spdlog.h>
     #include <spdlog/sinks/stdout_color_sinks.h>
-    static struct _rat_logging_initializer {
+    struct _rat_logging_initializer {
         _rat_logging_initializer() {
             spdlog::set_level(spdlog::level::debug); // Show debug and above
             spdlog::set_pattern("[%H:%M:%S] [%^%l%$] %v"); // Optional: pretty format

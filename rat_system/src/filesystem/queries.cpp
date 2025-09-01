@@ -21,7 +21,6 @@ std::string pwd(void) {
     return std::filesystem::current_path().string();
 }
 
-// List directory contents (files and subdirs)
 std::string ls(const std::filesystem::path& arg_Path) {
     if (!std::filesystem::exists(arg_Path) || !isDir(arg_Path)) return {};
 
@@ -34,7 +33,6 @@ std::string ls(const std::filesystem::path& arg_Path) {
     return oss.str();
 }
 
-// Recursive tree listing
 std::string tree(const std::filesystem::path& Dir_Path, const std::string& prefix = "") {
     if (!std::filesystem::exists(Dir_Path) || !isDir(Dir_Path)) return {};
 

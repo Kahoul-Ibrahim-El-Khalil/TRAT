@@ -9,7 +9,8 @@
 #include <cstdio>
 #include <cstring>
 
-#include "logging.hpp"
+#include "rat/networking/debug.hpp" 
+
 
 namespace rat::networking {
 
@@ -391,3 +392,9 @@ NetworkingResult Client::downloadData(const std::string& arg_Url, std::vector<ui
 }
 
 } // namespace rat::networking
+
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_NETWORKING
+    #undef DEBUG_RAT_NETWORKING
+#endif

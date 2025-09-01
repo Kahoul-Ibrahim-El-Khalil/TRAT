@@ -10,11 +10,13 @@
 #include <thread>
 #include <fmt/core.h>
 #include <fmt/chrono.h>
-#include "logging.hpp"
 #include <string>
 #include <boost/algorithm/string.hpp>
 #include <memory>
 #include "rat/process.hpp"
+
+#include "rat/handler/debug.hpp"
+
 
 namespace rat::handler {
 constexpr size_t MAX_TELEGRAM_UPLOAD_SIZE = 50 * 1024 * KB; 
@@ -138,7 +140,17 @@ void Handler::parseAndHandleProcessCommand() {
         .secondary_thread_pool = this->secondary_helper_pool.get(),
         .callback = process_lambda
     };
-    ::rat::process::runAsyncProcess(process_context);
+    std::atomic<pid_t> process_id{-1};
+    ::rat::process::runAsyncProcess(process_context, process_id);
+    if(process_id.load() != -1) {
+        this->bot->sendMessage(fmt::format("Process launched pid={}", process_id.load()));
+    }
 
 }
 }//namespace rat::handler
+
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_HANDLER
+    #undef DEBUG_RAT_HANDLER
+#endif

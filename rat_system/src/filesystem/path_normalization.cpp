@@ -3,12 +3,10 @@
 namespace rat::system {
 
 std::filesystem::path normalizePath(const std::string& Unix_Style_Path) {
-    // Handle empty path - return current directory
     if (Unix_Style_Path.empty()) {
         return std::filesystem::current_path();
     }
 
-    // Handle home directory expansion
     std::filesystem::path path(Unix_Style_Path);
     if (Unix_Style_Path[0] == '~') {
         const char* home = std::getenv("HOME"); // Unix

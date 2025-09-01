@@ -8,10 +8,11 @@
 #include <filesystem>
 #include <fstream>
 
-#include "logging.hpp"
 #include "rat/tbot/types.hpp"
 
 #include <simdjson.h>
+
+#include "rat/tbot/debug.hpp"
 
 namespace rat::tbot {
 
@@ -173,8 +174,7 @@ BotResponse BaseBot::sendFile(const std::filesystem::path& File_Path, const std:
             return BotResponse::CONNECTION_ERROR;
         }
 
-        auto file_size = std::filesystem::file_size(File_Path);
-        DEBUG_LOG("sendFile: entering with '{}', size={} bytes", File_Path.string(), file_size);
+        DEBUG_LOG("sendFile: entering with '{}', size={} bytes", File_Path.string(), std::filesystem::file_size(File_Path));
 
         std::string extension = File_Path.extension().string();
         std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
@@ -402,5 +402,10 @@ bool BaseBot::downloadFile(const std::string& File_Id, const std::filesystem::pa
 
     return download_response.curl_code == CURLE_OK;
 }
-
 } // namespace rat::tbot
+
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_TBOT
+    #undef DEBUG_RAT_TBOT
+#endif

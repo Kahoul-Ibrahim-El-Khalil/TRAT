@@ -4,6 +4,8 @@
 #include <memory>
 #include <fmt/core.h>
 
+#include "rat/handler/debug.hpp"
+
 namespace rat::handler {
 
 void Handler::setMasterId(const uint64_t Master_Id) {
@@ -37,3 +39,8 @@ void Handler::initThreadPools(uint8_t Number_Long_Process_Threads, uint8_t Numbe
 }
 
 }//rat::handler
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_HANDLER
+    #undef DEBUG_RAT_HANDLER
+#endif

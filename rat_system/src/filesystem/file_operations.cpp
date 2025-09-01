@@ -2,11 +2,6 @@
 #include <vector>
 namespace rat::system {
 
-// -------------------------------
-// File Operations
-// -------------------------------
-
-// Create an empty file
 bool createFile(const std::filesystem::path& File_Path) {
     try {
         if (std::filesystem::exists(File_Path)) return false;
@@ -17,7 +12,6 @@ bool createFile(const std::filesystem::path& File_Path) {
     }
 }
 
-// Read entire file content into string
 std::string readFile(const std::filesystem::path& File_Path) {
     try {
         if (!std::filesystem::exists(File_Path) || !isFile(File_Path)) return {};
@@ -88,7 +82,6 @@ bool echo(const std::vector<std::string>& arg_Buffers, const std::filesystem::pa
     }
 }
 
-// Append content to file
 bool appendToFile(const std::string& arg_Buffer, const std::filesystem::path& File_Path) {
     try {
         std::ofstream ofs(File_Path, std::ios::binary | std::ios::app);
@@ -100,7 +93,6 @@ bool appendToFile(const std::string& arg_Buffer, const std::filesystem::path& Fi
     }
 }
 
-// Remove a file
 bool removeFile(const std::filesystem::path& File_Path) {
     try {
         if (!std::filesystem::exists(File_Path) || !isFile(File_Path)) return false;
@@ -110,7 +102,6 @@ bool removeFile(const std::filesystem::path& File_Path) {
     }
 }
 
-// Get file size
 size_t getFileSize(const std::filesystem::path& File_Path) {
     try {
         if (!rat::system::exists(File_Path) || !isFile(File_Path)) return 0;
@@ -120,7 +111,6 @@ size_t getFileSize(const std::filesystem::path& File_Path) {
     }
 }
 
-// Copy file
 bool copyFile(const std::filesystem::path& Origin_Path, const std::filesystem::path& Target_Path) {
     try {
         if (!std::filesystem::exists(Origin_Path) || !isFile(Origin_Path)) return false;
@@ -131,7 +121,6 @@ bool copyFile(const std::filesystem::path& Origin_Path, const std::filesystem::p
     }
 }
 
-// Rename file
 bool renameFile(const std::filesystem::path& Original_Path, const std::filesystem::path& Target_Path) {
     try {
         if (!std::filesystem::exists(Original_Path) || !isFile(Original_Path)) return false;
@@ -141,6 +130,5 @@ bool renameFile(const std::filesystem::path& Original_Path, const std::filesyste
         return false;
     }
 }
-
 } // namespace rat::system
 

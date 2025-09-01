@@ -1,9 +1,8 @@
 #include "rat/networking.hpp"
 
+#include "rat/networking/debug.hpp" 
+
 namespace rat::networking {
-// ------------------------------
-// EasyCurlHandler
-// ------------------------------
 
 EasyCurlHandler::EasyCurlHandler()
     : curl(curl_easy_init()), state(CURLE_OK) {}
@@ -55,10 +54,16 @@ bool EasyCurlHandler::hardResetHandle() {
     this->curl = curl_easy_init();
     if (!this->curl) {
         this->state = CURLE_FAILED_INIT;
+        ERROR_LOG("failed to initialize curl");
         return false;
     }
     this->state = CURLE_OK;
     return true;
 }
-
 }//rat::networking
+
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_NETWORKING
+    #undef DEBUG_RAT_NETWORKING
+#endif

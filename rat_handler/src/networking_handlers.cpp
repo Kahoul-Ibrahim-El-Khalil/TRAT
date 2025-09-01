@@ -6,7 +6,8 @@
 #include <sstream>
 #include <filesystem>
 #include <thread>
-#include "logging.hpp"
+
+#include "rat/handler/debug.hpp"
 
 namespace rat::handler {
 
@@ -129,4 +130,9 @@ void Handler::handleUploadCommand() {
     this->backing_bot->sendMessage("Upload complete.");
 }
 
-} // namespace rat::handler
+} // namespace rat::Handler
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_HANDLER
+    #undef DEBUG_RAT_HANDLER
+#endif

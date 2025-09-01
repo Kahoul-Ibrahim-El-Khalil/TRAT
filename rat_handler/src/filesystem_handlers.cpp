@@ -2,7 +2,8 @@
 #include "rat/system.hpp"
 #include <string>
 #include <filesystem>
-#include "logging.hpp"
+
+#include "rat/handler/debug.hpp"
 
 namespace rat::handler {
 
@@ -190,3 +191,9 @@ void Handler::handleCpCommand() {
 }
 
 }//rat::handler
+
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_HANDLER
+    #undef DEBUG_RAT_HANDLER
+#endif

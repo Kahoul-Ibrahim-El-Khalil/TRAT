@@ -6,6 +6,7 @@
 #include <fmt/core.h>
 #include <thread>
 
+#include "rat/tbot/debug.hpp"
 namespace rat::tbot {
 
 Bot::Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timeout)
@@ -214,3 +215,9 @@ Update Bot::getUpdate() {
     return this->parseJsonToUpdate(response.size);
 }
 }//namespace rat::tbot
+
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_TBOT
+    #undef DEBUG_RAT_TBOT
+#endif

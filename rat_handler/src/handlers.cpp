@@ -9,7 +9,8 @@
 #include "rat/process.hpp"
 #include <filesystem>
 #include <algorithm>
-#include "logging.hpp"
+
+#include "rat/handler/debug.hpp"
 
 namespace rat::handler {
 #ifdef _WIN32
@@ -85,3 +86,8 @@ void Handler::handleFetchCommand() {
     this->bot->sendMessage(command);
 }
 } // namespace rat::handler
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_HANDLER
+    #undef DEBUG_RAT_HANDLER
+#endif

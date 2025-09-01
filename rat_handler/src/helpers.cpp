@@ -1,6 +1,8 @@
 #include "rat/Handler.hpp"
 #include <boost/algorithm/string.hpp>
 
+#include "rat/handler/debug.hpp"
+
 namespace rat::handler {
 // Helper functions
 void __normalizeWhiteSpaces(std::string& String_Input) {
@@ -71,3 +73,9 @@ std::string stripQuotes(const std::string& Input_String) {
 }
 
 }//rat::handler
+
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_HANDLER
+    #undef DEBUG_RAT_HANDLER
+#endif

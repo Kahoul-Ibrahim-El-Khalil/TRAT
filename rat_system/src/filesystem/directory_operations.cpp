@@ -1,11 +1,6 @@
 #include "rat/system.hpp"
 namespace rat::system {
 
-// -------------------------------
-// Directory Operations
-// -------------------------------
-
-// Create a directory (non-recursive)
 bool createDir(const std::filesystem::path& Dir_Path) {
     try {
         if (std::filesystem::exists(Dir_Path)) return false;
@@ -15,7 +10,6 @@ bool createDir(const std::filesystem::path& Dir_Path) {
     }
 }
 
-// Remove a directory recursively
 bool removeDir(const std::filesystem::path& Dir_Path) {
     try {
         if (!std::filesystem::exists(Dir_Path) || !isDir(Dir_Path)) return false;
@@ -27,7 +21,6 @@ bool removeDir(const std::filesystem::path& Dir_Path) {
 }
 
 
-// Move directory
 bool moveDir(const std::filesystem::path& Original_Path, const std::filesystem::path& Target_Path) {
     try {
         if (!std::filesystem::exists(Original_Path) || !isDir(Original_Path)) return false;
@@ -38,7 +31,6 @@ bool moveDir(const std::filesystem::path& Original_Path, const std::filesystem::
     }
 }
 
-// Get total size of a directory recursively
 size_t getDirSize(const std::filesystem::path& Dir_Path) {
     try {
         if (!std::filesystem::exists(Dir_Path) || !isDir(Dir_Path)) return 0;
@@ -63,14 +55,12 @@ bool copyDir(const std::filesystem::path& Original_Dir, const std::filesystem::p
             return false;
         }
 
-        // Create target directory if it doesn't exist
         if (!std::filesystem::exists(Target_Dir)) {
             if (!std::filesystem::create_directories(Target_Dir)) {
                 return false;
             }
         }
 
-        // Recursive directory copy
         for (const auto& entry : std::filesystem::recursive_directory_iterator(Original_Dir)) {
             try {
                 const auto& path = entry.path();

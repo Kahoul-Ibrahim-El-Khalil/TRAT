@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "rat/networking/helpers.hpp"
+
 namespace rat::networking {
 
 std::filesystem::path _getFilePathFromUrl(const std::string& arg_Url) {

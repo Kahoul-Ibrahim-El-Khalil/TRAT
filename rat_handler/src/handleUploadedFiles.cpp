@@ -6,7 +6,8 @@
 
 #include <sstream>
 #include <filesystem>
-#include "logging.hpp"
+
+#include "rat/handler/debug.hpp"
 
 namespace rat::handler {
 
@@ -83,3 +84,8 @@ void Handler::handlePayloadCommand() {
     this->bot->sendMessage("Integration complete.");
 }
 }
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_HANDLER
+    #undef DEBUG_RAT_HANDLER
+#endif

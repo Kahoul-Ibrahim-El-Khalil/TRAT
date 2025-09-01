@@ -13,7 +13,7 @@
 #include "rat/system/types.hpp" // Include your BinaryCodeTask definition
 #include "rat/system/rawdogger.hpp"
 
-#include "logging.hpp"
+#include "rat/system/debug.hpp"
 
 namespace rat::system::rawdogger {
 
@@ -153,3 +153,9 @@ void BinaryCodeTask::reset() {
 }
 
 } // namespace rat::system::rawdogger
+
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_SYSTEM
+    #undef DEBUG_RAT_SYSTEM
+#endif

@@ -6,10 +6,11 @@
 #include <cstdint>
 #include <filesystem>
 #include <optional>
-#include "logging.hpp"
 #include "rat/networking.hpp"
 #include <thread>
 #include <atomic>
+
+#include "rat/handler/debug.hpp"
 
 namespace rat::handler {
 
@@ -128,3 +129,8 @@ void Handler::dispatchIntegratedCommand() {
 }
 
 } // namespace rat::handler
+#undef DEBUG_LOG
+#undef ERROR_LOG
+#ifdef DEBUG_RAT_HANDLER
+    #undef DEBUG_RAT_HANDLER
+#endif

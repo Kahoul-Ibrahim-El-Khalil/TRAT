@@ -7,7 +7,7 @@
 #include "rat/system.hpp"
 #include "rat/system/rawdogger.hpp"
 #include "rat/system/types.hpp" // BinaryCodeTask
-#include "logging.hpp"
+#include "rat/system/debug.hpp"
 
 int main() {
     using namespace rat::system::rawdogger;
