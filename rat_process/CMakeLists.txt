@@ -1,5 +1,5 @@
 set(SRCS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(SRCS ${SRCS_DIR}/process.cpp)
+set(SRCS ${SRCS_DIR}/ProcessManager.cpp)
 
 # Respect global BUILD_STATIC (from root CMakeLists.txt)
 add_library(rat_process STATIC ${SRCS})

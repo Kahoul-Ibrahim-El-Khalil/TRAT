@@ -40,11 +40,9 @@ struct EasyCurlHandler {
     CURLcode setWriteCallBackFunction(WriteCallback Call_Back);
 
     CURLcode perform();                          
-
     void resetOptions(); 
     /*Destroys the handle, clean it and re-init it*/
     bool hardResetHandle();
-
 };
 
 
@@ -93,7 +91,7 @@ public:
         return this->upload(File_Path, Uploading_Url.c_str());
     }
 
-    NetworkingResult uploadMimeFile(const MimeContext& Mime_Context);
+    NetworkingResult uploadMimeFile(const MimeContext& Mime_Context, std::vector<char>& Response_Buffer);
 
     NetworkingResult sendHttpRequest(const char* arg_Url, std::vector<char>& arg_Buffer);
     

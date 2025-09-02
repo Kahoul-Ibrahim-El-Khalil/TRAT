@@ -56,5 +56,12 @@ size_t _cbVectorUint8Write(void* p_Contents, size_t arg_Size, size_t arg_Nmemb, 
     buffer->insert(buffer->end(), src, src + total_size);
     return total_size;
 }
+size_t _cbVectorCharWrite(void* p_Contents, size_t arg_Size, size_t arg_Nmemb, void* p_User) {
+    auto* buffer = static_cast<std::vector<char>*>(p_User);
+    const size_t total_size = arg_Size * arg_Nmemb;
+    const char* src = static_cast<const char*>(p_Contents);
+    buffer->insert(buffer->end(), src, src + total_size);
+    return total_size;
+}
 
 }// namespace rat::networking

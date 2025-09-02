@@ -16,7 +16,7 @@
 
 namespace rat::tbot {
 
-constexpr size_t HTTP_RESPONSE_BUFFER_SIZE = 64 * KB;
+constexpr size_t HTTP_RESPONSE_BUFFER_SIZE = 8 * KB;
 constexpr char TELEGRAM_BOT_API_BASE_URL[] = "https://api.telegram.org/bot";
 constexpr char TELEGRAM_API_URL[] = "https://api.telegram.org";
 
@@ -39,7 +39,7 @@ private:
 protected:
     int64_t last_update_id;
     
-    char http_buffer[HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING] = {0};
+    std::vector<char> http_buffer;
     
 public:
     /* This is because the bot gets copied inside certain threads, use its client to limit creating another handler */
@@ -75,24 +75,19 @@ public:
 
 /* This is the bot that listens for updates and parses them */
 class Bot : public BaseBot {
-
 private: 
     std::string getting_update_url;
 protected:
+    File parseFile(simdjson::ondemand::value&& file_val, const std::string& type);
 
-    File parseFile(simdjson::ondemand::value& file_val, const std::string& type = "document");
     void extractFilesFromMessage(simdjson::ondemand::object& message_obj, Message& message);
 
     Message parseMessage(simdjson::ondemand::value& message_val);
 
-    Update parseJsonToUpdate(const size_t Json_Buffer_Size);
+    Update parseJsonToUpdate();
 public:
     Bot() {};
     Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timeout = 20);
-    
-    
-
-    
     Update getUpdate(); // override if BaseBot has virtual equivalent
 };
 } // namespace rat::tbot

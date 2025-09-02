@@ -1,220 +1,224 @@
-/*rat_tbot/src/Bot.cpp*/
+/* rat_tbot/src/Bot.cpp */
 #include "rat/tbot/tbot.hpp"
 #include "rat/tbot/types.hpp"
 #include "simdjson.h"
 #include <chrono>
 #include <fmt/core.h>
 #include <thread>
-
 #include "rat/tbot/debug.hpp"
+
 namespace rat::tbot {
+
 
 Bot::Bot(const std::string& arg_Token, int64_t Master_Id, uint8_t Telegram_Connection_Timeout)
     : BaseBot(arg_Token, Master_Id, Telegram_Connection_Timeout)
 {
-    this->getting_update_url = fmt::format("{}{}/getUpdates?timeout={}&limit=1", TELEGRAM_BOT_API_BASE_URL, arg_Token, Telegram_Connection_Timeout);
+    this->getting_update_url = fmt::format(
+        "{}{}/getUpdates?timeout={}&limit=1",
+        TELEGRAM_BOT_API_BASE_URL, arg_Token, Telegram_Connection_Timeout
+    );
 }
 
-File Bot::parseFile(simdjson::ondemand::value& file_val, const std::string& type) {
+
+//-----------------------------------------
+// File parsing
+//-----------------------------------------
+File Bot::parseFile(simdjson::ondemand::value&& file_val, const std::string& type) {
     File file;
-    
+
     try {
-        simdjson::ondemand::object file_obj;
-        if (file_val.get_object().get(file_obj) != simdjson::SUCCESS) {
-            ERROR_LOG("Failed to get file object");
+        simdjson::ondemand::object file_obj = file_val.get_object();
+
+        // File ID (required)
+        if (auto res = file_obj["file_id"].get_string(); res.error() == simdjson::SUCCESS) {
+            file.id = std::string(res.value());
+        } else {
+            ERROR_LOG("Missing file_id in {}", type);
             return file;
         }
-        
-        // Get file_id (required)
-        std::string_view file_id_view;
-        if (file_obj["file_id"].get_string().get(file_id_view) == simdjson::SUCCESS) {
-            file.id = std::string(file_id_view);
+
+        // File size (optional)
+        if (auto res = file_obj["file_size"].get_uint64(); res.error() == simdjson::SUCCESS) {
+            file.size = res.value();
         }
-        
-        // Get file_size (optional)
-        uint64_t file_size;
-        if (file_obj["file_size"].get_uint64().get(file_size) == simdjson::SUCCESS) {
-            file.size = file_size;
-        }
-        
-        // Get MIME type if available
-        std::string_view mime_view;
-        if (file_obj["mime_type"].get_string().get(mime_view) == simdjson::SUCCESS) {
-            file.mime_type = std::string(mime_view);
+
+        // MIME type (optional / default by type)
+        if (auto res = file_obj["mime_type"].get_string(); res.error() == simdjson::SUCCESS) {
+            file.mime_type = std::string(res.value());
         } else {
-            // Set default MIME type based on file type
             if (type == "photo") file.mime_type = "image/jpeg";
             else if (type == "audio") file.mime_type = "audio/mpeg";
             else if (type == "video") file.mime_type = "video/mp4";
             else if (type == "voice") file.mime_type = "audio/ogg";
             else file.mime_type = "application/octet-stream";
         }
-        
-        // Get file name if available (usually for documents)
-        std::string_view name_view;
-        if (file_obj["file_name"].get_string().get(name_view) == simdjson::SUCCESS) {
-            file.name = std::string(name_view);
+
+        // File name (optional, mostly documents)
+        if (auto res = file_obj["file_name"].get_string(); res.error() == simdjson::SUCCESS) {
+            file.name = std::string(res.value());
         }
-        
+
     } catch (const simdjson::simdjson_error& e) {
         ERROR_LOG("File parsing failed: {}", e.what());
     }
-    
+
     return file;
 }
 
+//-----------------------------------------
+// Message parsing
+//-----------------------------------------
 void Bot::extractFilesFromMessage(simdjson::ondemand::object& message_obj, Message& message) {
-    // Check for different file types that Telegram might send
-    
     // Document
-    simdjson::ondemand::value document_val;
-    if (message_obj["document"].get(document_val) == simdjson::SUCCESS) {
-        message.files.push_back(parseFile(document_val, "document"));
+    if (auto val = message_obj["document"]; val.error() == simdjson::SUCCESS) {
+        message.files.push_back(parseFile(std::move(val.value()), "document"));
     }
-    
+
     // Photo (array of photo sizes)
-    simdjson::ondemand::value photo_val;
-    if (message_obj["photo"].get(photo_val) == simdjson::SUCCESS) {
-        simdjson::ondemand::array photo_array = photo_val.get_array();
-        
-        simdjson::ondemand::value actual_value;
-        for (auto photo_size : photo_array) {
-            if (photo_size.get(actual_value) == simdjson::SUCCESS) {
-                message.files.push_back(parseFile(actual_value, "photo"));
-            }   
+    if (auto val = message_obj["photo"]; val.error() == simdjson::SUCCESS) {
+        for (auto photo_size : val.value()) {
+            message.files.push_back(parseFile(std::move(photo_size), "photo"));
         }
     }
-    
+
     // Audio
-    simdjson::ondemand::value audio_val;
-    if (message_obj["audio"].get(audio_val) == simdjson::SUCCESS) {
-        message.files.push_back(parseFile(audio_val, "audio"));
+    if (auto val = message_obj["audio"]; val.error() == simdjson::SUCCESS) {
+        message.files.push_back(parseFile(std::move(val.value()), "audio"));
     }
-    
+
     // Video
-    simdjson::ondemand::value video_val;
-    if (message_obj["video"].get(video_val) == simdjson::SUCCESS) {
-        message.files.push_back(parseFile(video_val, "video"));
+    if (auto val = message_obj["video"]; val.error() == simdjson::SUCCESS) {
+        message.files.push_back(parseFile(std::move(val.value()), "video"));
     }
-    
+
     // Voice
-    simdjson::ondemand::value voice_val;
-    if (message_obj["voice"].get(voice_val) == simdjson::SUCCESS) {
-        message.files.push_back(parseFile(voice_val, "voice"));
+    if (auto val = message_obj["voice"]; val.error() == simdjson::SUCCESS) {
+        message.files.push_back(parseFile(std::move(val.value()), "voice"));
     }
 }
-// Improved parseMessage with better error handling
 Message Bot::parseMessage(simdjson::ondemand::value& message_val) {
     Message message{};
-    
+
     try {
-        simdjson::ondemand::object message_obj;
-        if (message_val.get_object().get(message_obj) != simdjson::SUCCESS) {
-            ERROR_LOG("Failed to get message object");
-            return message;
-        }
-        
-        // Extract message_id (required field)
-        if (message_obj["message_id"].get(message.id) != simdjson::SUCCESS) {
+        simdjson::ondemand::object message_obj = message_val.get_object();
+
+        // Required: message_id
+        if (auto res = message_obj["message_id"].get_int64(); res.error() == simdjson::SUCCESS) {
+            message.id = res.value();
+        } else {
             ERROR_LOG("Missing message_id");
             return message;
         }
-        
-        // Extract from.id (required field)
-        simdjson::ondemand::object from_obj;
-        if (message_obj["from"].get_object().get(from_obj) == simdjson::SUCCESS) {
-            from_obj["id"].get(message.origin);
+
+        // From.id (optional, but useful)
+        if (auto from_obj = message_obj["from"].get_object(); from_obj.error() == simdjson::SUCCESS) {
+            if (auto res = from_obj.value()["id"].get_int64(); res.error() == simdjson::SUCCESS) {
+                message.origin = res.value();
+            }
         }
-        
-        // Extract text (optional)
-        std::string_view text_view;
-        if (message_obj["text"].get_string().get(text_view) == simdjson::SUCCESS) {
-            message.text = std::string(text_view);
+
+        // Text (optional)
+        if (auto res = message_obj["text"].get_string(); res.error() == simdjson::SUCCESS) {
+            message.text = std::string(res.value());
         }
-        
-        // Extract caption (optional)
-        std::string_view caption_view;
-        if (message_obj["caption"].get_string().get(caption_view) == simdjson::SUCCESS) {
-            message.caption = std::string(caption_view);
+
+        // Caption (optional)
+        if (auto res = message_obj["caption"].get_string(); res.error() == simdjson::SUCCESS) {
+            message.caption = std::string(res.value());
         }
-        
-        // Extract files from different locations
+
+        // Files
         extractFilesFromMessage(message_obj, message);
-        
+
     } catch (const simdjson::simdjson_error& e) {
         ERROR_LOG("Message parsing failed: {}", e.what());
     }
-    
+
     return message;
 }
-Update Bot::parseJsonToUpdate(const size_t Json_Buffer_Size) {
+
+//------------------------    -----------------
+// Update parsing
+//-----------------------------------------
+Update Bot::parseJsonToUpdate() {
     Update update{};
-    
     try {
-        // Parse the JSON from our buffer
-        simdjson::ondemand::parser simdjson_parser(Json_Buffer_Size);
-        simdjson::ondemand::document doc = simdjson_parser.iterate(this->http_buffer, Json_Buffer_Size + simdjson::SIMDJSON_PADDING);
-        
-        // Check if response is OK
-        bool ok;
-        auto ok_error = doc["ok"].get(ok);
-        if (ok_error != simdjson::SUCCESS || !ok) {
+        simdjson::ondemand::parser simdjson_parser;
+        const size_t buffer_size = this->http_buffer.size();
+        const size_t json_size = buffer_size - simdjson::SIMDJSON_PADDING;
+
+        auto doc = simdjson_parser.iterate(this->http_buffer.data(), json_size, buffer_size);
+
+        if (auto res = doc["ok"].get_bool(); res.error() != simdjson::SUCCESS || !res.value()) {
             ERROR_LOG("API response not OK");
             return {};
         }
-        
-        simdjson::ondemand::value result_val;
-        if (doc["result"].get(result_val) != simdjson::SUCCESS) {
+
+        // Extract result array
+        auto result_val = doc["result"];
+        if (result_val.error() != simdjson::SUCCESS) {
             DEBUG_LOG("No result field in response");
             return {};
         }
-        
-        simdjson::ondemand::array results;
-        if (result_val.get_array().get(results) != simdjson::SUCCESS) {
+        auto results = result_val.get_array();
+        if (results.error() != simdjson::SUCCESS) {
             DEBUG_LOG("Result is not an array");
             return {};
         }
-        
-        // Process first update in array
-        for (auto result_item : results) {
-            simdjson::ondemand::object update_obj;
-            if (result_item.get_object().get(update_obj) != simdjson::SUCCESS) continue;
-            
-            int64_t update_id;
-            if (update_obj["update_id"].get(update_id) != simdjson::SUCCESS) continue;
-            
-            update.id = update_id;
-            this->setLastUpdateId(update.id);
-            
-            simdjson::ondemand::value message_val;
-            if (update_obj["message"].get(message_val) == simdjson::SUCCESS) {
-                update.message = this->parseMessage(message_val);
+
+        // Process first update
+        for (auto result_item : results.value()) {
+            auto update_obj = result_item.get_object();
+            if (update_obj.error() != simdjson::SUCCESS) continue;
+
+            // update_id
+            if (auto res = update_obj.value()["update_id"].get_int64(); res.error() == simdjson::SUCCESS) {
+                update.id = res.value();
+                this->setLastUpdateId(update.id);
             }
-            
-            break; // Only process first update since limit=1
+
+            // message
+            auto message_val = update_obj.value()["message"];
+            if (message_val.error() == simdjson::SUCCESS) {
+                update.message = this->parseMessage(message_val.value());
+            }
+
+            break; // limit=1
         }
-        
+
     } catch (const simdjson::simdjson_error& e) {
         ERROR_LOG("JSON parsing failed: {}", e.what());
     }
-    
+
     return update;
 }
+
+
+//-----------------------------------------
 Update Bot::getUpdate() {
     const std::string url = fmt::format("{}&offset={}&limit=1", getting_update_url, last_update_id + 1);
 
     DEBUG_LOG("Polling updates with offset: {}", this->last_update_id + 1);
 
-    const auto response = this->curl_client.sendHttpRequest(url, this->http_buffer, HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
+    const auto response = this->curl_client.sendHttpRequest(url.c_str(), this->http_buffer);
 
     if (response.size == 0 || response.curl_code != CURLE_OK) {
         std::this_thread::sleep_for(std::chrono::seconds(2));
         return {};
     }
 
-    return this->parseJsonToUpdate(response.size);
+    this->http_buffer.resize(response.size);
+    this->http_buffer.insert(this->http_buffer.end(), simdjson::SIMDJSON_PADDING, '\0');
+    
+    Update update = this->parseJsonToUpdate();
+
+    // Reset buffer size back to 8KB + padding after each cycle
+    this->http_buffer.resize(HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING);
+
+    return update;
 }
-}//namespace rat::tbot
+
+} // namespace rat::tbot
 
 #undef DEBUG_LOG
 #undef ERROR_LOG

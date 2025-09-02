@@ -164,7 +164,7 @@ NetworkingResult Client::upload(const std::filesystem::path& File_Path, const ch
     return result;
 }
 
-NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context) {
+NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context, std::vector<char>& Response_Buffer) {
     NetworkingResult result{ CURLE_OK, 0 };
 
     if (!this->curl) {
@@ -234,7 +234,8 @@ NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context) {
     }
 
     if ((result.curl_code = this->setUrl(Mime_Context.url)) != CURLE_OK ||
-        (result.curl_code = curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, _cbWriteDiscard)) != CURLE_OK ||
+        (result.curl_code = curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, _cbVectorUint8Write)) != CURLE_OK ||
+        (result.curl_code = this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&Response_Buffer))) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_MIMEPOST, static_cast<void*>(mime))) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L)) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L)) != CURLE_OK ||
@@ -281,7 +282,7 @@ NetworkingResult Client::sendHttpRequest(const char* arg_Url, std::vector<char>&
     this->is_fresh = false;
 
     if ((result.curl_code = this->setUrl(arg_Url)) != CURLE_OK ||
-        (result.curl_code = this->setWriteCallBackFunction(&_cbHeapWrite)) != CURLE_OK ||
+        (result.curl_code = this->setWriteCallBackFunction(&_cbVectorCharWrite)) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_WRITEDATA, static_cast<void*>(&arg_Buffer))) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L)) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L)) != CURLE_OK ||

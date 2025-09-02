@@ -3,15 +3,20 @@
 #ifdef DEBUG_RAT_TBOT
     #include <spdlog/spdlog.h>
     #include <spdlog/sinks/stdout_color_sinks.h>
-    struct _rat_logging_initializer {
-        _rat_logging_initializer() {
-            spdlog::set_level(spdlog::level::debug); // Show debug and above
-            spdlog::set_pattern("[%H:%M:%S] [%^%l%$] %v"); // Optional: pretty format
+    // Ensure spdlog is initialized exactly once, header-only
+    inline void _rat_init_logging() {
+        static bool rat_logging_initialized = false;
+        if (!rat_logging_initialized) {
+            spdlog::set_level(spdlog::level::debug);           
+            // Add module name "rat_handler" in the prefix
+            spdlog::set_pattern("[%H:%M:%S] [%^%l%$] [rat_tbot] %v"); 
+            rat_logging_initialized = true;
         }
-    } _rat_logging_initializer_instance;
+    }
 
-    #define DEBUG_LOG(...) spdlog::debug(__VA_ARGS__)
-    #define ERROR_LOG(...) spdlog::error(__VA_ARGS__)
+    #define DEBUG_LOG(...) do { _rat_init_logging(); spdlog::debug(__VA_ARGS__); } while(0)
+    #define ERROR_LOG(...) do { _rat_init_logging(); spdlog::error(__VA_ARGS__); } while(0)
+
 #else
     #define DEBUG_LOG(...) do { } while(0)
     #define ERROR_LOG(...) do { } while(0)
