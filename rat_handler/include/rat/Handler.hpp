@@ -23,6 +23,7 @@
 namespace rat::handler {
 
 using ThreadPool_uPtr = std::unique_ptr<::rat::threading::ThreadPool>;
+using ThreadPool_sPtr = std::shared_ptr<::rat::threading::ThreadPool>;
 using BaseBot_uPtr = std::unique_ptr<::rat::tbot::BaseBot>;
 using Bot_uPtr = std::unique_ptr<::rat::tbot::Bot>;
 using CurlClient_uPtr = std::unique_ptr<::rat::networking::Client>;
@@ -40,7 +41,7 @@ public:
 private:
     ThreadPool_uPtr long_process_pool;
     ThreadPool_uPtr short_process_pool;
-    ThreadPool_uPtr secondary_helper_pool;
+    ThreadPool_sPtr secondary_helper_pool;
     
     std::mutex curl_client_mutex; 
     std::mutex backing_bot_mutex;

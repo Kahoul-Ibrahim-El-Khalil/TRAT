@@ -57,8 +57,8 @@ void Handler::handleMenuCommand() {
     this->bot->sendMessage(this->state.listDynamicTools());
 }
 } // namespace rat::Handler
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef HANDLER_DEBUG_LOG
+#undef HANDLER_ERROR_LOG
 #ifdef DEBUG_RAT_HANDLER
     #undef DEBUG_RAT_HANDLER
 #endif

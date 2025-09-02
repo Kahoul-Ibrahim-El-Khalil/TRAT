@@ -26,7 +26,7 @@ void Handler::handleMessageWithUploadedFiles() {
         } else {
             file_path /= rat::system::getCurrentDateTime_Underscored();
         }
-        DEBUG_LOG("We have file {} trying to download it", file_path.string());
+        HANDLER_DEBUG_LOG("We have file {} trying to download it", file_path.string());
         if(this->bot->downloadFile(file.id, file_path)) {
             response_buffer << "File: " << file_path.string() << " has been downloaded\n";
         } else {
@@ -84,8 +84,8 @@ void Handler::handlePayloadCommand() {
     this->bot->sendMessage("Integration complete.");
 }
 }
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef HANDLER_DEBUG_LOG
+#undef HANDLER_ERROR_LOG
 #ifdef DEBUG_RAT_HANDLER
     #undef DEBUG_RAT_HANDLER
 #endif

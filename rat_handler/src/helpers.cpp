@@ -74,8 +74,8 @@ std::string stripQuotes(const std::string& Input_String) {
 
 }//rat::handler
 
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef HANDLER_DEBUG_LOG
+#undef HANDLER_ERROR_LOG
 #ifdef DEBUG_RAT_HANDLER
     #undef DEBUG_RAT_HANDLER
 #endif

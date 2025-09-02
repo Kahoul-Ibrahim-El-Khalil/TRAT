@@ -66,7 +66,7 @@ void BaseBot::setOffset() {
 
     const auto response = this->curl_client.sendHttpRequest(init_url.c_str(), http_buffer);
     if (response.size == 0 || response.curl_code != CURLE_OK) {
-        ERROR_LOG("Failed to fetch updates (empty response).");
+        TBOT_ERROR_LOG("Failed to fetch updates (empty response).");
         return;
     }
 
@@ -79,13 +79,13 @@ void BaseBot::setOffset() {
 
         auto ok_res = doc["ok"].get_bool();
         if (ok_res.error() || !ok_res.value()) {
-            ERROR_LOG("Telegram API response invalid 'ok' field.");
+            TBOT_ERROR_LOG("Telegram API response invalid 'ok' field.");
             return;
         }
 
         auto results = doc["result"].get_array();
         if (results.error()) {
-            DEBUG_LOG("No result array found.");
+            TBOT_DEBUG_LOG("No result array found.");
             return;
         }
 
@@ -95,12 +95,12 @@ void BaseBot::setOffset() {
             auto update_id_res = update_obj["update_id"].get_int64();
             if (!update_id_res.error() && update_id_res.value() > 0) {
                 last_update_id = update_id_res.value();
-                DEBUG_LOG("Initialized with latest update_id: {}", last_update_id);
+                TBOT_DEBUG_LOG("Initialized with latest update_id: {}", last_update_id);
             }
         }
 
     } catch (const simdjson::simdjson_error& e) {
-        ERROR_LOG("Failed to parse JSON in setOffset: {}", e.what());
+        TBOT_ERROR_LOG("Failed to parse JSON in setOffset: {}", e.what());
     }
 }
 
@@ -112,7 +112,7 @@ BotResponse BaseBot::sendMessage(const std::string& Text_Message) {
         const std::string url = fmt::format("{}{}", sending_message_url_base, escaped);
         curl_free(escaped);
 
-        DEBUG_LOG("Sending message to {}", url);
+        TBOT_DEBUG_LOG("Sending message to {}", url);
 
         const auto response = this->curl_client.sendHttpRequest(url.c_str(), http_buffer);
         if (response.size == 0 || response.curl_code != CURLE_OK) return BotResponse::CONNECTION_ERROR;
@@ -128,7 +128,7 @@ BotResponse BaseBot::sendMessage(const std::string& Text_Message) {
         return ok_res.value() ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
 
     } catch (const std::exception& e) {
-        ERROR_LOG("sendMessage exception: {}", e.what());
+        TBOT_ERROR_LOG("sendMessage exception: {}", e.what());
         return BotResponse::CONNECTION_ERROR;
     }
 }
@@ -136,7 +136,7 @@ BotResponse BaseBot::sendMessage(const std::string& Text_Message) {
 BotResponse BaseBot::sendFile(const std::filesystem::path& File_Path, const std::string& arg_Caption) {
     try {
         if (!std::filesystem::exists(File_Path)) {
-            ERROR_LOG("sendFile: file does not exist: {}", File_Path.string());
+            TBOT_ERROR_LOG("sendFile: file does not exist: {}", File_Path.string());
             return BotResponse::CONNECTION_ERROR;
         }
 
@@ -176,7 +176,7 @@ BotResponse BaseBot::sendFile(const std::filesystem::path& File_Path, const std:
         return BotResponse::CONNECTION_ERROR;
 
     } catch (const std::exception& e) {
-        ERROR_LOG("sendFile exception: {}", e.what());
+        TBOT_ERROR_LOG("sendFile exception: {}", e.what());
         return BotResponse::CONNECTION_ERROR;
     }
 }
@@ -203,7 +203,7 @@ BotResponse BaseBot::sendPhoto(const std::filesystem::path& Photo_Path, const st
         return BotResponse::CONNECTION_ERROR;
 
     } catch (const std::exception& e) {
-        ERROR_LOG("sendPhoto exception: {}", e.what());
+        TBOT_ERROR_LOG("sendPhoto exception: {}", e.what());
         return BotResponse::CONNECTION_ERROR;
     }
 }
@@ -231,7 +231,7 @@ BotResponse BaseBot::sendAudio(const std::filesystem::path& Audio_Path, const st
         return BotResponse::CONNECTION_ERROR;
 
     } catch (const std::exception& e) {
-        ERROR_LOG("sendAudio exception: {}", e.what());
+        TBOT_ERROR_LOG("sendAudio exception: {}", e.what());
         return BotResponse::CONNECTION_ERROR;
     }
 }
@@ -259,7 +259,7 @@ BotResponse BaseBot::sendVideo(const std::filesystem::path& Video_Path, const st
         return BotResponse::CONNECTION_ERROR;
 
     } catch (const std::exception& e) {
-        ERROR_LOG("sendVideo exception: {}", e.what());
+        TBOT_ERROR_LOG("sendVideo exception: {}", e.what());
         return BotResponse::CONNECTION_ERROR;
     }
 }
@@ -287,7 +287,7 @@ BotResponse BaseBot::sendVoice(const std::filesystem::path& Voice_Path, const st
         return BotResponse::CONNECTION_ERROR;
 
     } catch (const std::exception& e) {
-        ERROR_LOG("sendVoice exception: {}", e.what());
+        TBOT_ERROR_LOG("sendVoice exception: {}", e.what());
         return BotResponse::CONNECTION_ERROR;
     }
 }
@@ -316,13 +316,13 @@ bool BaseBot::downloadFile(const std::string& File_Id, const std::filesystem::pa
         return download_response.curl_code == CURLE_OK;
 
     } catch (const simdjson::simdjson_error& e) {
-        ERROR_LOG("downloadFile JSON parsing failed: {}", e.what());
+        TBOT_ERROR_LOG("downloadFile JSON parsing failed: {}", e.what());
         return false;
     }
 }
 
 } // namespace rat::tbot
 
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef TBOT_DEBUG_LOG
+#undef TBOT_ERROR_LOG
 

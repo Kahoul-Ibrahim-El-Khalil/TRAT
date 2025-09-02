@@ -54,7 +54,7 @@ bool EasyCurlHandler::hardResetHandle() {
     this->curl = curl_easy_init();
     if (!this->curl) {
         this->state = CURLE_FAILED_INIT;
-        ERROR_LOG("failed to initialize curl");
+        NETWORKING_ERROR_LOG("failed to initialize curl");
         return false;
     }
     this->state = CURLE_OK;
@@ -62,8 +62,8 @@ bool EasyCurlHandler::hardResetHandle() {
 }
 }//rat::networking
 
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef NETWORKING_DEBUG_LOG
+#undef NETWORKING_ERROR_LOG
 #ifdef DEBUG_RAT_NETWORKING
     #undef DEBUG_RAT_NETWORKING
 #endif

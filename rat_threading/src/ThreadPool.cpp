@@ -3,18 +3,18 @@
 #ifdef DEBUG_RAT_THREADING
     #include <spdlog/spdlog.h>
     #include <spdlog/sinks/stdout_color_sinks.h>
-    struct _rat_logging_initializer {
-        _rat_logging_initializer() {
+    struct _rat_threading_logging_initializer {
+        _rat_threading_logging_initializer() {
             spdlog::set_level(spdlog::level::debug); // Show debug and above
-            spdlog::set_pattern("[%H:%M:%S] [%^%l%$] %v"); // Optional: pretty format
+            spdlog::set_pattern("[%H:%M:%S] [%^%l%$] [rat_threading] %v"); // Optional: pretty format
         }
-    } _rat_logging_initializer_instance;
+    } _rat_threading_logging_initializer_instance;
 
-    #define DEBUG_LOG(...) spdlog::debug(__VA_ARGS__)
-    #define ERROR_LOG(...) spdlog::error(__VA_ARGS__)
+    #define THREADING_DEBUG_LOG(...) spdlog::debug(__VA_ARGS__)
+    #define THREADING_ERROR_LOG(...) spdlog::error(__VA_ARGS__)
 #else
-    #define DEBUG_LOG(...) do { } while(0)
-    #define ERROR_LOG(...) do { } while(0)
+    #define THREADING_DEBUG_LOG(...) do { } while(0)
+    #define THREADING_ERROR_LOG(...) do { } while(0)
 #endif
 
 namespace rat::threading {
@@ -25,6 +25,7 @@ ThreadPool::ThreadPool(uint8_t Num_Threads, uint8_t Max_Queue_Length)
 }
 
 ThreadPool::~ThreadPool() {
+    THREADING_DEBUG_LOG("threadpool is being destroyed");
     this->stop();
 }
 uint8_t ThreadPool::getWorkersSize() {
@@ -42,7 +43,7 @@ uint8_t ThreadPool::getPendingWorkersCount() {
 }
 
 void ThreadPool::start(uint8_t Num_Threads) {
-    DEBUG_LOG("Starting Thread Pool of {} size", Num_Threads);
+    THREADING_DEBUG_LOG("Starting Thread Pool of {} size", Num_Threads);
     std::lock_guard<std::mutex> lock(queue_mutex);
     // Prevent multiple starts
     if (started) {
@@ -67,7 +68,7 @@ void ThreadPool::start(uint8_t Num_Threads) {
                         tasks.pop();
                     } else continue;
                 }
-                DEBUG_LOG("Pushing the task into the worker thread"); 
+                THREADING_DEBUG_LOG("Pushing the task into the worker thread"); 
                 if (task) task();
             }
         });
@@ -88,18 +89,18 @@ void ThreadPool::stop() {
     
     for (std::thread &worker : workers) {
         if (worker.joinable()) {
-            DEBUG_LOG("Joining the worker thread");
+            THREADING_DEBUG_LOG("Joining the worker thread");
             worker.join();
         }
     }
-    DEBUG_LOG("All worker threads joined"); 
+    THREADING_DEBUG_LOG("All worker threads joined"); 
     workers.clear();
 }
 
 } // namespace rat::threading
 
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef THREADING_DEBUG_LOG
+#undef THREADING_ERROR_LOG
 #ifdef DEBUG_RAT_THREADING
     #undef DEBUG_RAT_THREADING
 #endif

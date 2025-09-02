@@ -26,12 +26,12 @@ int main(void) {
     std::string message_url = fmt::format("{}{}/sendMessage?chat_id={}&text=test", 
                                          TELEGRAM_BOT_API_BASE_URL, TOKEN, MASTER_ID);
 
-    DEBUG_LOG("Starting combined memory test");
-    DEBUG_LOG("Monitoring: 1 network call + 1 JSON parse per iteration");
+    TBOT_DEBUG_LOG("Starting combined memory test");
+    TBOT_DEBUG_LOG("Monitoring: 1 network call + 1 JSON parse per iteration");
     
     
     while (true) {
-        DEBUG_LOG("Iteration {}", iteration++);
+        TBOT_DEBUG_LOG("Iteration {}", iteration++);
         
         // 1. Network operation
         const auto response = client.sendHttpRequest(update_url.c_str(), buffer.data(), BUFFER_SIZE);
@@ -48,8 +48,8 @@ int main(void) {
     
     return 0;
 }
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef TBOT_DEBUG_LOG
+#undef TBOT_ERROR_LOG
 #ifdef DEBUG_RAT_TBOT
     #undef DEBUG_RAT_TBOT
 #endif

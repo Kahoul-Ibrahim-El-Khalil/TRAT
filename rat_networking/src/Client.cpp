@@ -41,18 +41,18 @@ NetworkingResult Client::download(const char* Downloading_Url, const std::filesy
     NetworkingResult result{ CURLE_OK, 0 };
 
     if(!Downloading_Url) {
-        ERROR_LOG("Downloading_Url is nullptr");
+        NETWORKING_ERROR_LOG("Downloading_Url is nullptr");
         result.curl_code = CURLE_BAD_FUNCTION_ARGUMENT;
         return result;
     }
     if (!this->curl) {
-        ERROR_LOG("CURL handle is not initialized");
+        NETWORKING_ERROR_LOG("CURL handle is not initialized");
         result.curl_code = CURLE_FAILED_INIT;
         return result;
     }
     FILE* fp = std::fopen(File_Path.string().c_str(), "wb");
     if (!fp) {
-        ERROR_LOG("Failed to open file for writing: %s", File_Path.string().c_str());
+        NETWORKING_ERROR_LOG("Failed to open file for writing: %s", File_Path.string().c_str());
         result.curl_code = CURLE_WRITE_ERROR;
         return result;
     }
@@ -69,7 +69,7 @@ NetworkingResult Client::download(const char* Downloading_Url, const std::filesy
         (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
         
-        ERROR_LOG("Download setup failed: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("Download setup failed: %s", curl_easy_strerror(result.curl_code));
         std::fclose(fp);
         this->reset();
         return result;
@@ -77,7 +77,7 @@ NetworkingResult Client::download(const char* Downloading_Url, const std::filesy
 
     result.curl_code = this->perform();
     if (result.curl_code != CURLE_OK) {
-        ERROR_LOG("Download failed: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("Download failed: %s", curl_easy_strerror(result.curl_code));
         std::fclose(fp);
         this->reset();
         return result;
@@ -95,23 +95,23 @@ NetworkingResult Client::upload(const std::filesystem::path& File_Path, const ch
     NetworkingResult result{ CURLE_OK, 0 };
 
     if(!Uploading_Url) {
-        ERROR_LOG("Uploading_Url is nullptr");
+        NETWORKING_ERROR_LOG("Uploading_Url is nullptr");
         result.curl_code = CURLE_BAD_FUNCTION_ARGUMENT;
         return result;
     }
     if (!this->curl) {
-        ERROR_LOG("CURL handle is not initialized");
+        NETWORKING_ERROR_LOG("CURL handle is not initialized");
         result.curl_code = CURLE_FAILED_INIT;
         return result;
     }
     if (!std::filesystem::exists(File_Path)) {
-        ERROR_LOG("File does not exist: %s", File_Path.string().c_str());
+        NETWORKING_ERROR_LOG("File does not exist: %s", File_Path.string().c_str());
         result.curl_code = CURLE_READ_ERROR;
         return result;
     }
     FILE* fp = std::fopen(File_Path.string().c_str(), "rb");
     if (!fp) {
-        ERROR_LOG("Failed to open file for reading: %s", File_Path.string().c_str());
+        NETWORKING_ERROR_LOG("Failed to open file for reading: %s", File_Path.string().c_str());
         result.curl_code = CURLE_READ_ERROR;
         return result;
     }
@@ -124,7 +124,7 @@ NetworkingResult Client::upload(const std::filesystem::path& File_Path, const ch
         (result.curl_code = curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, _cbWriteDiscard)) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_READDATA, static_cast<void*>(fp))) != CURLE_OK) {
         
-        ERROR_LOG("Failed to configure upload: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("Failed to configure upload: %s", curl_easy_strerror(result.curl_code));
         std::fclose(fp);
         this->reset();
         return result;
@@ -132,7 +132,7 @@ NetworkingResult Client::upload(const std::filesystem::path& File_Path, const ch
 
     curl_off_t file_size = static_cast<curl_off_t>(std::filesystem::file_size(File_Path));
     if ((result.curl_code = this->setOption(CURLOPT_INFILESIZE_LARGE, file_size)) != CURLE_OK) {
-        ERROR_LOG("Failed to set file size: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("Failed to set file size: %s", curl_easy_strerror(result.curl_code));
         std::fclose(fp);
         this->reset();
         return result;
@@ -143,7 +143,7 @@ NetworkingResult Client::upload(const std::filesystem::path& File_Path, const ch
         (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
         
-        ERROR_LOG("Failed to set security/timeouts: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("Failed to set security/timeouts: %s", curl_easy_strerror(result.curl_code));
         std::fclose(fp);
         this->reset();
         return result;
@@ -151,7 +151,7 @@ NetworkingResult Client::upload(const std::filesystem::path& File_Path, const ch
 
     result.curl_code = this->perform();
     if (result.curl_code != CURLE_OK) {
-        ERROR_LOG("Upload failed: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("Upload failed: %s", curl_easy_strerror(result.curl_code));
         std::fclose(fp);
         this->reset();
         return result;
@@ -168,12 +168,12 @@ NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context, std::ve
     NetworkingResult result{ CURLE_OK, 0 };
 
     if (!this->curl) {
-        ERROR_LOG("CURL handle is not initialized");
+        NETWORKING_ERROR_LOG("CURL handle is not initialized");
         result.curl_code = CURLE_FAILED_INIT;
         return result;
     }
     if (!std::filesystem::exists(Mime_Context.file_path)) {
-        ERROR_LOG("File does not exist: %s", Mime_Context.file_path.string().c_str());
+        NETWORKING_ERROR_LOG("File does not exist: %s", Mime_Context.file_path.string().c_str());
         result.curl_code = CURLE_READ_ERROR;
         return result;
     }
@@ -183,7 +183,7 @@ NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context, std::ve
 
     curl_mime* mime = curl_mime_init(this->curl);
     if (!mime) {
-        ERROR_LOG("Failed to create MIME structure");
+        NETWORKING_ERROR_LOG("Failed to create MIME structure");
         result.curl_code = CURLE_OUT_OF_MEMORY;
         this->reset();
         return result;
@@ -191,7 +191,7 @@ NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context, std::ve
 
     curl_mimepart* file_part = curl_mime_addpart(mime);
     if (!file_part) {
-        ERROR_LOG("Failed to add file MIME part");
+        NETWORKING_ERROR_LOG("Failed to add file MIME part");
         curl_mime_free(mime);
         result.curl_code = CURLE_OUT_OF_MEMORY;
         this->reset();
@@ -200,7 +200,7 @@ NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context, std::ve
 
     if ((result.curl_code = curl_mime_name(file_part, Mime_Context.file_field_name.c_str())) != CURLE_OK ||
         (result.curl_code = curl_mime_filedata(file_part, Mime_Context.file_path.string().c_str())) != CURLE_OK) {
-        ERROR_LOG("Failed to set file MIME part: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("Failed to set file MIME part: %s", curl_easy_strerror(result.curl_code));
         curl_mime_free(mime);
         this->reset();
         return result;
@@ -208,7 +208,7 @@ NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context, std::ve
 
     if (!Mime_Context.mime_type.empty()) {
         if ((result.curl_code = curl_mime_type(file_part, Mime_Context.mime_type.c_str())) != CURLE_OK) {
-            ERROR_LOG("Failed to set MIME type: %s", curl_easy_strerror(result.curl_code));
+            NETWORKING_ERROR_LOG("Failed to set MIME type: %s", curl_easy_strerror(result.curl_code));
             curl_mime_free(mime);
             this->reset();
             return result;
@@ -218,7 +218,7 @@ NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context, std::ve
     for (const auto& [field_name, field_value] : Mime_Context.fields_map) {
         curl_mimepart* field_part = curl_mime_addpart(mime);
         if (!field_part) {
-            ERROR_LOG("Failed to add field part for: %s", field_name.c_str());
+            NETWORKING_ERROR_LOG("Failed to add field part for: %s", field_name.c_str());
             result.curl_code = CURLE_OUT_OF_MEMORY;
             curl_mime_free(mime);
             this->reset();
@@ -226,7 +226,7 @@ NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context, std::ve
         }
         if ((result.curl_code = curl_mime_name(field_part, field_name.c_str())) != CURLE_OK ||
             (result.curl_code = curl_mime_data(field_part, field_value.c_str(), CURL_ZERO_TERMINATED)) != CURLE_OK) {
-            ERROR_LOG("Failed to set field data for %s: %s", field_name.c_str(), curl_easy_strerror(result.curl_code));
+            NETWORKING_ERROR_LOG("Failed to set field data for %s: %s", field_name.c_str(), curl_easy_strerror(result.curl_code));
             curl_mime_free(mime);
             this->reset();
             return result;
@@ -242,7 +242,7 @@ NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context, std::ve
         (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
         
-        ERROR_LOG("Failed to configure MIME upload: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("Failed to configure MIME upload: %s", curl_easy_strerror(result.curl_code));
         curl_mime_free(mime);
         this->reset();
         return result;
@@ -250,7 +250,7 @@ NetworkingResult Client::uploadMimeFile(const MimeContext& Mime_Context, std::ve
 
     result.curl_code = this->perform();
     if (result.curl_code != CURLE_OK) {
-        ERROR_LOG("MIME upload failed: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("MIME upload failed: %s", curl_easy_strerror(result.curl_code));
         curl_mime_free(mime);
         this->reset();
         return result;
@@ -268,12 +268,12 @@ NetworkingResult Client::sendHttpRequest(const char* arg_Url, std::vector<char>&
     arg_Buffer.clear();
 
     if(!arg_Url) {
-        ERROR_LOG("arg_Url is nullptr");
+        NETWORKING_ERROR_LOG("arg_Url is nullptr");
         result.curl_code = CURLE_BAD_FUNCTION_ARGUMENT;
         return result;
     }
     if (!this->curl) {
-        ERROR_LOG("CURL handle is not initialized");
+        NETWORKING_ERROR_LOG("CURL handle is not initialized");
         result.curl_code = CURLE_FAILED_INIT;
         return result;
     }
@@ -290,14 +290,14 @@ NetworkingResult Client::sendHttpRequest(const char* arg_Url, std::vector<char>&
         (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
         
-        ERROR_LOG("HTTP setup failed: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("HTTP setup failed: %s", curl_easy_strerror(result.curl_code));
         this->reset();
         return result;
     }
 
     result.curl_code = this->perform();
     if (result.curl_code != CURLE_OK) {
-        ERROR_LOG("HTTP request failed: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("HTTP request failed: %s", curl_easy_strerror(result.curl_code));
         arg_Buffer.clear();
         this->reset();
         return result;
@@ -312,12 +312,12 @@ NetworkingResult Client::sendHttpRequest(const char* arg_Url, char* p_Buffer, si
     NetworkingResult result{ CURLE_OK, 0 };
 
     if(!arg_Url || !p_Buffer || Buffer_Size == 0) {
-        ERROR_LOG("Bad arguments to sendHttpRequest");
+        NETWORKING_ERROR_LOG("Bad arguments to sendHttpRequest");
         result.curl_code = CURLE_BAD_FUNCTION_ARGUMENT;
         return result;
     }
     if (!this->curl) {
-        ERROR_LOG("CURL handle is not initialized");
+        NETWORKING_ERROR_LOG("CURL handle is not initialized");
         result.curl_code = CURLE_FAILED_INIT;
         return result;
     }
@@ -335,14 +335,14 @@ NetworkingResult Client::sendHttpRequest(const char* arg_Url, char* p_Buffer, si
         (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
         
-        ERROR_LOG("Failed to configure HTTP request: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("Failed to configure HTTP request: %s", curl_easy_strerror(result.curl_code));
         this->reset();
         return result;
     }
 
     result.curl_code = this->perform();
     if (result.curl_code != CURLE_OK) {
-        ERROR_LOG("HTTP request failed: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("HTTP request failed: %s", curl_easy_strerror(result.curl_code));
         this->reset();
         return result;
     }
@@ -357,7 +357,7 @@ NetworkingResult Client::downloadData(const std::string& arg_Url, std::vector<ui
     Out_Buffer.clear();
 
     if (!this->curl) {
-        ERROR_LOG("CURL handle is not initialized");
+        NETWORKING_ERROR_LOG("CURL handle is not initialized");
         result.curl_code = CURLE_FAILED_INIT;
         return result;
     }
@@ -374,14 +374,14 @@ NetworkingResult Client::downloadData(const std::string& arg_Url, std::vector<ui
         (result.curl_code = this->setOption(CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
         (result.curl_code = this->setOption(CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
         
-        ERROR_LOG("DownloadData setup failed: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("DownloadData setup failed: %s", curl_easy_strerror(result.curl_code));
         this->reset();
         return result;
     }
 
     result.curl_code = this->perform();
     if (result.curl_code != CURLE_OK) {
-        ERROR_LOG("Download data failed: %s", curl_easy_strerror(result.curl_code));
+        NETWORKING_ERROR_LOG("Download data failed: %s", curl_easy_strerror(result.curl_code));
         Out_Buffer.clear();
         this->reset();
         return result;
@@ -394,8 +394,8 @@ NetworkingResult Client::downloadData(const std::string& arg_Url, std::vector<ui
 
 } // namespace rat::networking
 
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef NETWORKING_DEBUG_LOG
+#undef NETWORKING_ERROR_LOG
 #ifdef DEBUG_RAT_NETWORKING
     #undef DEBUG_RAT_NETWORKING
 #endif

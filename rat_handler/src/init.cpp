@@ -30,7 +30,7 @@ void Handler::initCurlClient(uint8_t Operation_Restart_Bound) {
 void Handler::initThreadPools(uint8_t Number_Long_Process_Threads, uint8_t Number_Short_Process_Threads, uint8_t Number_Helper_Threads) {
     this->long_process_pool = std::make_unique<::rat::threading::ThreadPool>(Number_Long_Process_Threads);
     this->short_process_pool = std::make_unique<::rat::threading::ThreadPool>(Number_Short_Process_Threads);
-    this->secondary_helper_pool = std::make_unique<::rat::threading::ThreadPool>(Number_Helper_Threads);
+    this->secondary_helper_pool = std::make_shared<::rat::threading::ThreadPool>(Number_Helper_Threads);
     this->bot->sendMessage(fmt::format("Working threads have been created: \n{} for short processes\n{} for long processes\n{} for helpers", 
         this->short_process_pool->getWorkersSize(),
         this->long_process_pool->getWorkersSize(),
@@ -39,8 +39,8 @@ void Handler::initThreadPools(uint8_t Number_Long_Process_Threads, uint8_t Numbe
 }
 
 }//rat::handler
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef HANDLER_DEBUG_LOG
+#undef HANDLER_ERROR_LOG
 #ifdef DEBUG_RAT_HANDLER
     #undef DEBUG_RAT_HANDLER
 #endif

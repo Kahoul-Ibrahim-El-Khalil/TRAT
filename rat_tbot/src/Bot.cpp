@@ -33,7 +33,7 @@ File Bot::parseFile(simdjson::ondemand::value&& file_val, const std::string& typ
         if (auto res = file_obj["file_id"].get_string(); res.error() == simdjson::SUCCESS) {
             file.id = std::string(res.value());
         } else {
-            ERROR_LOG("Missing file_id in {}", type);
+            TBOT_ERROR_LOG("Missing file_id in {}", type);
             return file;
         }
 
@@ -59,7 +59,7 @@ File Bot::parseFile(simdjson::ondemand::value&& file_val, const std::string& typ
         }
 
     } catch (const simdjson::simdjson_error& e) {
-        ERROR_LOG("File parsing failed: {}", e.what());
+        TBOT_ERROR_LOG("File parsing failed: {}", e.what());
     }
 
     return file;
@@ -106,7 +106,7 @@ Message Bot::parseMessage(simdjson::ondemand::value& message_val) {
         if (auto res = message_obj["message_id"].get_int64(); res.error() == simdjson::SUCCESS) {
             message.id = res.value();
         } else {
-            ERROR_LOG("Missing message_id");
+            TBOT_ERROR_LOG("Missing message_id");
             return message;
         }
 
@@ -131,7 +131,7 @@ Message Bot::parseMessage(simdjson::ondemand::value& message_val) {
         extractFilesFromMessage(message_obj, message);
 
     } catch (const simdjson::simdjson_error& e) {
-        ERROR_LOG("Message parsing failed: {}", e.what());
+        TBOT_ERROR_LOG("Message parsing failed: {}", e.what());
     }
 
     return message;
@@ -150,19 +150,19 @@ Update Bot::parseJsonToUpdate() {
         auto doc = simdjson_parser.iterate(this->http_buffer.data(), json_size, buffer_size);
 
         if (auto res = doc["ok"].get_bool(); res.error() != simdjson::SUCCESS || !res.value()) {
-            ERROR_LOG("API response not OK");
+            TBOT_ERROR_LOG("API response not OK");
             return {};
         }
 
         // Extract result array
         auto result_val = doc["result"];
         if (result_val.error() != simdjson::SUCCESS) {
-            DEBUG_LOG("No result field in response");
+            TBOT_DEBUG_LOG("No result field in response");
             return {};
         }
         auto results = result_val.get_array();
         if (results.error() != simdjson::SUCCESS) {
-            DEBUG_LOG("Result is not an array");
+            TBOT_DEBUG_LOG("Result is not an array");
             return {};
         }
 
@@ -187,7 +187,7 @@ Update Bot::parseJsonToUpdate() {
         }
 
     } catch (const simdjson::simdjson_error& e) {
-        ERROR_LOG("JSON parsing failed: {}", e.what());
+        TBOT_ERROR_LOG("JSON parsing failed: {}", e.what());
     }
 
     return update;
@@ -198,7 +198,7 @@ Update Bot::parseJsonToUpdate() {
 Update Bot::getUpdate() {
     const std::string url = fmt::format("{}&offset={}&limit=1", getting_update_url, last_update_id + 1);
 
-    DEBUG_LOG("Polling updates with offset: {}", this->last_update_id + 1);
+    TBOT_DEBUG_LOG("Polling updates with offset: {}", this->last_update_id + 1);
 
     const auto response = this->curl_client.sendHttpRequest(url.c_str(), this->http_buffer);
 
@@ -220,8 +220,8 @@ Update Bot::getUpdate() {
 
 } // namespace rat::tbot
 
-#undef DEBUG_LOG
-#undef ERROR_LOG
+#undef TBOT_DEBUG_LOG
+#undef TBOT_ERROR_LOG
 #ifdef DEBUG_RAT_TBOT
     #undef DEBUG_RAT_TBOT
 #endif
