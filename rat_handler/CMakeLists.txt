@@ -1,12 +1,10 @@
-# ======================================
-# Sources
-# ======================================
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 set(HANDLER_SRC
     ${SRC_DIR}/init.cpp
     ${SRC_DIR}/handleUpdate.cpp
     ${SRC_DIR}/handlers.cpp
-    ${SRC_DIR}/handleHelpCommand.cpp    
+    ${SRC_DIR}/handleHelpCommand.cpp
     ${SRC_DIR}/networking_handlers.cpp
     ${SRC_DIR}/filesystem_handlers.cpp
     ${SRC_DIR}/handleUploadedFiles.cpp
@@ -15,9 +13,6 @@ set(HANDLER_SRC
     ${SRC_DIR}/threaded_handlers.cpp
 )
 
-# ======================================
-# Library target (controlled by root: BUILD_STATIC)
-# ======================================
 add_library(rat_handler STATIC ${HANDLER_SRC})
 
 target_include_directories(rat_handler
@@ -25,12 +20,9 @@ target_include_directories(rat_handler
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# ======================================
-# Dependencies (all injected from root)
-# ======================================
 target_link_libraries(rat_handler
     PUBLIC
-        rat_process
+        tiny-process-library
         rat_encryption
         rat_networking
         rat_threading

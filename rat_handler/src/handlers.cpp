@@ -1,6 +1,5 @@
 /*rat_handler/src/handlers.cpp*/
 #include "rat/Handler.hpp"
-#include "rat/ProcessManager.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
@@ -10,6 +9,7 @@
 #include <sstream>
 #include <vector>
 
+#include "process.hpp" //tiny-process-library
 #include "rat/handler/debug.hpp"
 
 namespace rat::handler {

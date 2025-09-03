@@ -47,7 +47,7 @@ endif()
 
 # === Submodules ===
 add_subdirectory(simdjson)
-add_subdirectory(rat_process)
+add_subdirectory(tiny-process-library)
 add_subdirectory(rat_encryption)
 add_subdirectory(rat_networking)
 add_subdirectory(rat_threading)
