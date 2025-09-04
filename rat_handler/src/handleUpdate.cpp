@@ -26,19 +26,19 @@ void Handler::_dynamicSleep() {
     constexpr uint32_t max_sleep_ms  = 5000;  // ← This is declared...
 
     double computed = base_sleep_ms * std::pow(growth_factor, static_cast<double>(this->empty_updates_count));
-    
+
     // ...but not used here! Need to apply the max limit:
     if (computed > max_sleep_ms) {
         computed = max_sleep_ms;  // ← Apply the maximum limit
     }
-    
+
     this->sleep_timeout_ms = computed;
 }
 
 void Handler::handleUpdates() {
     // Store the update properly to avoid dangling pointer
     std::optional<rat::tbot::Update> current_update;
-    
+
     while (true) {
         {
             current_update = this->bot->getUpdate();  // Store in optional
@@ -59,8 +59,8 @@ void Handler::handleUpdates() {
                 continue;
             }
 
-            if (this->telegram_update->message.text.empty() || 
-                (this->telegram_update->message.text[0] != '!' && 
+            if (this->telegram_update->message.text.empty() ||
+                (this->telegram_update->message.text[0] != '!' &&
                  this->telegram_update->message.text[0] != '/')) {
                 this->bot->sendMessage("Empty Message, an integrated command starts with /, a dynamic one with ! ");
                 continue;
@@ -76,16 +76,17 @@ void Handler::handleUpdates() {
     std::this_thread::sleep_for(std::chrono::milliseconds(this->sleep_timeout_ms));
 }
 
+
 void Handler::dispatchDynamicCommand() {
     std::string& command_text = this->telegram_update->message.text;
 
     if (!command_text.starts_with("!")) {
-        return; 
+        return;
     }
 
     size_t first_space = command_text.find(' ');
     if (first_space == std::string::npos) {
-        this->bot->sendMessage("Usage: !<command> <timeout> <args...>");
+        this->bot->sendMessage("Usage: !<command> <args...>");
         return;
     }
 
@@ -99,26 +100,25 @@ void Handler::dispatchDynamicCommand() {
         return;
     }
 
-    // FIX: Use it->second if command_path_map is std::map
-    std::filesystem::path& real_path = it->path;  // ← Assuming it's std::map
-    std::string new_message = fmt::format("/process {}", rest);
-    
-    // Find the first space after "/process"
-    size_t process_space = new_message.find(' ', 9);  // 9 = length of "/process "
-    if (process_space != std::string::npos) {
-        new_message.insert(process_space + 1, real_path.string() + " ");
+    const std::filesystem::path& real_path = it->path;
+
+    std::string new_message;
+    if (!rest.empty()) {
+        new_message = fmt::format("/process {} {}", real_path.string(), rest);
     } else {
-        new_message += " " + real_path.string();
+        new_message = fmt::format("/process {}", real_path.string());
     }
 
     this->telegram_update->message.text = new_message;
-    this->parseAndHandleProcessCommand();
+	this->parseTelegramMessageToCommand();
+    this->handleProcessCommand();
 }
+
 
 void Handler::dispatchIntegratedCommand() {
     HANDLER_DEBUG_LOG("Dispatching commands based on the update {}", this->telegram_update->id);
     this->parseTelegramMessageToCommand();
-    
+
     for (const auto& handler : command_map) {
         if (this->command.directive == handler.command) {
             (this->*handler.handler)();

