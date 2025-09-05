@@ -28,7 +28,7 @@ void Handler::parseTelegramMessageToCommand() {
 	if(tokens.empty())
 		return;
 
-	std::string directive = stripQuotes(tokens[0]);
+	const std::string directive = stripQuotes(tokens[0]);
 
 	std::vector<std::string> parameters;
 		for(size_t i = 1; i < tokens.size(); ++i) {

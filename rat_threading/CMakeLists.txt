@@ -7,4 +7,5 @@ target_include_directories(rat_threading
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+target_link_libraries(rat_threading PUBLIC rat_precompiled_headers)
 

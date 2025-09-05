@@ -42,22 +42,14 @@ target_include_directories(rat_system
 
       )
 
-# ======================================
-# Dependencies (injected from root)
-# ======================================
-# Tiny-process
-
 target_link_libraries(rat_system PUBLIC fmt)
-# spdlog (if DEBUG=ON from root)
+
 if(DEBUG)
     target_link_libraries(rat_system PUBLIC spdlog::spdlog)
     target_compile_definitions(rat_system PUBLIC DEBUG)
 endif()
 target_link_libraries(rat_system PUBLIC rat_threading)
 
-# ======================================
-# Debug shell executable (for standalone builds only)
-# ======================================
 add_executable(rat_shell src/shell.cpp)
 add_executable(rawdogger_test src/rawdogger/test/main.cpp)
 

@@ -1,5 +1,5 @@
 
-add_library(rat_networking STATIC 
+add_library(rat_networking STATIC
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/EasyCurlHandler.cpp
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/Client.cpp
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/helpers.cpp )
@@ -11,7 +11,7 @@ target_include_directories(rat_networking
 
 target_link_libraries(rat_networking
     PUBLIC
-        CURL::libcurl
+		CURL::libcurl
 )
 
 

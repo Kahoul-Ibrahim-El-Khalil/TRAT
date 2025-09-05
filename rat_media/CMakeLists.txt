@@ -14,8 +14,8 @@ target_include_directories(rat_media
 
 target_link_libraries(rat_media
     PUBLIC
-        fmt
-        rat_system   # <-- add this
+		fmt
+        rat_system
 )
 
 if(DEBUG)

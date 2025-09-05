@@ -15,7 +15,8 @@ endif()
 
 target_link_libraries(trat
     PRIVATE
-        rat_handler
+        rat_precompiled_headers
+		rat_handler
 )
 
 

@@ -1,13 +1,41 @@
 cmake_minimum_required(VERSION 3.25)
 project(rat_suite LANGUAGES CXX)
 
-# === Compiler setup ===
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Force clang++ if desired (must be set before project() in some cases)
-# set(CMAKE_CXX_COMPILER g++)
+# === Precompiled headers (only once) ===
+add_library(rat_precompiled_headers INTERFACE)
+
+target_precompile_headers(rat_precompiled_headers INTERFACE
+    <iostream>
+    <vector>
+    <array>
+    <string>
+    <filesystem>
+    <chrono>
+	<future>
+	<queue>
+	<functional>
+	<fstream>
+	<sstream>
+    <cstdint>
+	<cstring>
+    <cstddef>
+    <cstdio>
+    <cstdlib>
+	<csignal>
+	<map>
+    <thread>
+    <mutex>
+    <memory>
+    <algorithm>
+#third party libraries
+	<curl/curl.h>
+	<fmt/core.h>
+	<fmt/chrono.h>
+)
 
 # === Output directories ===
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -17,7 +45,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 option(STATIC "Build static libraries" ON)
 option(DEBUG "Enable debug logging" OFF)
 
-# Per-module debug toggles
 option(DEBUG_RAT_NETWORKING "Enable debug logs in networking module" OFF)
 option(DEBUG_RAT_SYSTEM "Enable debug logs in system module" OFF)
 option(DEBUG_RAT_PROCESS "Enable debug logs in process module" OFF)
@@ -56,3 +83,20 @@ add_subdirectory(rat_tbot)
 add_subdirectory(rat_media)
 add_subdirectory(rat_handler)
 add_subdirectory(rat_trat)
+
+# === Attach PCH to all in-tree targets (but not system libs like simdjson) ===
+foreach(tgt IN ITEMS
+    rat_encryption
+    rat_networking
+    rat_threading
+    rat_system
+    rat_tbot
+    rat_media
+    rat_handler
+    rat_trat
+)
+    if(TARGET ${tgt})
+        target_link_libraries(${tgt} PRIVATE rat_precompiled_headers)
+    endif()
+endforeach()
+

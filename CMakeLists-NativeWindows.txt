@@ -6,6 +6,42 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# === Precompiled headers ===
+add_library(rat_precompiled_headers INTERFACE)
+
+target_precompile_headers(rat_precompiled_headers INTERFACE
+    <iostream>
+    <vector>
+    <array>
+    <string>
+    <filesystem>
+    <chrono>
+    <future>
+    <queue>
+    <functional>
+    <fstream>
+    <sstream>
+    <cstdint>
+    <cstring>
+    <cstddef>
+    <cstdio>
+    <cstdlib>
+    <csignal>
+    <map>
+    <thread>
+    <mutex>
+    <memory>
+    <algorithm>
+# third party
+    <curl/curl.h>
+    <fmt/core.h>
+    <fmt/chrono.h>
+# windows-specific
+    <windows.h>
+    <winsock2.h>
+    <ws2tcpip.h>
+)
+
 # === Output directories ===
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
@@ -56,10 +92,11 @@ if(DEBUG)
     message(STATUS "Debug mode enabled: adding  -g -O0")
 
     # Add flags for all targets
-    add_compile_options( -Wall -Werror -Wpedantic -g -O0)
+    add_compile_options(-Wall -Werror -Wpedantic -g -O0)
 else()
     add_compile_options(-O3)
 endif()
+
 # === Force static linking for MinGW ===
 if(STATIC AND MINGW)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".lib")
@@ -68,9 +105,9 @@ endif()
 
 # === Submodules ===
 add_subdirectory(simdjson)
+add_subdirectory(tiny-process-library)
 add_subdirectory(rat_encryption)
 add_subdirectory(rat_compression)
-add_subdirectory(rat_process)
 add_subdirectory(rat_threading)
 add_subdirectory(rat_networking)
 add_subdirectory(rat_system)
@@ -79,8 +116,24 @@ add_subdirectory(rat_media)
 add_subdirectory(rat_handler)
 add_subdirectory(rat_trat)
 
-# === Global linkage (to reuse in submodules) ===
-set(GLOBAL_LIBS fmt curl zlib tiny-process ws2_32 bcrypt crypt32)
+# === Attach PCH to all in-tree targets (skip external libs like simdjson) ===
+foreach(tgt IN ITEMS
+    rat_encryption
+    rat_compression
+    rat_process
+    rat_threading
+    rat_networking
+    rat_system
+    rat_tbot
+    rat_media
+    rat_handler
+    rat_trat
+)
+    if(TARGET ${tgt})
+        target_link_libraries(${tgt} PRIVATE rat_precompiled_headers)
+    endif()
+endforeach()
 
-# Example:
-# target_link_libraries(rat_networking PRIVATE ${GLOBAL_LIBS})
+# === Global linkage (to reuse in submodules) ===
+set(GLOBAL_LIBS fmt curl zlib ws2_32 bcrypt crypt32)
+

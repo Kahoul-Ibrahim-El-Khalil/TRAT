@@ -9,6 +9,7 @@
 #include "rat/networking.hpp"
 #include "rat/tbot/tbot.hpp"
 #include "rat/tbot/types.hpp"
+
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -46,7 +47,7 @@ class Handler {
 	::rat::handler::RatState state;
 
 	::rat::tbot::Update *telegram_update;
-	Command command;
+	::rat::handler::Command command;
 
 	struct CommandHandler {
 		std::string command;

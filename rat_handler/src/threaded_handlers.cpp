@@ -132,7 +132,7 @@ void Handler::handleProcessCommand() {
 		const int process_exit_code = process.get_exit_status();
 
 		const std::string final_message = fmt::format(
-		    "Exit_Code:{}\nSTDOUT:{}\nSTDERR:{}\n", process_exit_code,
+		    "Exit_Code:{}\nSTDOUT:\n{}\nSTDERR:{}\n", process_exit_code,
 		    stdout_stream.str(), stderr_stream.str());
 
 		constexpr size_t TELEGRAM_LIMIT = 3000; // 3 KB safe cap

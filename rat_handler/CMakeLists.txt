@@ -35,7 +35,7 @@ target_link_libraries(rat_handler
 if(WIN32)
     target_link_libraries(rat_handler PUBLIC ws2_32 wldap32 crypt32 normaliz)
 else()
-    target_link_libraries(rat_handler PUBLIC pthread)
+    target_link_libraries(rat_handler PUBLIC pthread )
 endif()
 
 # ======================================
