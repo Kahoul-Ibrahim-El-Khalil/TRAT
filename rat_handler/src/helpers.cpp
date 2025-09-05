@@ -1,4 +1,5 @@
 #include "rat/Handler.hpp"
+
 #include <boost/algorithm/string.hpp>
 
 namespace rat::handler {
@@ -18,37 +19,42 @@ size_t __findFirstOccurenceOfChar(const std::string &Input_String, char arg_C) {
 }
 
 uint16_t _stringToUint16(const std::string &str) {
-	try {
-		unsigned long value = std::stoul(str);
-		if (value > static_cast<unsigned long>(std::numeric_limits<uint16_t>::max())) {
-			throw std::out_of_range("Value too large for uint16_t");
+		try {
+			unsigned long value = std::stoul(str);
+				if(value > static_cast<unsigned long>(
+				               std::numeric_limits<uint16_t>::max())) {
+					throw std::out_of_range("Value too large for uint16_t");
+				}
+			return static_cast<uint16_t>(value);
 		}
-		return static_cast<uint16_t>(value);
-	} catch (const std::exception &) {
-		throw;
-	}
+		catch(const std::exception &) {
+			throw;
+		}
 }
+
 std::vector<std::string> splitArguments(const std::string &Input_String) {
 	std::vector<std::string> args;
 	std::string current;
 	bool in_quotes = false;
 
-	for (size_t i = 0; i < Input_String.size(); ++i) {
-		char c = Input_String[i];
+		for(size_t i = 0; i < Input_String.size(); ++i) {
+			char c = Input_String[i];
 
-		if (c == '"') {
-			in_quotes = !in_quotes; // toggle quote state
-		} else if (c == ' ' && !in_quotes) {
-			if (!current.empty()) {
-				args.push_back(current);
-				current.clear();
-			}
-		} else {
-			current += c;
+				if(c == '"') {
+					in_quotes = !in_quotes; // toggle quote state
+				}
+				else if(c == ' ' && !in_quotes) {
+						if(!current.empty()) {
+							args.push_back(current);
+							current.clear();
+						}
+				}
+				else {
+					current += c;
+				}
 		}
-	}
 
-	if (!current.empty())
+	if(!current.empty())
 		args.push_back(current);
 	return args;
 }
@@ -56,15 +62,17 @@ std::vector<std::string> splitArguments(const std::string &Input_String) {
 std::string stripQuotes(const std::string &Input_String) {
 	std::string string = Input_String;
 
-	// Remove outer double or single quotes
-	if (string.size() >= 2 && ((string.front() == '"' && string.back() == '"') || (string.front() == '\'' && string.back() == '\''))) {
-		string = string.substr(1, string.size() - 2);
-	}
+	    // Remove outer double or single quotes
+		if(string.size() >= 2 &&
+		   ((string.front() == '"' && string.back() == '"') ||
+		    (string.front() == '\'' && string.back() == '\''))) {
+			string = string.substr(1, string.size() - 2);
+		}
 
 	// Remove remaining single quotes at start/end
-	if (!string.empty() && string.front() == '\'')
+	if(!string.empty() && string.front() == '\'')
 		string.erase(0, 1);
-	if (!string.empty() && string.back() == '\'')
+	if(!string.empty() && string.back() == '\'')
 		string.pop_back();
 
 	return string;

