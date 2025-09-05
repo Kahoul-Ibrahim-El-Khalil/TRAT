@@ -21,15 +21,16 @@ class ThreadPool {
 
 	template <class T> auto enqueue(T task) -> std::future<decltype(task())> {
 		using return_type = decltype(task());
-		auto wrapper = std::make_shared<std::packaged_task<return_type()>>(std::move(task));
+		auto wrapper = std::make_shared<std::packaged_task<return_type()>>(
+		    std::move(task));
 		std::future<return_type> fut = wrapper->get_future();
 
 		{
 			std::lock_guard<std::mutex> lock(queue_mutex);
-			if (!stop_flag && tasks.size() < this->max_queue_length) {
-				tasks.emplace([wrapper] { (*wrapper)(); });
-				cond_var.notify_one();
-			}
+				if(!stop_flag && tasks.size() < this->max_queue_length) {
+					tasks.emplace([wrapper] { (*wrapper)(); });
+					cond_var.notify_one();
+				}
 		}
 
 		return fut;
