@@ -22,7 +22,7 @@ target_include_directories(rat_handler
 
 target_link_libraries(rat_handler
     PUBLIC
-        tiny-process-library
+		TINY_PROCESS_LIBRARY::tiny-process-library
         rat_encryption
         rat_networking
         rat_threading

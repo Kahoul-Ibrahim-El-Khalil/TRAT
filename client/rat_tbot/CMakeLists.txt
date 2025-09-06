@@ -8,12 +8,11 @@ add_library(rat_tbot STATIC ${TBOT_SOURCES})
 target_include_directories(rat_tbot
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/simdjson
       )
 
 target_link_libraries(rat_tbot
     PUBLIC
-		libsimdjson
+		SIMDJSON::simdjson
         rat_networking        # internal dependency
         fmt              # from root
 )
