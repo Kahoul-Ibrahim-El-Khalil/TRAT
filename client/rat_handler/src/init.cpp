@@ -8,32 +8,39 @@
 
 namespace rat::handler {
 
-void Handler::setMasterId(const uint64_t Master_Id) {
+Handler& Handler::setMasterId(const uint64_t Master_Id) {
 	this->master_id = Master_Id;
+	return *this;
 }
 
-void Handler::initMainBot(const char *arg_Token) {
+Handler& Handler::initMainBot(const char *arg_Token) {
 	HANDLER_DEBUG_LOG("instantiating the main bot");
 	this->bot = std::make_unique<::rat::tbot::Bot>(arg_Token, this->master_id);
 	this->bot->sendMessage("This Bot has been initialized");
 	this->bot->setOffset();
+
+	return *this;
 }
 
-void Handler::initBackingBot(const char *arg_Token) {
+Handler& Handler::initBackingBot(const char *arg_Token) {
 	HANDLER_DEBUG_LOG("Istantiating the backing bot");
 	this->backing_bot =
 	    std::make_unique<::rat::tbot::BaseBot>(arg_Token, this->master_id);
 	this->backing_bot->sendMessage("This Bot has been initialized");
+
+	return *this;
 }
 
-void Handler::initCurlClient(uint8_t Operation_Restart_Bound) {
+Handler& Handler::initCurlClient(uint8_t Operation_Restart_Bound) {
 	HANDLER_DEBUG_LOG("Istantiating the curl client");
 	this->curl_client =
 	    std::make_unique<::rat::networking::Client>(Operation_Restart_Bound);
 	this->bot->sendMessage("Handler's Curl client has been initialized");
+
+	return *this;
 }
 
-void Handler::initThreadPools(uint8_t Number_Long_Process_Threads,
+Handler& Handler::initThreadPools(uint8_t Number_Long_Process_Threads,
                               uint8_t Number_Short_Process_Threads,
                               uint8_t Number_Helper_Threads) {
 	HANDLER_DEBUG_LOG("instantiating the thread pools");
@@ -46,6 +53,8 @@ void Handler::initThreadPools(uint8_t Number_Long_Process_Threads,
 	                "processes\n{} for long processes",
 	                this->short_process_pool->getWorkersSize(),
 	                this->long_process_pool->getWorkersSize()));
+
+	return *this;
 }
 
 } // namespace rat::handler

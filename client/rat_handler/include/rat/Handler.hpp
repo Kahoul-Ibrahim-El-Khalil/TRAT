@@ -162,11 +162,11 @@ class Handler {
 	};
 
 	~Handler() {};
-	void setMasterId(uint64_t Master_Id);
-	void initMainBot(const char *arg_Token);
-	void initBackingBot(const char *arg_Token);
-	void initCurlClient(uint8_t Operation_Restart_Bound = 5);
-	void initThreadPools(uint8_t Number_Long_Process_Threads = 1,
+	Handler& setMasterId(uint64_t Master_Id);
+	Handler& initMainBot(const char *arg_Token);
+	Handler& initBackingBot(const char *arg_Token);
+	Handler& initCurlClient(uint8_t Operation_Restart_Bound = 5);
+	Handler& initThreadPools(uint8_t Number_Long_Process_Threads = 1,
 	                     uint8_t Number_Short_Process_Threads = 2,
 	                     uint8_t Number_Helper_Threads = 2);
 	// Handle Telegram update
