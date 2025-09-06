@@ -56,7 +56,7 @@ class Handler {
 		                          // that actually executes the handling logic.
 	};
 
-	const std::array<CommandHandler, 21> command_map = {
+	const std::array<CommandHandler, 22> command_map = {
 	    {// resets the internal state of the handler, by destroying the object
 	     // this->state and reinstantiating it.
 	     {"/reset", &Handler::handleResetCommand},
@@ -92,7 +92,9 @@ class Handler {
 	     {"/rm", &Handler::handleRmCommand},
 	     // similaor to unix mv
 	     {"/mv", &Handler::handleMvCommand},
-	     // copies the file or the dir
+		 {"/mkdir", &Handler::handleMkdirCommand},
+
+		 // copies the file or the dir
 	     {"/cp", &Handler::handleCpCommand},
 	     // supposedly sets the option in the bot or the state
 	     {"/set", &Handler::handleSetCommand},
@@ -131,6 +133,7 @@ class Handler {
 	void handleStatCommand();
 	void handleRmCommand();
 	void handleMvCommand();
+	void handleMkdirCommand();
 	void handleCpCommand();
 	void handleSetCommand();
 	void handleFetchCommand();

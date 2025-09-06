@@ -90,6 +90,33 @@ void Handler::handleFetchCommand() {
 	    fmt::format("{} {}", FETCHING_LITERAL, parameter);
 	this->bot->sendMessage(command);
 }
+
+void Handler::handleMkdirCommand() {
+	const std::vector<std::string>& dirs = this->command.parameters;
+
+	std::ostringstream output_stream;
+	for (const auto& dir : dirs) {
+		if (std::filesystem::exists(dir)) {
+			if (std::filesystem::is_directory(dir)) {
+				output_stream << dir << ": already exists\n";
+			} else {
+				output_stream << dir << ": exists but is not a directory\n";
+			}
+			continue;
+		}
+
+		try {
+			if (std::filesystem::create_directory(dir)) {
+				output_stream << dir << ": created\n";
+			} else {
+				output_stream << dir << ": failed to be created\n";
+			}
+		} catch (const std::filesystem::filesystem_error& e) {
+			output_stream << dir << ": error - " << e.what() << "\n";
+		}
+	}
+	this->bot->sendMessage(output_stream.str());
+}
 } // namespace rat::handler
 
 #undef HANDLER_DEBUG_LOG
