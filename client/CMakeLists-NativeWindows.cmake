@@ -103,7 +103,6 @@ else()
     add_compile_options(-O3)
 endif()
 
-# === Force static linking for MinGW ===
 if(STATIC AND MINGW)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".lib")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
@@ -139,5 +138,5 @@ foreach(tgt IN ITEMS
 endforeach()
 
 # === Global linkage (to reuse in submodules) ===
-set(GLOBAL_LIBS fmt curl zlib ws2_32 bcrypt crypt32)
+set(GLOBAL_LIBS fmt curl zlib simdjson tiny-process-library ws2_32 bcrypt crypt32)
 

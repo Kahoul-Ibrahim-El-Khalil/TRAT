@@ -56,7 +56,11 @@ BaseBot::BaseBot(const BaseBot &Other_Bot)
 
 // ---------------------- Getters ----------------------
 std::string BaseBot::getToken() const {
-	return token;
+	return this->token;
+}
+
+std::string BaseBot::getFileUrl() const {
+	return this->getting_file_url;
 }
 
 int64_t BaseBot::getMasterId() const {

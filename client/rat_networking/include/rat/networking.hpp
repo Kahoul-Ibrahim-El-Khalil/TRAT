@@ -1,6 +1,8 @@
 /*rat_networking/rat/include/networking.hpp*/
 #pragma once
+#include "rat/networking/helpers.hpp"
 #include "rat/networking/types.hpp"
+
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -8,8 +10,6 @@
 #include <filesystem>
 #include <string>
 #include <vector>
-
-#include "rat/networking/helpers.hpp"
 
 namespace rat::networking {
 
@@ -51,24 +51,33 @@ class Client : public EasyCurlHandler {
 	void reset();
 
   public:
-	Client(uint8_t Operation_Restart_Bound = 5, uint8_t Typical_Server_Endpoints_count = 1)
-		: operation_restart_bound(Operation_Restart_Bound), server_endpoints_count(Typical_Server_Endpoints_count), is_fresh(true) {
-		if (this->operation_restart_bound == 0) {
-			this->operation_restart_bound = 1; // Ensure at least 1 operation
-		}
-		curl_easy_setopt(this->curl, CURLOPT_MAXCONNECTS, (long)(this->server_endpoints_count));
+	Client(uint8_t Operation_Restart_Bound = 5,
+	       uint8_t Typical_Server_Endpoints_count = 1)
+	    : operation_restart_bound(Operation_Restart_Bound),
+	      server_endpoints_count(Typical_Server_Endpoints_count),
+	      is_fresh(true) {
+			if(this->operation_restart_bound == 0) {
+				this->operation_restart_bound =
+				    1; // Ensure at least 1 operation
+			}
+		curl_easy_setopt(this->curl, CURLOPT_MAXCONNECTS,
+		                 (long)(this->server_endpoints_count));
 		curl_easy_setopt(this->curl, CURLOPT_MAXLIFETIME_CONN, 1L);
-		curl_easy_setopt(this->curl, CURLOPT_FRESH_CONNECT, 1L); // New connection each time
+		curl_easy_setopt(this->curl, CURLOPT_FRESH_CONNECT,
+		                 1L); // New connection each time
 	};
 
-	NetworkingResult download(const char *Downloading_Url, const std::filesystem::path &File_Path);
+	NetworkingResult download(const char *Downloading_Url,
+	                          const std::filesystem::path &File_Path);
 
-	inline NetworkingResult download(const std::string &Downloading_Url, const std::filesystem::path &File_Path) {
+	inline NetworkingResult download(const std::string &Downloading_Url,
+	                                 const std::filesystem::path &File_Path) {
 		return this->download(Downloading_Url.c_str(), File_Path);
 	}
 
 	inline NetworkingResult download(const char *Downloading_Url) {
-		auto path = std::filesystem::current_path() / _getFilePathFromUrl(Downloading_Url);
+		auto path = std::filesystem::current_path() /
+		            _getFilePathFromUrl(Downloading_Url);
 		return this->download(Downloading_Url, path);
 	}
 
@@ -76,27 +85,38 @@ class Client : public EasyCurlHandler {
 		return this->download(Downloading_Url.c_str());
 	}
 
-	NetworkingResult upload(const std::filesystem::path &File_Path, const char *Uploading_Url);
+	NetworkingResult
+	upload(const std::filesystem::path &File_Path, const char *Uploading_Url);
 
-	inline NetworkingResult upload(const std::filesystem::path &File_Path, const std::string &Uploading_Url) {
+	inline NetworkingResult upload(const std::filesystem::path &File_Path,
+	                               const std::string &Uploading_Url) {
 		return this->upload(File_Path, Uploading_Url.c_str());
 	}
 
-	NetworkingResult uploadMimeFile(const MimeContext &Mime_Context, std::vector<char> &Response_Buffer);
+	NetworkingResult uploadMimeFile(const MimeContext &Mime_Context,
+	                                std::vector<char> &Response_Buffer);
 
-	NetworkingResult sendHttpRequest(const char *arg_Url, std::vector<char> &arg_Buffer);
+	NetworkingResult
+	sendHttpRequest(const char *arg_Url, std::vector<char> &arg_Buffer);
 
-	inline NetworkingResult sendHttpRequest(const std::string &arg_Url, std::vector<char> &arg_Buffer) {
+	inline NetworkingResult
+	sendHttpRequest(const std::string &arg_Url, std::vector<char> &arg_Buffer) {
 		return this->sendHttpRequest(arg_Url.c_str(), arg_Buffer);
 	}
 
-	NetworkingResult sendHttpRequest(const char *arg_Url, char *p_Buffer, size_t Buffer_Size);
+	NetworkingResult
+	sendHttpRequest(const char *arg_Url, char *p_Buffer, size_t Buffer_Size);
 
-	inline NetworkingResult sendHttpRequest(const std::string &arg_Url, char *p_Buffer, size_t Buffer_Size) {
+	inline NetworkingResult
+	sendHttpRequest(const std::string &arg_Url, char *p_Buffer,
+	                size_t Buffer_Size) {
 		return this->sendHttpRequest(arg_Url.c_str(), p_Buffer, Buffer_Size);
 	}
 
-	NetworkingResult downloadData(const std::string &arg_Url, std::vector<uint8_t> &Out_Buffer);
+	NetworkingResult
+	downloadData(const std::string &arg_Url, std::vector<uint8_t> &Out_Buffer);
+	NetworkingResult downloadDataXored(const std::string &arg_Url,
+	                                   XorDataContext &Xor_Data_Context);
 };
 
 } // namespace rat::networking

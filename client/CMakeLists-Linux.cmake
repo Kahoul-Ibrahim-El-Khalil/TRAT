@@ -2,7 +2,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# === Precompiled headers (only once) ===
 add_library(rat_precompiled_headers INTERFACE)
 
 target_precompile_headers(rat_precompiled_headers INTERFACE
@@ -32,9 +31,10 @@ target_precompile_headers(rat_precompiled_headers INTERFACE
 	<curl/curl.h>
 	<fmt/core.h>
 	<fmt/chrono.h>
+	<tiny-process-library/process.hpp>
+	<simdjson.h>
 )
 
-# === Output directories ===
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
@@ -53,6 +53,23 @@ option(DEBUG_RAT_THREADING "Enable debug logs in threading module" OFF)
 find_package(fmt REQUIRED)
 find_package(CURL REQUIRED)
 
+add_library(simdjson STATIC IMPORTED GLOBAL)
+set_target_properties(simdjson PROPERTIES
+    IMPORTED_LOCATION "/usr/local/lib/libsimdjson.a"
+    INTERFACE_INCLUDE_DIRECTORIES "/usr/local/include"
+)
+
+add_library(tiny-process-library STATIC IMPORTED GLOBAL)
+set_target_properties(tiny-process-library PROPERTIES
+    IMPORTED_LOCATION "/usr/local/lib/libtiny-process-library.a"
+    INTERFACE_INCLUDE_DIRECTORIES "/usr/local/include"
+)
+
+add_library(SIMDJSON::simdjson ALIAS simdjson)
+add_library(TINY_PROCESS_LIBRARY::tiny-process-library ALIAS tiny-process-library)
+
+
+
 if(DEBUG OR DEBUG_RAT_NETWORKING OR DEBUG_RAT_SYSTEM OR DEBUG_RAT_PROCESS OR DEBUG_RAT_TBOT OR DEBUG_RAT_HANDLER OR DEBUG_RAT_THREADING)
     find_package(spdlog REQUIRED)
     message(STATUS "Debug mode enabled: adding -g -O0")
@@ -70,8 +87,6 @@ else()
 endif()
 
 # === Submodules ===
-add_subdirectory(simdjson)
-add_subdirectory(tiny-process-library)
 add_subdirectory(rat_encryption)
 add_subdirectory(rat_networking)
 add_subdirectory(rat_threading)
@@ -97,3 +112,4 @@ foreach(tgt IN ITEMS
     endif()
 endforeach()
 
+set(GLOBAL_LIBS fmt curl zlib simdjson tiny-process-library)
