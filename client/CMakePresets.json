@@ -9,7 +9,6 @@
 			"name": "release",
 			"displayName": "Release",
 			"description": "Optimized release build for any platform.",
-			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/build/release/${hostSystemName}",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
@@ -21,7 +20,6 @@
 			"name": "debug",
 			"displayName": "Debug",
 			"description": "Debug build with all modules logging.",
-			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/build/debug/${hostSystemName}",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Debug",

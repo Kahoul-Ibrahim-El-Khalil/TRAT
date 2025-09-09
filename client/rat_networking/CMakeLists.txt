@@ -15,5 +15,5 @@ target_link_libraries(rat_networking
 )
 
 
-add_executable(rat_networker src/networker.cpp)
-target_link_libraries(rat_networker PRIVATE rat_networking)
+#add_executable(rat_networker src/networker.cpp)
+#target_link_libraries(rat_networker PRIVATE rat_networking)

@@ -120,13 +120,4 @@ size_t getDirSize(const std::filesystem::path &Dir_Path);
 bool createDir(
     const std::filesystem::path &Dir_Path); // May require elevated privileges
 
-// -------------------------------
-// Process Management
-// -------------------------------
-/*boost_wrapper*/
-
-uint32_t getProcessId(void);
-std::string listProcesses(void);    // May require elevated privileges
-bool killProcess(uint32_t arg_Pid); // May require elevated privileges
-
 } // namespace rat::system

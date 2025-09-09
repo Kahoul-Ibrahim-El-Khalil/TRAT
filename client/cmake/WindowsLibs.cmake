@@ -1,5 +1,11 @@
 if(WIN32)
-    include_directories(${STATIC_INCLUDE})
+	set(STATIC_PATH "${CMAKE_SOURCE_DIR}/../../Static")
+	set(STATIC_LIB "${STATIC_PATH}/lib")
+	set(STATIC_INCLUDE "${STATIC_PATH}/include")
+
+	message(STATUS "STATIC_LIB = ${STATIC_LIB}")
+	message(STATUS "STATIC_INCLUDE = ${STATIC_INCLUDE}")
+	include_directories(${STATIC_INCLUDE})
     link_directories(${STATIC_LIB})
 
     add_library(fmt STATIC IMPORTED GLOBAL)

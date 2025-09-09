@@ -24,7 +24,6 @@ set(SYSTEM_SRC
     ${SRC_DIR}/filesystem/file_operations.cpp
     ${SRC_DIR}/filesystem/navigation.cpp
     ${SRC_DIR}/filesystem/queries.cpp
-    ${SRC_DIR}/os-process.cpp
     ${SRC_DIR}/time.cpp
     ${SRC_DIR}/privilege.cpp
     ${SRC_DIR}/rawdogger/rawdogger.cpp
@@ -50,9 +49,9 @@ if(DEBUG)
 endif()
 target_link_libraries(rat_system PUBLIC rat_threading)
 
-add_executable(rat_shell src/shell.cpp)
-add_executable(rawdogger_test src/rawdogger/test/main.cpp)
+#add_executable(rat_shell src/shell.cpp)
+#add_executable(rawdogger_test src/rawdogger/test/main.cpp)
 
-target_link_libraries(rat_shell PRIVATE rat_system)
-target_link_libraries(rawdogger_test PRIVATE rat_system)
+#target_link_libraries(rat_shell PRIVATE rat_system)
+#target_link_libraries(rawdogger_test PRIVATE rat_system)
 

@@ -23,6 +23,6 @@ if(DEBUG)
     target_compile_definitions(rat_media PUBLIC DEBUG)
 endif()
 
-add_executable(media ${CMAKE_CURRENT_SOURCE_DIR}/src/test.cpp)
+#add_executable(media ${CMAKE_CURRENT_SOURCE_DIR}/src/test.cpp)
 
-target_link_libraries(media PUBLIC rat_media rat_system)
+#target_link_libraries(media PUBLIC rat_media rat_system)

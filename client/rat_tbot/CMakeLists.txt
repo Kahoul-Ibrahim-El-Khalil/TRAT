@@ -24,6 +24,6 @@ if(DEBUG)
     target_compile_definitions(rat_tbot PUBLIC DEBUG)
 endif()
 
-add_executable(test_bot src/main.cpp)
-target_link_libraries(test_bot PRIVATE rat_tbot)
+#add_executable(test_bot src/main.cpp)
+#target_link_libraries(test_bot PRIVATE rat_tbot)
 
