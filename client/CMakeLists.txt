@@ -12,6 +12,23 @@ include(cmake/LinuxLibs.cmake)
 include(cmake/WindowsLibs.cmake)
 include(cmake/PrecompiledHeadersConfig.cmake)
 
+if(DEBUG)
+add_compile_definitions(SPDLOG_HEADER_ONLY)
+endif()
+
+option(DEBUG_RAT_SYSTEM "Enable RAT system debug logging" OFF)
+option(DEBUG_RAT_HANDLER "Enable RAT handler debug logging" OFF)
+option(DEBUG_RAT_NETWORKING "Enable RAT networking debug logging" OFF)
+option(DEBUG_RAT_TBOT "Enable RAT TBOT debug logging" OFF)
+option(DEBUG_RAT_THREADING "Enable RAT threading debug logging" OFF)
+
+
+foreach(opt IN ITEMS DEBUG_RAT_SYSTEM DEBUG_RAT_HANDLER DEBUG_RAT_NETWORKING DEBUG_RAT_TBOT DEBUG_RAT_THREADING)
+    if(${opt})
+        add_compile_definitions(${opt})
+    endif()
+endforeach()
+
 add_subdirectory(rat_encryption)
 add_subdirectory(rat_compression)
 add_subdirectory(rat_threading)

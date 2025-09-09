@@ -1,5 +1,11 @@
 #pragma once
 
+#ifdef DEBUG
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+#endif // DEBUG#endif
+
+
 #include <algorithm>
 #include <atomic>
 #include <cstdint>

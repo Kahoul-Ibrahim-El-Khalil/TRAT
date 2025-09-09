@@ -1,4 +1,3 @@
-
 add_library(rat_networking STATIC
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/EasyCurlHandler.cpp
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/Client.cpp

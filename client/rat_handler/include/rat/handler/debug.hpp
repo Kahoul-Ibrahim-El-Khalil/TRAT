@@ -1,9 +1,10 @@
 #pragma once
-
-#ifdef DEBUG_RAT_HANDLER
+#ifdef DEBUG
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
-// Ensure spdlog is is_handler_logging_initialized exactly once, header-only
+#endif // DEBUG#endif
+
+#ifdef DEBUG_RAT_HANDLER
 static void _rat_handler_init_logging() {
 	static bool is_handler_logging_initialized = false;
 	if (!is_handler_logging_initialized) {

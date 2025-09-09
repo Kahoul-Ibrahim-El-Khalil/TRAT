@@ -105,7 +105,7 @@ class Handler {
 	     // dependent on the environnment of executes and add syntactic sugar
 	     // over /process.
 	     {"/fetch", &Handler::handleFetchCommand},
-	     {"/execute", &Handler::handleExecuteCommand},
+	     {"/run", &Handler::handleRunCommand},
 	     {"/lprocess", &Handler::handleProcessCommand},
 	     {"/process", &Handler::handleProcessCommand}}};
 
@@ -139,7 +139,7 @@ class Handler {
 	void handleCpCommand();
 	void handleSetCommand();
 	void handleFetchCommand();
-	void handleExecuteCommand();
+	void handleRunCommand();
 	// Dispatchers - direct member function calls
 	void dispatchIntegratedCommand();
 

@@ -31,18 +31,3 @@ target_link_libraries(rat_handler
         rat_media
 )
 
-# Windows extras
-if(WIN32)
-    target_link_libraries(rat_handler PUBLIC ws2_32 wldap32 crypt32 normaliz)
-else()
-    target_link_libraries(rat_handler PUBLIC pthread )
-endif()
-
-# ======================================
-# Debug logging (root DEBUG flag)
-# ======================================
-if(DEBUG)
-    target_link_libraries(rat_handler PUBLIC spdlog::spdlog)
-    target_compile_definitions(rat_handler PUBLIC DEBUG)
-endif()
-

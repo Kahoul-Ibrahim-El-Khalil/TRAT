@@ -12,7 +12,6 @@
 
 namespace rat::media::screenshot {
 
-// --- Check ffmpeg availability ---
 bool is_ffmpeg_available() {
 #ifdef _WIN32
 	FILE *pipe = _popen("where ffmpeg", "r");

@@ -1,31 +1,98 @@
 {
-	"version": 3,
-	"cmakeMinimumRequired": {
-		"major": 3,
-		"minor": 19
-	},
-	"configurePresets": [
-		{
-			"name": "release",
-			"displayName": "Release",
-			"description": "Optimized release build for any platform.",
-			"binaryDir": "${sourceDir}/build/release/${hostSystemName}",
-			"cacheVariables": {
-				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_CXX_FLAGS": "-O3",
-				"DEBUG": "OFF"
-			}
-		},
-		{
-			"name": "debug",
-			"displayName": "Debug",
-			"description": "Debug build with all modules logging.",
-			"binaryDir": "${sourceDir}/build/debug/${hostSystemName}",
-			"cacheVariables": {
-				"CMAKE_BUILD_TYPE": "Debug",
-				"CMAKE_CXX_FLAGS": "-Wall -Werror -Wpedantic -g -O0",
-				"DEBUG": "ON"
-			}
-		}
-	]
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 19
+  },
+  "configurePresets": [
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Optimized release build for any platform.",
+      "binaryDir": "${sourceDir}/build/release/${hostSystemName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-O3",
+        "DEBUG": "OFF",
+        "NDEBUG": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "description": "Debug build with all modules logging.",
+      "binaryDir": "${sourceDir}/build/debug/${hostSystemName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-Wall -Werror -Wpedantic -g -O0",
+        "DEBUG": "ON",
+        "DEBUG_RAT_HANDLER": "ON",
+        "DEBUG_RAT_NETWORKING": "ON",
+        "DEBUG_RAT_TBOT": "ON",
+        "DEBUG_RAT_SYSTEM": "ON",
+        "DEBUG_RAT_THREADING": "ON"
+      }
+    },
+    {
+      "name": "debug-handler",
+      "displayName": "Debug-Handler",
+      "description": "Debug build with handler logging.",
+      "binaryDir": "${sourceDir}/build/debug-handler/${hostSystemName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-Wall -Werror -Wpedantic -g -O0",
+        "DEBUG": "ON",
+        "DEBUG_RAT_HANDLER": "ON"
+      }
+    },
+    {
+      "name": "debug-tbot",
+      "displayName": "Debug TBOT",
+      "description": "Debug build with TBOT module logging.",
+      "binaryDir": "${sourceDir}/build/debug-tbot/${hostSystemName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-Wall -Werror -Wpedantic -g -O0",
+        "DEBUG": "ON",
+        "DEBUG_RAT_TBOT": "ON"
+      }
+    },
+    {
+      "name": "debug-networking",
+      "displayName": "Debug Networking",
+      "description": "Debug build with rat_networking module logging.",
+      "binaryDir": "${sourceDir}/build/debug-networking/${hostSystemName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-Wall -Werror -Wpedantic -g -O0",
+        "DEBUG": "ON",
+        "DEBUG_RAT_TBOT": "ON"
+      }
+    },
+    {
+      "name": "debug-system",
+      "displayName": "Debug System",
+      "description": "Debug build with rat_system module logging.",
+      "binaryDir": "${sourceDir}/build/debug-system/${hostSystemName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-Wall -Werror -Wpedantic -g -O0",
+        "DEBUG": "ON",
+        "DEBUG_RAT_SYSTEM": "ON"
+      }
+    },
+    {
+      "name": "debug-threading",
+      "displayName": "Debug RAT Threading",
+      "description": "Debug build with rat_threading module logging.",
+      "binaryDir": "${sourceDir}/build/debug-threading/${hostSystemName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-Wall -Werror -Wpedantic -g -O0",
+        "DEBUG": "ON",
+        "DEBUG_RAT_THREADING": "ON"
+      }
+    }
+  ]
 }
+

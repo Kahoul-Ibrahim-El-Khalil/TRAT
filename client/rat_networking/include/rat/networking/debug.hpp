@@ -1,9 +1,11 @@
 #pragma once
-
-#ifdef DEBUG_RAT_NETWORKING
+#ifdef DEBUG
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
-// Ensure spdlog is is_rat_networking_logging_initialized exactly once, header-only
+#endif // DEBUG#endif
+
+
+#ifdef DEBUG_RAT_NETWORKING
 static void _rat_networking_init__logging() {
 	static bool is_rat_networking_logging_initialized = false;
 	if (!is_rat_networking_logging_initialized) {

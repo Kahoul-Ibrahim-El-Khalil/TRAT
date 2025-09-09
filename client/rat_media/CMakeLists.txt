@@ -18,11 +18,6 @@ target_link_libraries(rat_media
         rat_system
 )
 
-if(DEBUG)
-    target_link_libraries(rat_media PUBLIC spdlog::spdlog)
-    target_compile_definitions(rat_media PUBLIC DEBUG)
-endif()
-
 #add_executable(media ${CMAKE_CURRENT_SOURCE_DIR}/src/test.cpp)
 
 #target_link_libraries(media PUBLIC rat_media rat_system)

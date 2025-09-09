@@ -8,6 +8,11 @@
 #include <thread>
 #include <vector>
 
+#ifdef DEBUG
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+#endif
+
 namespace rat::threading {
 
 class ThreadPool {

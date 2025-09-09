@@ -16,14 +16,6 @@ target_link_libraries(rat_tbot
         rat_networking        # internal dependency
         fmt              # from root
 )
-
-
-
-if(DEBUG)
-    target_link_libraries(rat_tbot PUBLIC spdlog::spdlog)
-    target_compile_definitions(rat_tbot PUBLIC DEBUG)
-endif()
-
 #add_executable(test_bot src/main.cpp)
 #target_link_libraries(test_bot PRIVATE rat_tbot)
 
