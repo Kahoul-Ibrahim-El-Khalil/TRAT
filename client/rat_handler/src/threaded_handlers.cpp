@@ -1,5 +1,4 @@
 /*rat_handler/src/threaded_handler.cpp*/
-#include <tiny-process-library/process.hpp> //tiny-process-library
 #include "rat/Handler.hpp"
 #include "rat/handler/debug.hpp"
 #include "rat/media.hpp"
@@ -9,10 +8,7 @@
 #include <filesystem>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
-#include <memory>
-#include <mutex>
-#include <sstream>
-#include <string>
+#include <tiny-process-library/process.hpp> //tiny-process-library
 
 namespace rat::handler {
 constexpr size_t MAX_TELEGRAM_UPLOAD_SIZE = 50 * 1024 * KB;

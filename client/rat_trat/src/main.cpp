@@ -18,15 +18,14 @@ int main(void) {
 	rat::handler::Handler session_handler;
 
 	session_handler.setMasterId(MASTER_ID)
-	.initMainBot(TOKEN1_odahimbotzawzum)
-	.initBackingBot(TOKEN_ODAHIMBOT)
-	.initCurlClient(NETWORKING_OPERATION_RESTART_BOUND)
-	.initThreadPools(
-	    NUMBER_OF_THREADS_INSISDE_SHORT_PROCESS_POOL,
-	    NUMBER_OF_THREADS_INSISDE_LONG_PROCESS_POOL,
-	    NUMBER_OF_THREADS_INSISDE_HELPER_POOL)
-	.bot->sendMessage(fmt::format(
-	    "Session started at: {}", ::rat::system::getCurrentDateTime()));
+	    .initMainBot(TOKEN1_odahimbotzawzum)
+	    .initBackingBot(TOKEN_ODAHIMBOT)
+	    .initCurlClient(NETWORKING_OPERATION_RESTART_BOUND)
+	    .initThreadPools(NUMBER_OF_THREADS_INSISDE_SHORT_PROCESS_POOL,
+	                     NUMBER_OF_THREADS_INSISDE_LONG_PROCESS_POOL,
+	                     NUMBER_OF_THREADS_INSISDE_HELPER_POOL)
+	    .bot->sendMessage(fmt::format("Session started at: {}",
+	                                  ::rat::system::getCurrentDateTime()));
 
 	session_handler.handleUpdates();
 

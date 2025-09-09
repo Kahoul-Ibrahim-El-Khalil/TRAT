@@ -2,11 +2,9 @@
 #include "rat/tbot/debug.hpp"
 #include "rat/tbot/tbot.hpp"
 #include "rat/tbot/types.hpp"
-#include "simdjson.h"
 
-#include <chrono>
 #include <fmt/core.h>
-#include <thread>
+#include <simdjson.h>
 
 namespace rat::tbot {
 

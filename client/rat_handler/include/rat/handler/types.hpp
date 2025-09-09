@@ -1,12 +1,10 @@
 #pragma once
 #include "rat/media.hpp"
 
-#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
-#include <iostream>
+#include <optional>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 // The number of local stored commands can only be 255 at maximum and even less
@@ -14,7 +12,7 @@
 namespace rat::handler {
 
 struct CommandPathPair {
-	std::string command;
+	std::string_view command;
 	std::filesystem::path path;
 };
 
@@ -60,7 +58,6 @@ template <std::size_t Capacity> struct CommandPathStaticArray {
 		return array[i];
 	}
 
-	// Iterators for range-for
 	CommandPathPair *begin() noexcept {
 		return array;
 	}
@@ -127,22 +124,18 @@ struct Command {
 	std::string directive;
 	std::vector<std::string> parameters;
 
-	// Default constructor
 	Command() = default;
 
-	// Parameterized constructor
 	Command(const std::string &arg_Directive,
 	        const std::vector<std::string> &arg_Parameters)
 	    : directive(arg_Directive), parameters(arg_Parameters) {
 	}
 
-	// Copy constructor
 	Command(const Command &Other_Command)
 	    : directive(Other_Command.directive),
 	      parameters(Other_Command.parameters) {
 	}
 
-	// Copy assignment
 	Command &operator=(const Command &Other_Command) {
 			if(this != &Other_Command) {
 				directive = Other_Command.directive;
@@ -151,7 +144,6 @@ struct Command {
 		return *this;
 	}
 
-	// Move constructor
 	Command(Command &&Other_Command) noexcept
 	    : directive(std::move(Other_Command.directive)),
 	      parameters(std::move(Other_Command.parameters)) {

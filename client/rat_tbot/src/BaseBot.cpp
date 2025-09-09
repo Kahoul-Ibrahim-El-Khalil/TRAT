@@ -4,9 +4,7 @@
 #include "rat/tbot/tbot.hpp"
 
 #include <curl/curl.h>
-#include <filesystem>
 #include <fmt/core.h>
-#include <fstream>
 #include <simdjson.h>
 
 namespace rat::tbot {

@@ -2,12 +2,7 @@
 #include "rat/handler/debug.hpp"
 #include "rat/system.hpp"
 
-#include <chrono>
 #include <curl/curl.h>
-#include <filesystem>
-#include <mutex>
-#include <sstream>
-#include <thread>
 
 namespace rat::handler {
 

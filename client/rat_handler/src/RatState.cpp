@@ -2,10 +2,6 @@
 
 #include <cstdlib>
 #include <fmt/core.h>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -15,8 +11,6 @@
 #endif
 
 #include <cstdio>
-#include <filesystem>
-#include <sstream>
 
 namespace rat::handler {
 
