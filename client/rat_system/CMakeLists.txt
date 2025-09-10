@@ -30,6 +30,10 @@ target_include_directories(rat_system
 
 target_link_libraries(rat_system PUBLIC fmt rat_threading)
 
+if (DEBUG_RAT_SYSTEM)
+	target_compile_definitions(rat_system PUBLIC DEBUG_RAT_SYSTEM)
+    target_link_libraries(rat_system PUBLIC spdlog::spdlog)
+endif()
 
 #add_executable(rat_shell src/shell.cpp)
 #add_executable(rawdogger_test src/rawdogger/test/main.cpp)

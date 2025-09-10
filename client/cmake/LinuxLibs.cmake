@@ -3,7 +3,7 @@ if(UNIX)
     # Core libraries
     find_package(fmt REQUIRED)
     find_package(CURL REQUIRED)
-
+	find_package(ZLIB REQUIRED)
 	add_library(simdjson STATIC IMPORTED GLOBAL)
     set_target_properties(simdjson PROPERTIES
         IMPORTED_LOCATION "/usr/local/lib/libsimdjson.a"

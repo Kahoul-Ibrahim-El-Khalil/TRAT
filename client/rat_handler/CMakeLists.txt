@@ -23,11 +23,15 @@ target_include_directories(rat_handler
 target_link_libraries(rat_handler
     PUBLIC
 		TINY_PROCESS_LIBRARY::tiny-process-library
-        rat_encryption
+        rat_compression
+		rat_encryption
         rat_networking
         rat_threading
         rat_tbot
         rat_system
         rat_media
 )
-
+if (DEBUG_RAT_HANDLER)
+	target_compile_definitions(rat_handler PUBLIC DEBUG_RAT_HANDLER)
+    target_link_libraries(rat_handler PUBLIC spdlog::spdlog)
+endif()

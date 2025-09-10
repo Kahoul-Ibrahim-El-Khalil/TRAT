@@ -13,6 +13,10 @@ target_link_libraries(rat_networking
 		CURL::libcurl
 )
 
+if (DEBUG_RAT_NETWORKING)
+    target_compile_definitions(rat_networking PUBLIC DEBUG_RAT_NETWORKING)
+    target_link_libraries(rat_networking PUBLIC spdlog::spdlog)
+endif()
 
 #add_executable(rat_networker src/networker.cpp)
 #target_link_libraries(rat_networker PRIVATE rat_networking)

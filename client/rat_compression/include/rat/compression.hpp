@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
-
 #include <zlib.h>
 
 #define DEFAULT_COMPRESSION_LEVEL static_cast<uint8_t>(Z_DEFAULT_COMPRESSION)
@@ -21,19 +20,20 @@ is_compressed     = false → data currently holds uncompressed bytes;
 simply because it is by design type agnostic, it could be a vector, array,
 queque, stack array .., resizing is the duty of the caller*/
 struct CompressionContext {
-  uint8_t *data; // pointer to the data buffer
-  size_t uncompressed_size;
-  size_t compressed_size;
-  bool is_compressed;
+	uint8_t *data; // pointer to the data buffer
+	size_t uncompressed_size;
+	size_t compressed_size;
+	bool is_compressed;
 
-  uint8_t compression_level; // 0–9, corresponds to zlib levels
+	uint8_t compression_level; // 0–9, corresponds to zlib levels
 
-  CompressionContext(uint8_t *p_Data, size_t Uncompressed_Size,
-                     size_t Compressed_Size, bool Is_Compressed,
-                     uint8_t level = DEFAULT_COMPRESSION_LEVEL)
-      : data(p_Data), uncompressed_size(Uncompressed_Size),
-        compressed_size(Compressed_Size), is_compressed(Is_Compressed),
-        compression_level(level) {}
+	CompressionContext(uint8_t *p_Data, size_t Uncompressed_Size,
+	                   size_t Compressed_Size, bool Is_Compressed,
+	                   uint8_t level = DEFAULT_COMPRESSION_LEVEL)
+	    : data(p_Data), uncompressed_size(Uncompressed_Size),
+	      compressed_size(Compressed_Size), is_compressed(Is_Compressed),
+	      compression_level(level) {
+	}
 };
 
 // There is no deconstructor since it is not supposed to actually destroy the
