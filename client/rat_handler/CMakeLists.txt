@@ -1,7 +1,8 @@
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 set(HANDLER_SRC
-    ${SRC_DIR}/init.cpp
+	${SRC_DIR}/downloadXoredFile.cpp
+	${SRC_DIR}/init.cpp
     ${SRC_DIR}/handleUpdate.cpp
     ${SRC_DIR}/handlers.cpp
     ${SRC_DIR}/handleHelpCommand.cpp
