@@ -32,6 +32,8 @@ class BaseBot {
 
 	std::string getting_file_url;
 
+	std::string downloading_file_url;
+
   protected:
 	int64_t last_update_id;
 
@@ -61,6 +63,7 @@ class BaseBot {
 	setOffset(); // only for bots handling updates, not for sender-only bots
 
 	std::string getBotFileUrl() const;
+	std::string getDownloadingFileUrl() const;
 	void setUpdateIterval(uint16_t Update_Interval);
 
 	void setLastUpdateId(int64_t arg_Id);

@@ -124,7 +124,6 @@ void Handler::handleProcessCommand() {
 		this->backing_bot->sendMessage(
 		    fmt::format("Process launched ID: {}", process_id));
 
-		this->backing_bot_mutex.unlock();
 		const int process_exit_code = process.get_exit_status();
 
 		const std::string final_message = fmt::format(
@@ -132,7 +131,6 @@ void Handler::handleProcessCommand() {
 		    stdout_stream.str(), stderr_stream.str());
 
 		constexpr size_t TELEGRAM_LIMIT = 3000; // 3 KB safe cap
-		this->backing_bot_mutex.lock();
 			if(final_message.size() <= TELEGRAM_LIMIT) {
 				this->backing_bot->sendMessage(final_message);
 			}

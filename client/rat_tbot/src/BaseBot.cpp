@@ -30,6 +30,9 @@ BaseBot::BaseBot(const std::string &arg_Token, int64_t Master_Id,
 	this->getting_file_url =
 	    fmt::format("{}{}/getFile?file_id=", TELEGRAM_BOT_API_BASE_URL, token);
 
+	this->downloading_file_url =
+	    fmt::format("{}/file/bot{}", TELEGRAM_API_URL, token);
+
 	// Pre-allocate HTTP buffer
 	this->http_buffer.resize(
 	    HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING, 0);
@@ -61,6 +64,10 @@ std::string BaseBot::getFileUrl() const {
 	return this->getting_file_url;
 }
 
+std::string BaseBot::getDownloadingFileUrl() const {
+	return this->downloading_file_url;
+}
+
 int64_t BaseBot::getMasterId() const {
 	return master_id;
 }
@@ -81,7 +88,6 @@ std::string BaseBot::getBotFileUrl() const {
 	return getting_file_url;
 }
 
-// ---------------------- Offset ----------------------
 void BaseBot::setOffset() {
 	const std::string init_url = fmt::format(
 	    "{}{}/getUpdates?offset=-1&limit=1", TELEGRAM_BOT_API_BASE_URL, token);
@@ -395,8 +401,8 @@ bool BaseBot::downloadFile(const std::string &File_Id,
 
 			std::string_view file_path =
 			    doc["result"]["file_path"].get_string();
-			const std::string file_url = fmt::format(
-			    "{}/file/bot{}/{}", TELEGRAM_API_URL, token, file_path);
+			const std::string file_url =
+			    fmt::format("{}/{}", this->downloading_file_url, file_path);
 
 			const auto download_response =
 			    this->curl_client.download(file_url, Out_Path);

