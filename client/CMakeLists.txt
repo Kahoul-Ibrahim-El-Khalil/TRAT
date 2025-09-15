@@ -14,6 +14,7 @@ include(cmake/PrecompiledHeadersConfig.cmake)
 
 if(DEBUG)
 	find_package(spdlog REQUIRED)
+	add_compile_definitions(SPDLOG_COMPILED_LIB)
 endif()
 
 option(DEBUG_RAT_SYSTEM "Enable RAT system debug logging" OFF)

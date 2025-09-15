@@ -12,9 +12,10 @@
       "binaryDir": "${sourceDir}/build/release/${hostSystemName}",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_FLAGS": "-O3",
+        "CMAKE_CXX_FLAGS": "-O3 -static -static-libgcc -static-libstdc++",
         "DEBUG": "OFF",
-        "NDEBUG": "ON"
+        "NDEBUG": "ON",
+        "BUILD_SHARED_LIBS": "OFF"
       }
     },
     {

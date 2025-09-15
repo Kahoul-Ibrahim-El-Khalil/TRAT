@@ -100,7 +100,7 @@ void Handler::dispatchDynamicCommand() {
 			return;
 		}
 
-	const std::filesystem::path &real_path = it->path;
+	const std::filesystem::path &real_path = it->second;
 
 	std::string new_message;
 		if(!rest.empty()) {

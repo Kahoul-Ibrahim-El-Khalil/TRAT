@@ -1,16 +1,8 @@
-#include "rat/handler/types.hpp" // Make sure we include the declaration
-
-#include <cstdlib>
+#include "rat/handler/types.hpp"
 #include <fmt/core.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <cstdio> // popen, fgets, pclose
-#include <unistd.h>
-#endif
-
 #include <cstdio>
+#include <cstdlib>
+#include <array>
 
 namespace rat::handler {
 
@@ -31,95 +23,73 @@ static constexpr const char *TOOLS[] = {
 
 constexpr size_t KB = 1024;
 
-// -------------------
-// Constructor
-// -------------------
 RatState::RatState() {
-		for(size_t i = 0; i < ::std::size(TOOLS); ++i) {
-			auto path = findExecutable(TOOLS[i]);
-				if(!path.empty()) {
-					this->command_path_map.push_back(TOOLS[i],
-					                                 ::std::move(path));
-				}
-		}
-	this->payload.reserve(50 * KB);
+    for (size_t i = 0; i < std::size(TOOLS); ++i) {
+        auto path = findExecutable(TOOLS[i]);
+        if (!path.empty()) {
+            command_path_map.emplace(TOOLS[i], std::move(path));
+        }
+    }
+    payload.reserve(50 * KB);
 }
 
-// -------------------
-// Tool path resolver
-// -------------------
-std::filesystem::path
-RatState::findExecutable(const std::string &arg_Tool) const {
 #ifdef _WIN32
-	char buffer[MAX_PATH];
-		if(SearchPathA(NULL, arg_Tool.c_str(), ".exe", MAX_PATH, buffer,
-		               NULL) != 0) {
-			return std::filesystem::path(buffer);
-		}
-	return {};
-#else
-	std::string cmd = fmt::format("which {} 2>/dev/null", arg_Tool);
-	FILE *pipe = popen(cmd.c_str(), "r");
-	if(!pipe)
-		return {};
-
-	char buffer[512];
-		if(fgets(buffer, sizeof(buffer), pipe)) {
-			std::string result(buffer);
-			result.erase(result.find_last_not_of(" \n\r\t") + 1);
-			pclose(pipe);
-			return std::filesystem::path(result);
-		}
-	pclose(pipe);
-	return {};
-#endif
+std::filesystem::path RatState::findExecutable(const std::string &arg_Tool) const {
+    char buffer[MAX_PATH];
+    if (SearchPathA(NULL, arg_Tool.c_str(), ".exe", MAX_PATH, buffer, NULL) != 0) {
+        return std::filesystem::path(buffer);
+    }
+    return {};
 }
+#else
+std::filesystem::path RatState::findExecutable(const std::string &arg_Tool) const {
+    std::string cmd = fmt::format("which {} 2>/dev/null", arg_Tool);
+    FILE *pipe = popen(cmd.c_str(), "r");
+    if (!pipe) return {};
 
-// -------------------
-// API
-// -------------------
+    char buffer[512];
+    if (fgets(buffer, sizeof(buffer), pipe)) {
+        std::string result(buffer);
+        result.erase(result.find_last_not_of(" \n\r\t") + 1);
+        pclose(pipe);
+        return std::filesystem::path(result);
+    }
+    pclose(pipe);
+    return {};
+}
+#endif
+
 std::filesystem::path RatState::getToolPath(const std::string &arg_Name) const {
-		if(auto *entry = command_path_map.find(arg_Name)) {
-			return entry->path;
-		}
-	return {};
+    auto it = command_path_map.find(arg_Name);
+    if (it != command_path_map.end()) {
+        return it->second;
+    }
+    return {};
 }
 
 bool RatState::hasTool(const std::string &arg_Tool) const {
-	return command_path_map.find(arg_Tool) != nullptr;
+    return command_path_map.find(arg_Tool) != command_path_map.end();
 }
 
 void RatState::addCommand(const std::string &arg_Key,
                           const std::string &arg_Literal) {
-		if(auto *entry = command_path_map.find(arg_Key)) {
-			entry->path = arg_Literal; // overwrite
-		}
-		else {
-			command_path_map.push_back(arg_Key,
-			                           std::filesystem::path(arg_Literal));
-		}
+    command_path_map[arg_Key] = std::filesystem::path(arg_Literal);
 }
 
 std::string RatState::getCommand(const std::string &arg_Key) const {
-		if(auto *entry = command_path_map.find(arg_Key)) {
-			return entry->path.string();
-		}
-	return {};
+    auto it = command_path_map.find(arg_Key);
+    if (it != command_path_map.end()) {
+        return it->second.string();
+    }
+    return {};
 }
 
 std::string RatState::listDynamicTools() const {
-	std::ostringstream output_string_stream;
-		for(const auto &entry : command_path_map) {
-			output_string_stream
-			    << fmt::format("{}: {}\n", entry.command, entry.path.string());
-		}
-	return output_string_stream.str();
+    std::ostringstream oss;
+    for (const auto &entry : command_path_map) {
+        oss << fmt::format("{}: {}\n", entry.first, entry.second.string());
+    }
+    return oss.str();
 }
 
 } // namespace rat::handler
-
-#undef HANDLER_DEBUG_LOG
-#undef HANDLER_ERROR_LOG
-#ifdef DEBUG_RAT_HANDLER
-#undef DEBUG_RAT_HANDLER
-#endif

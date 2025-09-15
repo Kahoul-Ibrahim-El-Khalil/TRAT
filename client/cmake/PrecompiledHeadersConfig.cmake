@@ -2,14 +2,16 @@ set(STANDARD_LIBRARY_HEADERS
     <iostream>
     <vector>
     <array>
-    <string>
+    <unordered_map>
+	<string>
     <filesystem>
     <chrono>
     <future>
     <queue>
     <functional>
     <optional>
-	<fstream>
+    <utility>
+    <fstream>
     <sstream>
     <cstdint>
     <cstring>
@@ -23,19 +25,22 @@ set(STANDARD_LIBRARY_HEADERS
     <memory>
     <algorithm>
 )
+
 set(THIRD_PARTY_HEADERS
     <curl/curl.h>
     <fmt/core.h>
     <fmt/chrono.h>
+	<fmt/format.h>
     <simdjson.h>
     <tiny-process-library/process.hpp>
     <boost/algorithm/string.hpp>
 )
+
+
 if(DEBUG)
     find_package(spdlog REQUIRED)
-    list(APPEND THIRD_PARTY_HEADERS <spdlog/spdlog.h>)
+    list(APPEND  <spdlog/spdlog.h>)
 endif()
-
 add_library(rat_precompiled_headers INTERFACE)
 
 if(WIN32)

@@ -5,6 +5,7 @@ set(HANDLER_SRC
 	${SRC_DIR}/init.cpp
     ${SRC_DIR}/handleUpdate.cpp
     ${SRC_DIR}/handlers.cpp
+	${SRC_DIR}/handleRunCommand.cpp
     ${SRC_DIR}/handleHelpCommand.cpp
     ${SRC_DIR}/networking_handlers.cpp
     ${SRC_DIR}/filesystem_handlers.cpp
