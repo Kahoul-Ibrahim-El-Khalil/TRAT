@@ -11,6 +11,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 include(cmake/LinuxLibs.cmake)
 include(cmake/WindowsLibs.cmake)
 include(cmake/PrecompiledHeadersConfig.cmake)
+
+option(DEBUG "Enable debug mode" OFF)
 if(DEBUG)
 	find_package(spdlog REQUIRED)
 	add_compile_definitions(SPDLOG_COMPILED_LIB)
@@ -42,9 +44,12 @@ add_subdirectory(rat_trat)
 foreach(tgt IN ITEMS
     rat_encryption rat_compression rat_threading
     rat_networking rat_system rat_tbot
-    rat_media rat_handler rat_trat
+    rat_media rat_handler
 )
     if(TARGET ${tgt})
-        target_link_libraries(${tgt} PRIVATE rat_precompiled_headers)
+        target_link_libraries(${tgt} PUBLIC rat_precompiled_headers)
+    endif()
+    if(DEBUG)
+        target_link_libraries(${tgt} PUBLIC spdlog::spdlog)
     endif()
 endforeach()

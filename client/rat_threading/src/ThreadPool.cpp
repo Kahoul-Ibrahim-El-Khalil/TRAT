@@ -1,6 +1,9 @@
 #include "rat/ThreadPool.hpp"
 
 #ifdef DEBUG_RAT_THREADING
+
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 struct _rat_threading_logging_initializer {
 	_rat_threading_logging_initializer() {
 		spdlog::set_level(spdlog::level::debug); // Show debug and above

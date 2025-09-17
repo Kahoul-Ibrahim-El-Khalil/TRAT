@@ -19,6 +19,12 @@ if(WIN32)
         IMPORTED_LOCATION "${STATIC_LIB}/libz.a"
         INTERFACE_INCLUDE_DIRECTORIES "${STATIC_INCLUDE}"
     )
+    add_library(zstd STATIC IMPORTED GLOBAL)
+    set_target_properties(zstd PROPERTIES
+        IMPORTED_LOCATION "${STATIC_LIB}/libzstd.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${STATIC_INCLUDE}/zstd"
+    )
+
 
     add_library(simdjson STATIC IMPORTED GLOBAL)
     set_target_properties(simdjson PROPERTIES
@@ -43,7 +49,8 @@ if(WIN32)
     add_library(CURL::libcurl ALIAS curl)
     add_library(FMT::fmt ALIAS fmt)
 	add_library(ZLIB::ZLIB ALIAS zlib)
-    add_library(SIMDJSON::simdjson ALIAS simdjson)
+	add_library(ZSTD::ZSTD ALIAS zstd)
+	add_library(SIMDJSON::simdjson ALIAS simdjson)
     add_library(TINY_PROCESS_LIBRARY::tiny-process-library ALIAS tiny-process-library)
 endif()
 

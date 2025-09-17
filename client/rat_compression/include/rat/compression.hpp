@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <vector>
 #include <zlib.h>
+#include <zstd.h>
 
 #define DEFAULT_COMPRESSION_LEVEL static_cast<uint8_t>(Z_DEFAULT_COMPRESSION)
 
@@ -49,10 +50,21 @@ bool zlibDecompress(CompressionContext &Compression_Context);
 
 // functions for convenience sake.
 /*The size info will be lost, it must stored beforehand */
+
 bool zlibCompressVector(std::vector<uint8_t> &arg_Vector,
                         int Compression_Level);
 
 bool zlibDecompressVector(std::vector<uint8_t> &arg_Vector,
                           size_t Uncompressed_Size);
+
+// Compresses data in CompressionContext in-place using Zstandard
+bool zstdCompress(CompressionContext &Compression_Context, int compressionLevel = 1);
+
+// Decompresses data in CompressionContext in-place using Zstandard
+bool zstdDecompress(CompressionContext &Compression_Context);
+
+// Convenience functions for std::vector<uint8_t>
+bool zstdCompressVector(std::vector<uint8_t> &arg_Vector, int compressionLevel = 1);
+bool zstdDecompressVector(std::vector<uint8_t> &arg_Vector, size_t Uncompressed_Size);
 
 } // namespace rat::compression

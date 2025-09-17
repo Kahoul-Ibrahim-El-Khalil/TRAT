@@ -1,9 +1,7 @@
 #pragma once
-#ifdef DEBUG
+#ifdef DEBUG_RAT_TBOT
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
-#endif
-#ifdef DEBUG_RAT_TBOT
 static void _rat_tbot_init_logging() {
 	static bool is_rat_tbot_logging_initialized = false;
 		if(!is_rat_tbot_logging_initialized) {

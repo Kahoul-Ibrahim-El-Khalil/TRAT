@@ -27,7 +27,9 @@ set(STANDARD_LIBRARY_HEADERS
 )
 
 set(THIRD_PARTY_HEADERS
-    <curl/curl.h>
+    <zlib.h>
+	<zstd.h>
+	<curl/curl.h>
     <fmt/core.h>
     <fmt/chrono.h>
 	<fmt/format.h>
@@ -39,7 +41,9 @@ set(THIRD_PARTY_HEADERS
 
 if(DEBUG)
     find_package(spdlog REQUIRED)
-    list(APPEND  <spdlog/spdlog.h>)
+    list(APPEND  <spdlog/spdlog.h>
+				 <spdlog/sinks/stdout_color_sinks.h>
+	)
 endif()
 add_library(rat_precompiled_headers INTERFACE)
 

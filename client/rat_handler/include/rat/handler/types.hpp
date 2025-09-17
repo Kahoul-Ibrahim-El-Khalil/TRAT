@@ -13,7 +13,6 @@ struct RatState {
     std::unordered_map<std::string, std::filesystem::path> user_defined_command_path_map;
 
     std::vector<uint8_t> payload;
-    size_t payload_uncompressed_size{};
     std::string payload_key;
 
     RatState();
