@@ -11,7 +11,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 include(cmake/LinuxLibs.cmake)
 include(cmake/WindowsLibs.cmake)
 include(cmake/PrecompiledHeadersConfig.cmake)
-
 if(DEBUG)
 	find_package(spdlog REQUIRED)
 	add_compile_definitions(SPDLOG_COMPILED_LIB)

@@ -28,7 +28,7 @@ target_include_directories(rat_system
 
       )
 
-target_link_libraries(rat_system PUBLIC fmt rat_threading)
+target_link_libraries(rat_system PUBLIC fmt stdc++fs rat_threading)
 
 if (DEBUG_RAT_SYSTEM)
 	target_compile_definitions(rat_system PUBLIC DEBUG_RAT_SYSTEM)

