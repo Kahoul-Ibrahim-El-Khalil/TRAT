@@ -6,9 +6,7 @@ target_include_directories(trat
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-
 target_link_libraries(trat
-    PRIVATE
-        rat_precompiled_headers
-		rat_handler
+	PUBLIC
+	rat_handler
 )

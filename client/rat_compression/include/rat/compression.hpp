@@ -1,5 +1,4 @@
 // rat_compression/include/rat/compression.hpp
-
 #pragma once
 #include <cstddef>
 #include <cstdint>
@@ -58,13 +57,16 @@ bool zlibDecompressVector(std::vector<uint8_t> &arg_Vector,
                           size_t Uncompressed_Size);
 
 // Compresses data in CompressionContext in-place using Zstandard
-bool zstdCompress(CompressionContext &Compression_Context, int compressionLevel = 1);
+bool zstdCompress(CompressionContext &Compression_Context,
+                  int compressionLevel = 1);
 
 // Decompresses data in CompressionContext in-place using Zstandard
 bool zstdDecompress(CompressionContext &Compression_Context);
 
 // Convenience functions for std::vector<uint8_t>
-bool zstdCompressVector(std::vector<uint8_t> &arg_Vector, int compressionLevel = 1);
-bool zstdDecompressVector(std::vector<uint8_t> &arg_Vector, size_t Uncompressed_Size);
+bool zstdCompressVector(std::vector<uint8_t> &arg_Vector,
+                        int compressionLevel = 1);
+bool zstdDecompressVector(std::vector<uint8_t> &arg_Vector,
+                          size_t Uncompressed_Size);
 
 } // namespace rat::compression

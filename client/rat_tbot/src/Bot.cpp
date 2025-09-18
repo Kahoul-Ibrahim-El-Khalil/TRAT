@@ -8,17 +8,22 @@
 
 namespace rat::tbot {
 
-Bot::Bot(const std::string &arg_Token, int64_t Master_Id,
-         uint8_t Telegram_Connection_Timeout)
-    : BaseBot(arg_Token, Master_Id, Telegram_Connection_Timeout) {
-	this->getting_update_url = fmt::format("{}{}/getUpdates?timeout={}&limit=1",
-	                                       TELEGRAM_BOT_API_BASE_URL, arg_Token,
-	                                       Telegram_Connection_Timeout);
+Bot::Bot(const std::string &arg_Token, const int64_t &Master_Id,
+         uint8_t Telegram_Connection_Timeout) {
+	this->token = std::move(arg_Token);
+	this->master_id = std::move(Master_Id);
+	this->curl_client = ::rat::networking::Client();
+
+	this->setServerApiUrl(::rat::tbot::TELEGRAM_API_URL);
+	this->operation_count = 0;
+	this->update_interval = 1000;
+	this->last_update_id = 0;
+
+	this->getting_update_url = fmt::format(
+	    "{}/bot{}/getUpdates?timeout={}&limit=1", this->server_api_url,
+	    arg_Token, Telegram_Connection_Timeout);
 }
 
-//-----------------------------------------
-// File parsing
-//-----------------------------------------
 File Bot::parseFile(simdjson::ondemand::value &&file_val,
                     const std::string &type) {
 	File file;
@@ -73,19 +78,14 @@ File Bot::parseFile(simdjson::ondemand::value &&file_val,
 	return file;
 }
 
-//-----------------------------------------
-// Message parsing
-//-----------------------------------------
 void Bot::extractFilesFromMessage(simdjson::ondemand::object &message_obj,
                                   Message &message) {
-	    // Document
 		if(auto val = message_obj["document"];
 		   val.error() == simdjson::SUCCESS) {
 			message.files.push_back(
 			    parseFile(std::move(val.value()), "document"));
 		}
 
-	    // Photo (array of photo sizes)
 		if(auto val = message_obj["photo"]; val.error() == simdjson::SUCCESS) {
 				for(auto photo_size : val.value()) {
 					message.files.push_back(
@@ -93,17 +93,14 @@ void Bot::extractFilesFromMessage(simdjson::ondemand::object &message_obj,
 				}
 		}
 
-	    // Audio
 		if(auto val = message_obj["audio"]; val.error() == simdjson::SUCCESS) {
 			message.files.push_back(parseFile(std::move(val.value()), "audio"));
 		}
 
-	    // Video
 		if(auto val = message_obj["video"]; val.error() == simdjson::SUCCESS) {
 			message.files.push_back(parseFile(std::move(val.value()), "video"));
 		}
 
-	    // Voice
 		if(auto val = message_obj["voice"]; val.error() == simdjson::SUCCESS) {
 			message.files.push_back(parseFile(std::move(val.value()), "voice"));
 		}
@@ -115,7 +112,6 @@ Message Bot::parseMessage(simdjson::ondemand::value &message_val) {
 		try {
 			simdjson::ondemand::object message_obj = message_val.get_object();
 
-			    // Required: message_id
 				if(auto res = message_obj["message_id"].get_int64();
 				   res.error() == simdjson::SUCCESS) {
 					message.id = res.value();
@@ -125,7 +121,6 @@ Message Bot::parseMessage(simdjson::ondemand::value &message_val) {
 					return message;
 				}
 
-			    // From.id (optional, but useful)
 				if(auto from_obj = message_obj["from"].get_object();
 				   from_obj.error() == simdjson::SUCCESS) {
 						if(auto res = from_obj.value()["id"].get_int64();
@@ -134,7 +129,6 @@ Message Bot::parseMessage(simdjson::ondemand::value &message_val) {
 						}
 				}
 
-			    // Text (optional)
 				if(auto res = message_obj["text"].get_string();
 				   res.error() == simdjson::SUCCESS) {
 					message.text = std::string(res.value());
@@ -146,7 +140,6 @@ Message Bot::parseMessage(simdjson::ondemand::value &message_val) {
 					message.caption = std::string(res.value());
 				}
 
-			// Files
 			extractFilesFromMessage(message_obj, message);
 		}
 		catch(const simdjson::simdjson_error &e) {
@@ -156,18 +149,20 @@ Message Bot::parseMessage(simdjson::ondemand::value &message_val) {
 	return message;
 }
 
-//------------------------    -----------------
-// Update parsing
-//-----------------------------------------
-Update Bot::parseJsonToUpdate() {
+Update Bot::parseJsonToUpdate(std::vector<char> &&arg_Buffer) {
 	Update update{};
 		try {
 			simdjson::ondemand::parser simdjson_parser;
-			const size_t buffer_size = this->http_buffer.size();
+			const size_t &buffer_size = arg_Buffer.size();
 			const size_t json_size = buffer_size - simdjson::SIMDJSON_PADDING;
-
-			auto doc = simdjson_parser.iterate(this->http_buffer.data(),
-			                                   json_size, buffer_size);
+				if(json_size == 0) {
+					TBOT_ERROR_LOG("Empty Json response meaning this is either "
+					               "offline or failure at endpoint");
+					std::this_thread::sleep_for(std::chrono::seconds(2));
+					return {};
+				}
+			auto doc = simdjson_parser.iterate(arg_Buffer.data(), json_size,
+			                                   buffer_size);
 
 				if(auto res = doc["ok"].get_bool();
 				   res.error() != simdjson::SUCCESS || !res.value()) {
@@ -175,7 +170,6 @@ Update Bot::parseJsonToUpdate() {
 					return {};
 				}
 
-			// Extract result array
 			auto result_val = doc["result"];
 				if(result_val.error() != simdjson::SUCCESS) {
 					TBOT_DEBUG_LOG("No result field in response");
@@ -187,13 +181,12 @@ Update Bot::parseJsonToUpdate() {
 					return {};
 				}
 
-			    // Process first update
 				for(auto result_item : results.value()) {
 					auto update_obj = result_item.get_object();
-					if(update_obj.error() != simdjson::SUCCESS)
-						continue;
+						if(update_obj.error() != simdjson::SUCCESS) {
+							continue;
+						}
 
-					    // update_id
 						if(auto res =
 						       update_obj.value()["update_id"].get_int64();
 						   res.error() == simdjson::SUCCESS) {
@@ -218,30 +211,40 @@ Update Bot::parseJsonToUpdate() {
 	return update;
 }
 
-//-----------------------------------------
 Update Bot::getUpdate() {
 	const std::string url = fmt::format("{}&offset={}&limit=1",
 	                                    getting_update_url, last_update_id + 1);
 
 	TBOT_DEBUG_LOG("Polling updates with offset: {}", this->last_update_id + 1);
 
+	std::vector<char> http_buffer;
+
+	http_buffer.reserve(2 * 1024);
+
 	const auto response =
-	    this->curl_client.sendHttpRequest(url.c_str(), this->http_buffer);
+	    this->curl_client.sendHttpRequest(url.c_str(), http_buffer);
+	this->operation_count++;
+		if(this->operation_count >= ::rat::tbot::UPPER_RESTART_BOUND) {
+			CURLcode curl_code = this->curl_client.hardReset();
+				if(curl_code == CURLE_OK) {
+					TBOT_DEBUG_LOG("Restarted the Bot's curl client to "
+					               "clean cache");
+				}
+				else {
+					TBOT_ERROR_LOG("Failed to init curl");
+				}
+		}
 
 		if(response.size == 0 || response.curl_code != CURLE_OK) {
+			TBOT_ERROR_LOG("Empty http buffer, not going to be parsed");
+			http_buffer.clear();
 			std::this_thread::sleep_for(std::chrono::seconds(2));
 			return {};
 		}
 
-	this->http_buffer.resize(response.size);
-	this->http_buffer.insert(this->http_buffer.end(),
-	                         simdjson::SIMDJSON_PADDING, '\0');
+	http_buffer.insert(http_buffer.end(), simdjson::SIMDJSON_PADDING, '\0');
 
-	Update update = this->parseJsonToUpdate();
-
-	// Reset buffer size back to 8KB + padding after each cycle
-	this->http_buffer.resize(HTTP_RESPONSE_BUFFER_SIZE +
-	                         simdjson::SIMDJSON_PADDING);
+	Update update = this->parseJsonToUpdate(std::move(http_buffer));
 
 	return update;
 }

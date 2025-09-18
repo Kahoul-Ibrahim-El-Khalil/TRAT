@@ -4,6 +4,8 @@
 
 #include <cstdio>
 #include <cstring>
+#include <curl/curl.h>
+#include <curl/easy.h>
 
 namespace rat::networking {
 
@@ -11,27 +13,24 @@ constexpr long CONNECTION_TIMEOUT = 2L;
 constexpr long OPERATION_TIMEOUT = 10L;
 
 void Client::reset() {
-		if(this->post_restart_operation_count >=
-		       this->operation_restart_bound &&
-		   !this->is_fresh) {
-			this->is_fresh = this->hardResetHandle();
-			this->post_restart_operation_count = 0;
-
-				if(this->curl) {
-					curl_easy_setopt(this->curl, CURLOPT_MAXCONNECTS,
-					                 (long)(this->server_endpoints_count));
-					curl_easy_setopt(this->curl, CURLOPT_MAXLIFETIME_CONN, 1L);
-				}
-			return;
-		}
-
 	this->resetOptions();
-
 		if(this->curl) {
 			curl_easy_setopt(this->curl, CURLOPT_MAXCONNECTS,
 			                 (long)(this->server_endpoints_count));
 			curl_easy_setopt(this->curl, CURLOPT_MAXLIFETIME_CONN, 1L);
 		}
+}
+
+CURLcode Client::hardReset() {
+		if(this->curl) {
+			curl_easy_cleanup(this->curl);
+			this->curl = nullptr;
+		}
+	this->curl = curl_easy_init();
+		if(!this->curl) {
+			return CURLE_FAILED_INIT;
+		}
+	return CURLE_OK;
 }
 
 NetworkingResult Client::download(const char *Downloading_Url,
@@ -55,9 +54,6 @@ NetworkingResult Client::download(const char *Downloading_Url,
 			result.curl_code = CURLE_WRITE_ERROR;
 			return result;
 		}
-
-	this->is_fresh = false;
-	this->post_restart_operation_count++;
 
 		if((result.curl_code = this->setOption(CURLOPT_URL, Downloading_Url)) !=
 		       CURLE_OK ||
@@ -126,9 +122,6 @@ NetworkingResult Client::upload(const std::filesystem::path &File_Path,
 			result.curl_code = CURLE_READ_ERROR;
 			return result;
 		}
-
-	this->post_restart_operation_count++;
-	this->is_fresh = false;
 
 		if((result.curl_code = this->setUrl(Uploading_Url)) != CURLE_OK ||
 		   (result.curl_code = this->setOption(CURLOPT_UPLOAD, 1L)) !=
@@ -202,9 +195,6 @@ NetworkingResult Client::uploadMimeFile(const MimeContext &Mime_Context,
 			result.curl_code = CURLE_READ_ERROR;
 			return result;
 		}
-
-	this->post_restart_operation_count++;
-	this->is_fresh = false;
 
 	curl_mime *mime = curl_mime_init(this->curl);
 		if(!mime) {
@@ -307,15 +297,12 @@ NetworkingResult Client::uploadMimeFile(const MimeContext &Mime_Context,
 	result.size = std::filesystem::file_size(Mime_Context.file_path);
 
 	curl_mime_free(mime);
-	this->hardResetHandle();
 	return result;
 }
 
 NetworkingResult
 Client::sendHttpRequest(const char *arg_Url, std::vector<char> &arg_Buffer) {
 	NetworkingResult result{CURLE_OK, 0};
-	arg_Buffer.clear();
-
 		if(!arg_Url) {
 			NETWORKING_ERROR_LOG("arg_Url is nullptr");
 			result.curl_code = CURLE_BAD_FUNCTION_ARGUMENT;
@@ -326,9 +313,6 @@ Client::sendHttpRequest(const char *arg_Url, std::vector<char> &arg_Buffer) {
 			result.curl_code = CURLE_FAILED_INIT;
 			return result;
 		}
-
-	this->post_restart_operation_count++;
-	this->is_fresh = false;
 
 		if((result.curl_code = this->setUrl(arg_Url)) != CURLE_OK ||
 		   (result.curl_code = this->setWriteCallBackFunction(
@@ -354,9 +338,9 @@ Client::sendHttpRequest(const char *arg_Url, std::vector<char> &arg_Buffer) {
 
 	result.curl_code = this->perform();
 		if(result.curl_code != CURLE_OK) {
-			NETWORKING_ERROR_LOG("HTTP request failed: %s",
-			                     curl_easy_strerror(result.curl_code));
-			arg_Buffer.clear();
+			NETWORKING_ERROR_LOG(
+			    " in Client::sendHttpRequest() HTTP request failed: %s",
+			    curl_easy_strerror(result.curl_code));
 			this->reset();
 			return result;
 		}
@@ -382,8 +366,6 @@ NetworkingResult Client::sendHttpRequest(const char *arg_Url, char *p_Buffer,
 		}
 
 	BufferContext ctx{p_Buffer, Buffer_Size, 0};
-	this->post_restart_operation_count++;
-	this->is_fresh = false;
 
 		if((result.curl_code = this->setUrl(arg_Url)) != CURLE_OK ||
 		   (result.curl_code =
@@ -430,9 +412,6 @@ NetworkingResult Client::downloadData(const std::string &arg_Url,
 			return result;
 		}
 
-	this->post_restart_operation_count++;
-	this->is_fresh = false;
-
 		if((result.curl_code = this->setUrl(arg_Url)) != CURLE_OK ||
 		   (result.curl_code = this->setWriteCallBackFunction(
 		        &_cbVectorUint8Write)) != CURLE_OK ||
@@ -463,7 +442,7 @@ NetworkingResult Client::downloadData(const std::string &arg_Url,
 			this->reset();
 			return result;
 		}
-
+	Out_Buffer.shrink_to_fit();
 	result.size = Out_Buffer.size();
 	this->reset();
 	return result;

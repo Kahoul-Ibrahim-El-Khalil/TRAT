@@ -46,6 +46,10 @@ CURLcode EasyCurlHandler::setWriteCallBackFunction(WriteCallback Call_Back) {
 
 CURLcode EasyCurlHandler::perform() {
 	this->state = curl_easy_perform(this->curl);
+		if(this->state != CURLE_OK) {
+			NETWORKING_ERROR_LOG(
+			    "Failed at performing inside EasyCurlHandler::perform()");
+		}
 	return this->state;
 }
 
@@ -55,20 +59,6 @@ void EasyCurlHandler::resetOptions() {
 		}
 }
 
-bool EasyCurlHandler::hardResetHandle() {
-		if(this->curl) {
-			curl_easy_cleanup(this->curl);
-			this->curl = nullptr;
-		}
-	this->curl = curl_easy_init();
-		if(!this->curl) {
-			this->state = CURLE_FAILED_INIT;
-			NETWORKING_ERROR_LOG("failed to initialize curl");
-			return false;
-		}
-	this->state = CURLE_OK;
-	return true;
-}
 } // namespace rat::networking
 
 #undef NETWORKING_DEBUG_LOG

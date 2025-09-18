@@ -23,10 +23,10 @@ target_include_directories(rat_handler
 )
 
 target_link_libraries(rat_handler
-    PUBLIC
+	PUBLIC
+        rat_compression
 		TINY_PROCESS_LIBRARY::tiny-process-library
 		stdc++fs
-        rat_compression
 		rat_encryption
         rat_networking
         rat_threading

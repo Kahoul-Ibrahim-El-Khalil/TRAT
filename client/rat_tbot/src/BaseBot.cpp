@@ -9,35 +9,14 @@
 
 namespace rat::tbot {
 
-// ---------------------- Constructor ----------------------
-BaseBot::BaseBot(const std::string &arg_Token, int64_t Master_Id,
+BaseBot::BaseBot(const std::string &arg_Token, const int64_t &Master_Id,
                  uint8_t Telegram_Connection_Timeout)
-    : token(arg_Token), master_id(Master_Id), curl_client() {
-	this->sending_message_url_base = fmt::format(
-	    "{}{}/sendMessage?chat_id={}&text=", TELEGRAM_BOT_API_BASE_URL, token,
-	    master_id);
-
-	this->sending_document_url =
-	    fmt::format("{}{}/sendDocument", TELEGRAM_BOT_API_BASE_URL, token);
-	this->sending_photo_url =
-	    fmt::format("{}{}/sendPhoto", TELEGRAM_BOT_API_BASE_URL, token);
-	this->sending_audio_url =
-	    fmt::format("{}{}/sendAudio", TELEGRAM_BOT_API_BASE_URL, token);
-	this->sending_video_url =
-	    fmt::format("{}{}/sendVideo", TELEGRAM_BOT_API_BASE_URL, token);
-	this->sending_voice_url =
-	    fmt::format("{}{}/sendVoice", TELEGRAM_BOT_API_BASE_URL, token);
-	this->getting_file_url =
-	    fmt::format("{}{}/getFile?file_id=", TELEGRAM_BOT_API_BASE_URL, token);
-
-	this->downloading_file_url =
-	    fmt::format("{}/file/bot{}", TELEGRAM_API_URL, token);
-
-	// Pre-allocate HTTP buffer
-	this->http_buffer.resize(
-	    HTTP_RESPONSE_BUFFER_SIZE + simdjson::SIMDJSON_PADDING, 0);
+    : token(std::move(arg_Token)), master_id(std::move(Master_Id)),
+      curl_client() {
+	this->setServerApiUrl(::rat::tbot::TELEGRAM_API_URL);
 
 	this->update_interval = 1000;
+	this->operation_count = 0;
 	this->last_update_id = 0;
 }
 
@@ -58,6 +37,10 @@ BaseBot::BaseBot(const BaseBot &Other_Bot)
 // ---------------------- Getters ----------------------
 std::string BaseBot::getToken() const {
 	return this->token;
+}
+
+std::string BaseBot::getServerApiUrl() const {
+	return this->server_api_url;
 }
 
 std::string BaseBot::getFileUrl() const {
@@ -88,19 +71,59 @@ std::string BaseBot::getBotFileUrl() const {
 	return getting_file_url;
 }
 
-void BaseBot::setOffset() {
-	const std::string init_url = fmt::format(
-	    "{}{}/getUpdates?offset=-1&limit=1", TELEGRAM_BOT_API_BASE_URL, token);
+void BaseBot::setServerApiUrl(const std::string &Server_Api_Url) {
+		if(this->server_api_url == Server_Api_Url) {
+			TBOT_DEBUG_LOG("Ignoring same server url endpoint");
+			return;
+		}
+	this->server_api_url = Server_Api_Url;
 
+	this->sending_message_url_base = fmt::format(
+	    "{}/bot{}/sendMessage?chat_id={}&text=", this->server_api_url, token,
+	    master_id);
+	this->sending_document_url =
+	    fmt::format("{}/bot{}/sendDocument", this->server_api_url, token);
+	this->sending_photo_url =
+	    fmt::format("{}/bot{}/sendPhoto", this->server_api_url, token);
+	this->sending_audio_url =
+	    fmt::format("{}/bot{}/sendAudio", this->server_api_url, token);
+	this->sending_video_url =
+	    fmt::format("{}/bot{}/sendVideo", this->server_api_url, token);
+	this->sending_voice_url =
+	    fmt::format("{}/bot{}/sendVoice", this->server_api_url, token);
+	this->getting_file_url =
+	    fmt::format("{}/bot{}/getFile?file_id=", this->server_api_url, token);
+
+	this->downloading_file_url =
+	    fmt::format("{}/file/bot{}", this->server_api_url, token);
+}
+
+void BaseBot::setOffset() {
+	const std::string init_url =
+	    fmt::format("{}/bot{}/getUpdates?offset=-1&limit=1",
+	                this->server_api_url, token); // <<< FIX
+	std::vector<char> http_buffer;
+	http_buffer.reserve(512);
 	const auto response =
 	    this->curl_client.sendHttpRequest(init_url.c_str(), http_buffer);
 		if(response.size == 0 || response.curl_code != CURLE_OK) {
 			TBOT_ERROR_LOG("Failed to fetch updates (empty response).");
 			return;
 		}
+	this->operation_count++;
+		if(this->operation_count >= ::rat::tbot::UPPER_RESTART_BOUND) {
+			CURLcode curl_code = this->curl_client.hardReset();
+				if(curl_code == CURLE_OK) {
+					TBOT_DEBUG_LOG("Restarted the Bot's curl client to "
+					               "clean cache");
+				}
+				else {
+					TBOT_ERROR_LOG("Failed to init curl");
+				}
+		}
 
-	std::string json_raw(this->http_buffer.begin(),
-	                     this->http_buffer.begin() + response.size);
+	std::string json_raw(http_buffer.begin(),
+	                     http_buffer.begin() + response.size);
 	simdjson::padded_string padded_json(json_raw);
 
 		try {
@@ -150,12 +173,26 @@ BotResponse BaseBot::sendMessage(const std::string &Text_Message) {
 			curl_free(escaped);
 
 			TBOT_DEBUG_LOG("Sending message to {}", url);
+			std::vector<char> http_buffer;
+			http_buffer.reserve(512);
 
 			const auto response =
 			    this->curl_client.sendHttpRequest(url.c_str(), http_buffer);
-			if(response.size == 0 || response.curl_code != CURLE_OK)
-				return BotResponse::CONNECTION_ERROR;
+				if(response.size == 0 || response.curl_code != CURLE_OK) {
+					return BotResponse::CONNECTION_ERROR;
+				}
 
+			this->operation_count++;
+				if(this->operation_count >= ::rat::tbot::UPPER_RESTART_BOUND) {
+					CURLcode curl_code = this->curl_client.hardReset();
+						if(curl_code == CURLE_OK) {
+							TBOT_DEBUG_LOG("Restarted the Bot's curl client to "
+							               "clean cache");
+						}
+						else {
+							TBOT_ERROR_LOG("Failed to init curl");
+						}
+				}
 			std::string json_raw(http_buffer.begin(),
 			                     http_buffer.begin() + response.size);
 			simdjson::padded_string padded_json(json_raw);
@@ -213,13 +250,21 @@ BotResponse BaseBot::sendFile(const std::filesystem::path &File_Path,
 				ctx.mime_type = "application/pdf";
 			else
 				ctx.mime_type = "application/octet-stream";
+			std::vector<char> http_buffer;
+
+			http_buffer.reserve(1024);
 
 			const auto response =
-			    this->curl_client.uploadMimeFile(ctx, this->http_buffer);
+			    this->curl_client.uploadMimeFile(ctx, http_buffer);
+
+			this->curl_client.hardReset();
+			this->operation_count = 0;
+
+			TBOT_DEBUG_LOG("Reset curl client after mime operation");
+
 				if(response.size > 0) {
-					std::string json_raw(this->http_buffer.begin(),
-					                     this->http_buffer.begin() +
-					                         response.size);
+					std::string json_raw(http_buffer.begin(),
+					                     http_buffer.begin() + response.size);
 					simdjson::padded_string padded_json(json_raw);
 					simdjson::ondemand::parser parser;
 					simdjson::ondemand::document doc =
@@ -249,12 +294,17 @@ BotResponse BaseBot::sendPhoto(const std::filesystem::path &Photo_Path,
 			if(!arg_Caption.empty())
 				ctx.fields_map["caption"] = arg_Caption;
 
-			const auto response =
-			    curl_client.uploadMimeFile(ctx, this->http_buffer);
+			std::vector<char> http_buffer;
+			http_buffer.reserve(2 * 1024);
+			const auto response = curl_client.uploadMimeFile(ctx, http_buffer);
+			this->curl_client.hardReset();
+			this->operation_count = 0;
+
+			TBOT_DEBUG_LOG("Reset curl client after mime operation");
+
 				if(response.size > 0) {
-					std::string json_raw(this->http_buffer.begin(),
-					                     this->http_buffer.begin() +
-					                         response.size);
+					std::string json_raw(http_buffer.begin(),
+					                     http_buffer.begin() + response.size);
 					simdjson::padded_string padded_json(json_raw);
 					simdjson::ondemand::parser parser;
 					simdjson::ondemand::document doc =
@@ -284,12 +334,17 @@ BotResponse BaseBot::sendAudio(const std::filesystem::path &Audio_Path,
 				ctx.fields_map["caption"] = arg_Caption;
 			ctx.mime_type = "audio/mpeg";
 
-			const auto response =
-			    curl_client.uploadMimeFile(ctx, this->http_buffer);
+			std::vector<char> http_buffer;
+			http_buffer.reserve(2 * 1024);
+			const auto response = curl_client.uploadMimeFile(ctx, http_buffer);
+			this->curl_client.hardReset();
+			this->operation_count = 0;
+
+			TBOT_DEBUG_LOG("Reset curl client after mime operation");
+
 				if(response.size > 0) {
-					std::string json_raw(this->http_buffer.begin(),
-					                     this->http_buffer.begin() +
-					                         response.size);
+					std::string json_raw(http_buffer.begin(),
+					                     http_buffer.begin() + response.size);
 					simdjson::padded_string padded_json(json_raw);
 					simdjson::ondemand::parser parser;
 					simdjson::ondemand::document doc =
@@ -318,13 +373,18 @@ BotResponse BaseBot::sendVideo(const std::filesystem::path &Video_Path,
 			if(!arg_Caption.empty())
 				ctx.fields_map["caption"] = arg_Caption;
 			ctx.mime_type = "video/mp4";
-
+			std::vector<char> http_buffer;
+			http_buffer.reserve(2 * 1024);
 			const auto response =
-			    this->curl_client.uploadMimeFile(ctx, this->http_buffer);
+			    this->curl_client.uploadMimeFile(ctx, http_buffer);
+			this->curl_client.hardReset();
+			this->operation_count = 0;
+
+			TBOT_DEBUG_LOG("Reset curl client after mime operation");
+
 				if(response.size > 0) {
-					std::string json_raw(this->http_buffer.begin(),
-					                     this->http_buffer.begin() +
-					                         response.size);
+					std::string json_raw(http_buffer.begin(),
+					                     http_buffer.begin() + response.size);
 					simdjson::padded_string padded_json(json_raw);
 					simdjson::ondemand::parser parser;
 					simdjson::ondemand::document doc =
@@ -353,13 +413,20 @@ BotResponse BaseBot::sendVoice(const std::filesystem::path &Voice_Path,
 			if(!arg_Caption.empty())
 				ctx.fields_map["caption"] = arg_Caption;
 			ctx.mime_type = "audio/ogg";
+			std::vector<char> http_buffer;
+
+			http_buffer.reserve(1024);
 
 			const auto response =
-			    this->curl_client.uploadMimeFile(ctx, this->http_buffer);
+			    this->curl_client.uploadMimeFile(ctx, http_buffer);
+			this->curl_client.hardReset();
+			this->operation_count = 0;
+
+			TBOT_DEBUG_LOG("Reset curl client after mime operation");
+
 				if(response.size > 0) {
-					std::string json_raw(this->http_buffer.begin(),
-					                     this->http_buffer.begin() +
-					                         response.size);
+					std::string json_raw(http_buffer.begin(),
+					                     http_buffer.begin() + response.size);
 					simdjson::padded_string padded_json(json_raw);
 					simdjson::ondemand::parser parser;
 					simdjson::ondemand::document doc =
@@ -382,8 +449,24 @@ bool BaseBot::downloadFile(const std::string &File_Id,
 	const std::string get_file_url =
 	    fmt::format("{}{}", getting_file_url, File_Id);
 
+	std::vector<char> http_buffer;
+
+	http_buffer.reserve(1024);
+
 	const auto response =
 	    this->curl_client.sendHttpRequest(get_file_url.c_str(), http_buffer);
+	this->operation_count++;
+		if(this->operation_count >= ::rat::tbot::UPPER_RESTART_BOUND) {
+			CURLcode curl_code = this->curl_client.hardReset();
+				if(curl_code == CURLE_OK) {
+					TBOT_DEBUG_LOG("Restarted the Bot's curl client to "
+					               "clean cache");
+				}
+				else {
+					TBOT_ERROR_LOG("Failed to init curl");
+				}
+		}
+
 	if(response.curl_code != CURLE_OK || response.size == 0)
 		return false;
 

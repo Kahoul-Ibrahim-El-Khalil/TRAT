@@ -37,30 +37,20 @@ struct EasyCurlHandler {
 
 	CURLcode perform();
 	void resetOptions();
-	/*Destroys the handle, clean it and re-init it*/
-	bool hardResetHandle();
 };
 
 class Client : public EasyCurlHandler {
   private:
-	uint8_t post_restart_operation_count = 0;
-	uint8_t operation_restart_bound;
 	uint8_t server_endpoints_count = 1;
 
   public:
 	bool is_fresh;
 
 	void reset();
+	CURLcode hardReset();
 
-	Client(uint8_t Operation_Restart_Bound = 5,
-	       uint8_t Typical_Server_Endpoints_count = 1)
-	    : operation_restart_bound(Operation_Restart_Bound),
-	      server_endpoints_count(Typical_Server_Endpoints_count),
-	      is_fresh(true) {
-			if(this->operation_restart_bound == 0) {
-				this->operation_restart_bound =
-				    1; // Ensure at least 1 operation
-			}
+	Client(uint8_t Typical_Server_Endpoints_count = 1)
+	    : server_endpoints_count(Typical_Server_Endpoints_count) {
 		curl_easy_setopt(this->curl, CURLOPT_MAXCONNECTS,
 		                 (long)(this->server_endpoints_count));
 		curl_easy_setopt(this->curl, CURLOPT_MAXLIFETIME_CONN, 1L);

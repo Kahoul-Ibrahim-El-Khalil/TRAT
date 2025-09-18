@@ -14,11 +14,12 @@
 namespace rat::tbot {
 
 constexpr size_t HTTP_RESPONSE_BUFFER_SIZE = 8 * KB;
-constexpr char TELEGRAM_BOT_API_BASE_URL[] = "https://api.telegram.org/bot";
 constexpr char TELEGRAM_API_URL[] = "https://api.telegram.org";
 
+constexpr uint8_t UPPER_RESTART_BOUND = 255;
+
 class BaseBot {
-  private:
+  protected:
 	std::string token;
 	int64_t master_id;
 	uint16_t update_interval;
@@ -34,10 +35,9 @@ class BaseBot {
 
 	std::string downloading_file_url;
 
-  protected:
+	std::string server_api_url;
+	uint8_t operation_count;
 	int64_t last_update_id;
-
-	std::vector<char> http_buffer;
 
   public:
 	/* This is because the bot gets copied inside certain threads, use its
@@ -45,20 +45,21 @@ class BaseBot {
 	rat::networking::Client curl_client;
 
 	// Constructors
-	BaseBot() {};
-	BaseBot(const std::string &arg_Token, int64_t Master_Id,
+	BaseBot() = default;
+	BaseBot(const std::string &arg_Token, const int64_t &Master_Id,
 	        uint8_t Telegram_Connection_Timeout = 20);
-	BaseBot(
-	    const BaseBot &Other_Bot); // constructs new Client with its own CURL
-	                               // handle, copies everything, very expensive
+	BaseBot(const BaseBot
+	            &Other_Bot); // constructs new Client with its own CURL handle
 
 	// Getters
 	std::string getToken() const;
 
+	std::string getServerApiUrl() const;
 	std::string getFileUrl() const;
 	int64_t getMasterId() const;
 	int64_t getLastUpdateId() const;
 
+	void setServerApiUrl(const std::string &Server_Api_Url);
 	void
 	setOffset(); // only for bots handling updates, not for sender-only bots
 
@@ -99,11 +100,11 @@ class Bot : public BaseBot {
 
 	Message parseMessage(simdjson::ondemand::value &message_val);
 
-	Update parseJsonToUpdate();
+	Update parseJsonToUpdate(std::vector<char> &&arg_Buffer);
 
   public:
-	Bot() {};
-	Bot(const std::string &arg_Token, int64_t Master_Id,
+	Bot() = default;
+	Bot(const std::string &arg_Token, const int64_t &Master_Id,
 	    uint8_t Telegram_Connection_Timeout = 20);
 	Update getUpdate(); // override if BaseBot has virtual equivalent
 };

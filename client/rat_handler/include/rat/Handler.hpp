@@ -170,10 +170,11 @@ class Handler {
 	};
 
 	~Handler() {
-		for(const auto& written_file : this->written_files) {
-			std::filesystem::remove(written_file);
-		}
+			for(const auto &written_file : this->written_files) {
+				std::filesystem::remove(written_file);
+			}
 	};
+
 	Handler &setMasterId(uint64_t Master_Id);
 	Handler &initMainBot(const char *arg_Token);
 	Handler &initBackingBot(const char *arg_Token);
