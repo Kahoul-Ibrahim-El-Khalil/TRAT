@@ -85,77 +85,77 @@ bool zlibDecompressVector(std::vector<uint8_t> &arg_Vector,
 }
 
 // Compresses data in CompressionContext using Zstandard
-bool zstdCompress(CompressionContext &Compression_Context, int compressionLevel) {
-    if (Compression_Context.is_compressed ||
-        Compression_Context.uncompressed_size == 0 || !Compression_Context.data)
-        return false;
+bool zstdCompress(CompressionContext &Compression_Context,
+                  int compressionLevel) {
+	if(Compression_Context.is_compressed ||
+	   Compression_Context.uncompressed_size == 0 || !Compression_Context.data)
+		return false;
 
-    // Get maximum compressed size
-    size_t maxCompressedSize = ZSTD_compressBound(Compression_Context.uncompressed_size);
-    if (Compression_Context.compressed_size < maxCompressedSize)
-        return false; // buffer too small
+	// Get maximum compressed size
+	size_t maxCompressedSize =
+	    ZSTD_compressBound(Compression_Context.uncompressed_size);
+	if(Compression_Context.compressed_size < maxCompressedSize)
+		return false; // buffer too small
 
-    size_t compressedSize = ZSTD_compress(
-        Compression_Context.data,
-        Compression_Context.compressed_size,
-        Compression_Context.data,
-        Compression_Context.uncompressed_size,
-        compressionLevel
-    );
+	size_t compressedSize = ZSTD_compress(
+	    Compression_Context.data, Compression_Context.compressed_size,
+	    Compression_Context.data, Compression_Context.uncompressed_size,
+	    compressionLevel);
 
-    if (ZSTD_isError(compressedSize))
-        return false;
+	if(ZSTD_isError(compressedSize))
+		return false;
 
-    Compression_Context.compressed_size = compressedSize;
-    Compression_Context.is_compressed = true;
-    return true;
+	Compression_Context.compressed_size = compressedSize;
+	Compression_Context.is_compressed = true;
+	return true;
 }
 
 // Decompresses data in CompressionContext using Zstandard
 bool zstdDecompress(CompressionContext &Compression_Context) {
-    if (!Compression_Context.is_compressed ||
-        Compression_Context.compressed_size == 0 || !Compression_Context.data)
-        return false;
+	if(!Compression_Context.is_compressed ||
+	   Compression_Context.compressed_size == 0 || !Compression_Context.data)
+		return false;
 
-    size_t decompressedSize = ZSTD_decompress(
-        Compression_Context.data,
-        Compression_Context.uncompressed_size,
-        Compression_Context.data,
-        Compression_Context.compressed_size
-    );
+	size_t decompressedSize = ZSTD_decompress(
+	    Compression_Context.data, Compression_Context.uncompressed_size,
+	    Compression_Context.data, Compression_Context.compressed_size);
 
-    if (ZSTD_isError(decompressedSize))
-        return false;
+	if(ZSTD_isError(decompressedSize))
+		return false;
 
-    Compression_Context.is_compressed = false;
-    return true;
+	Compression_Context.is_compressed = false;
+	return true;
 }
 
 // Convenience function: compress std::vector<uint8_t> using Zstandard
-bool zstdCompressVector(std::vector<uint8_t> &arg_Vector, int compressionLevel) {
-    size_t originalSize = arg_Vector.size();
-    size_t maxCompressedSize = ZSTD_compressBound(originalSize);
-    std::vector<uint8_t> buffer(maxCompressedSize);
+bool zstdCompressVector(std::vector<uint8_t> &arg_Vector,
+                        int compressionLevel) {
+	size_t originalSize = arg_Vector.size();
+	size_t maxCompressedSize = ZSTD_compressBound(originalSize);
+	std::vector<uint8_t> buffer(maxCompressedSize);
 
-    CompressionContext ctx(buffer.data(), originalSize, maxCompressedSize, false);
+	CompressionContext ctx(buffer.data(), originalSize, maxCompressedSize,
+	                       false);
 
-    if (!zstdCompress(ctx, compressionLevel))
-        return false;
+	if(!zstdCompress(ctx, compressionLevel))
+		return false;
 
-    arg_Vector.assign(buffer.begin(), buffer.begin() + ctx.compressed_size);
-    return true;
+	arg_Vector.assign(buffer.begin(), buffer.begin() + ctx.compressed_size);
+	return true;
 }
 
 // Convenience function: decompress std::vector<uint8_t> using Zstandard
-bool zstdDecompressVector(std::vector<uint8_t> &arg_Vector, size_t Uncompressed_Size) {
-    std::vector<uint8_t> buffer(Uncompressed_Size);
-    CompressionContext ctx(buffer.data(), Uncompressed_Size, arg_Vector.size(), true);
+bool zstdDecompressVector(std::vector<uint8_t> &arg_Vector,
+                          size_t Uncompressed_Size) {
+	std::vector<uint8_t> buffer(Uncompressed_Size);
+	CompressionContext ctx(buffer.data(), Uncompressed_Size, arg_Vector.size(),
+	                       true);
 
-    if (!zstdDecompress(ctx))
-        return false;
+	if(!zstdDecompress(ctx))
+		return false;
 
-    arg_Vector.swap(buffer);
-    return true;
+	arg_Vector.swap(buffer);
+	return true;
 }
 
 } // namespace rat::compression

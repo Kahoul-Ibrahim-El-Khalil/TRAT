@@ -11,22 +11,22 @@
  * Arguments use consistent naming: arg_X for values, Dir_Path/File_Path for
  * filesystem paths.
  */
+#include "rat/ThreadPool.hpp"
+#include "rat/system/types.hpp"
+
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <fmt/chrono.h>
+#include <fmt/core.h>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
-
-#include "rat/ThreadPool.hpp"
-#include "rat/system/types.hpp"
-#include <fmt/chrono.h>
-#include <fmt/core.h>
-#include <future>
 
 namespace rat::system {
 

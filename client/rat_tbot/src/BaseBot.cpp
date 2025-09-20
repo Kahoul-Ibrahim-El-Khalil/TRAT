@@ -16,22 +16,7 @@ BaseBot::BaseBot(const std::string &arg_Token, const int64_t &Master_Id,
   this->setServerApiUrl(::rat::tbot::TELEGRAM_API_URL);
 
   this->update_interval = 1000;
-  this->operation_count = 0;
   this->last_update_id = 0;
-}
-
-BaseBot::BaseBot(const BaseBot &Other_Bot)
-    : token(Other_Bot.token), master_id(Other_Bot.master_id),
-      sending_message_url_base(Other_Bot.sending_message_url_base),
-      sending_document_url(Other_Bot.sending_document_url),
-      sending_photo_url(Other_Bot.sending_photo_url),
-      sending_audio_url(Other_Bot.sending_audio_url),
-      sending_video_url(Other_Bot.sending_video_url),
-      sending_voice_url(Other_Bot.sending_voice_url),
-      getting_file_url(Other_Bot.getting_file_url), curl_client() {
-  setOffset();
-  update_interval = Other_Bot.update_interval;
-  last_update_id = Other_Bot.last_update_id;
 }
 
 // ---------------------- Getters ----------------------
@@ -96,17 +81,6 @@ void BaseBot::setOffset() {
     TBOT_ERROR_LOG("Failed to fetch updates (empty response).");
     return;
   }
-  this->operation_count++;
-  if (this->operation_count >= ::rat::tbot::UPPER_RESTART_BOUND) {
-    CURLcode curl_code = this->curl_client.hardReset();
-    if (curl_code == CURLE_OK) {
-      TBOT_DEBUG_LOG("Restarted the Bot's curl client to "
-                     "clean cache");
-    } else {
-      TBOT_ERROR_LOG("Failed to init curl");
-    }
-  }
-
   std::string json_raw(http_buffer.begin(),
                        http_buffer.begin() + response.size);
   simdjson::padded_string padded_json(json_raw);
@@ -165,17 +139,6 @@ BotResponse BaseBot::sendMessage(const std::string &Text_Message) {
       return BotResponse::CONNECTION_ERROR;
     }
 
-    this->operation_count++;
-    if (this->operation_count >= ::rat::tbot::UPPER_RESTART_BOUND) {
-      CURLcode curl_code = this->curl_client.hardReset();
-      if (curl_code == CURLE_OK) {
-        TBOT_DEBUG_LOG("Restarted the Bot's curl client to clean cache");
-        this->operation_count = 0; // reset count after hard reset
-      } else {
-        TBOT_ERROR_LOG("Failed to init curl");
-      }
-    }
-
     // Parse JSON
     std::string json_raw(http_buffer.begin(),
                          http_buffer.begin() + response.size);
@@ -188,7 +151,6 @@ BotResponse BaseBot::sendMessage(const std::string &Text_Message) {
       return BotResponse::UNKNOWN_ERROR;
 
     return ok_res.value() ? BotResponse::SUCCESS : BotResponse::UNKNOWN_ERROR;
-
   } catch (const std::exception &e) {
     TBOT_ERROR_LOG("sendMessage exception: {}", e.what());
     return BotResponse::CONNECTION_ERROR;
@@ -237,11 +199,6 @@ BotResponse BaseBot::sendFile(const std::filesystem::path &File_Path,
 
     const auto response = this->curl_client.uploadMimeFile(ctx, http_buffer);
 
-    this->curl_client.hardReset();
-    this->operation_count = 0;
-
-    TBOT_DEBUG_LOG("Reset curl client after mime operation");
-
     if (response.size > 0) {
       std::string json_raw(http_buffer.begin(),
                            http_buffer.begin() + response.size);
@@ -275,10 +232,6 @@ BotResponse BaseBot::sendPhoto(const std::filesystem::path &Photo_Path,
     std::vector<char> http_buffer;
     http_buffer.reserve(2 * 1024);
     const auto response = curl_client.uploadMimeFile(ctx, http_buffer);
-    this->curl_client.hardReset();
-    this->operation_count = 0;
-
-    TBOT_DEBUG_LOG("Reset curl client after mime operation");
 
     if (response.size > 0) {
       std::string json_raw(http_buffer.begin(),
@@ -313,10 +266,6 @@ BotResponse BaseBot::sendAudio(const std::filesystem::path &Audio_Path,
     std::vector<char> http_buffer;
     http_buffer.reserve(2 * 1024);
     const auto response = curl_client.uploadMimeFile(ctx, http_buffer);
-    this->curl_client.hardReset();
-    this->operation_count = 0;
-
-    TBOT_DEBUG_LOG("Reset curl client after mime operation");
 
     if (response.size > 0) {
       std::string json_raw(http_buffer.begin(),
@@ -350,10 +299,6 @@ BotResponse BaseBot::sendVideo(const std::filesystem::path &Video_Path,
     std::vector<char> http_buffer;
     http_buffer.reserve(2 * 1024);
     const auto response = this->curl_client.uploadMimeFile(ctx, http_buffer);
-    this->curl_client.hardReset();
-    this->operation_count = 0;
-
-    TBOT_DEBUG_LOG("Reset curl client after mime operation");
 
     if (response.size > 0) {
       std::string json_raw(http_buffer.begin(),
@@ -389,10 +334,6 @@ BotResponse BaseBot::sendVoice(const std::filesystem::path &Voice_Path,
     http_buffer.reserve(1024);
 
     const auto response = this->curl_client.uploadMimeFile(ctx, http_buffer);
-    this->curl_client.hardReset();
-    this->operation_count = 0;
-
-    TBOT_DEBUG_LOG("Reset curl client after mime operation");
 
     if (response.size > 0) {
       std::string json_raw(http_buffer.begin(),
@@ -423,17 +364,6 @@ bool BaseBot::downloadFile(const std::string &File_Id,
 
   const auto response =
       this->curl_client.sendHttpRequest(get_file_url.c_str(), http_buffer);
-  this->operation_count++;
-  if (this->operation_count >= ::rat::tbot::UPPER_RESTART_BOUND) {
-    CURLcode curl_code = this->curl_client.hardReset();
-    if (curl_code == CURLE_OK) {
-      TBOT_DEBUG_LOG("Restarted the Bot's curl client to "
-                     "clean cache");
-    } else {
-      TBOT_ERROR_LOG("Failed to init curl");
-    }
-  }
-
   if (response.curl_code != CURLE_OK || response.size == 0)
     return false;
 

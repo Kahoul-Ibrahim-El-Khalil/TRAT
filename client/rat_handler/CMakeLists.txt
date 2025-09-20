@@ -1,7 +1,9 @@
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 set(HANDLER_SRC
-	${SRC_DIR}/handleXoredPayload.cpp
+  ${SRC_DIR}/capCurlCache.cpp
+  ${SRC_DIR}/send.cpp
+  ${SRC_DIR}/handleXoredPayload.cpp
 	${SRC_DIR}/init.cpp
     ${SRC_DIR}/handleUpdate.cpp
     ${SRC_DIR}/handlers.cpp

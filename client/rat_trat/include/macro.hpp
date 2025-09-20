@@ -1,5 +1,6 @@
 #pragma once
 
-#define TOKEN1_odahimbotzawzum ("5598026972:AAFtLSUld27ImilkcOppvGMFgSAPXozEgVo")
+#define TOKEN1_odahimbotzawzum                                                 \
+	("5598026972:AAFtLSUld27ImilkcOppvGMFgSAPXozEgVo")
 #define TOKEN_ODAHIMBOT ("5399033392:AAG1omEFjgBFDwH4FJMInbSdEGwoGAA9QHM")
 #define MASTER_ID (uint64_t)1492536442

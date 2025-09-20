@@ -20,7 +20,7 @@ struct MimeContext {
 	std::string url;
 	std::map<std::string, std::string> fields_map;
 	std::string file_field_name = "document"; // default field name for file
-	std::string mime_type = "";				  // optional MIME type
+	std::string mime_type = "";               // optional MIME type
 };
 
 struct NetworkingResult {

@@ -12,11 +12,12 @@ constexpr char xorChar(char c, char key) {
 }
 
 // Compile-time XOR encrypt
-template <size_t N, size_t K> constexpr auto xorEncrypt(const char (&str)[N], const char (&key)[K]) {
+template <size_t N, size_t K>
+constexpr auto xorEncrypt(const char (&str)[N], const char (&key)[K]) {
 	std::array<char, N> encrypted{};
-	for (size_t i = 0; i < N; i++) {
-		encrypted[i] = str[i] ^ key[i % (K - 1)];
-	}
+		for(size_t i = 0; i < N; i++) {
+			encrypted[i] = str[i] ^ key[i % (K - 1)];
+		}
 	return encrypted;
 }
 

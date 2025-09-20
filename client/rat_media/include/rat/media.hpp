@@ -5,7 +5,6 @@
 #include <spdlog/spdlog.h>
 #endif // DEBUG#endif
 
-
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -22,9 +21,11 @@ struct Resolution {
 	uint16_t height;
 
 	Resolution(uint16_t arg_Width, uint16_t arg_Height)
-	    : width(arg_Width), height(arg_Height) {};
+	    : width(arg_Width), height(arg_Height){};
 
-	std::string toString() const { return fmt::format("{}x{}", width, height); }
+	std::string toString() const {
+		return fmt::format("{}x{}", width, height);
+	}
 
 	double getRatio() const {
 		return static_cast<double>(width) / static_cast<double>(height);
