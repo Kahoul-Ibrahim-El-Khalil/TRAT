@@ -24,12 +24,12 @@ void Handler::notFound(
 void Handler::registerRoutes(drogon::HttpAppFramework &Drogon_Singelton) {
   for (const auto &route :
        routes) { // capture route by const reference for safety
-    Drogon_Singeltopn.registerHandler(
+    Drogon_Singelton.registerHandler(
         std::string(route.path), // convert string_view to string
         [this,
          route](const drogon::HttpRequestPtr &p_Request,
                 std::function<void(const drogon::HttpResponsePtr &)> &&cb) {
-          (this->*route.method)(req, std::move(cb));
+          (this->*route.method)(p_Request, std::move(cb));
         },
         {drogon::Get, drogon::Post});
   }

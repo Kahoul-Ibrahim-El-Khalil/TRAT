@@ -11,7 +11,8 @@ namespace DrogonRatServer {
 class Handler {
 public:
   Handler() = default;
-
+  Handler(const Handler &Other_Handler) = delete;
+  Handler(Handler &&Other_Handler) = delete;
   using Method = void (Handler::*)(
       const drogon::HttpRequestPtr &,
       std::function<void(const drogon::HttpResponsePtr &)> &&);
@@ -24,9 +25,6 @@ public:
   void
   echo(const drogon::HttpRequestPtr &p_Request,
        std::function<void(const drogon::HttpResponsePtr &)> &&arg_Callback);
-  void
-  download(const drogon::HttpRequestPtr &p_Request,
-           std::function<void(const drogon::HttpResponsePtr &)> &&arg_Callback);
 
   void
   notFound(const drogon::HttpRequestPtr &,
@@ -35,8 +33,7 @@ public:
   void registerRoutes(drogon::HttpAppFramework &Drogon_Singelton);
 
 private:
-  const std::array<Route, 2> routes{
-      {{"/echo", &Handler::echo}, {"/download", &Handler::download}}};
+  const std::array<Route, 1> routes{{"/echo", &Handler::echo}};
 };
 
 } // namespace DrogonRatServer

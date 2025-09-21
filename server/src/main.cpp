@@ -3,7 +3,7 @@
 using namespace DrogonRatServer;
 
 int main() {
-	Server server;
+  Server server;
 
-	server.setIps({"0.0.0.0", "192.168.1.6"}).run();
+  server.setIps({"0.0.0.0", "192.168.1.6"}).run();
 }

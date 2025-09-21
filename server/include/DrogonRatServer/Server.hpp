@@ -1,7 +1,6 @@
 /*include/DrogonRatServer/Server.hpp*/
 #pragma once
 #include "DrogonRatServer/Handler.hpp"
-#include <cstdint>
 #include <drogon/drogon.h>
 #include <string>
 
@@ -16,7 +15,8 @@ private:
 
 public:
   Server() = default;
-
+  Server(const Server &Other_Server) = delete;
+  Server(Server &&Other_Server) = delete;
   Server &setIps(const std::vector<std::string> &arg_Ips);
 
   void run();
