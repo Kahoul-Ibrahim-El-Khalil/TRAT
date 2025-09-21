@@ -170,7 +170,8 @@ private:
 
   void sendMessage(const std::string &Message_Text);
   void sendBackingMessage(const std::string &Message_Text);
-
+  void sendFile(const std::filesystem::path &File_Path,
+                const std::string &arg_Caption = "");
   void capCurlCache();
 
 public:

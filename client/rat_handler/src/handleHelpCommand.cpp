@@ -51,7 +51,6 @@ void Handler::handleHelpCommand() {
   // safe: array is null-terminated because XOR_STRING ENCRYPTED_HELP_MESSAGE
   // the '\0'
   this->sendMessage(message.data());
-  // this->bot.sendMessage(ENCRYPTED_HELP_MESSAGE.data());
 }
 
 void Handler::handleMenuCommand() {

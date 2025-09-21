@@ -1,9 +1,5 @@
 #include "rat/Handler.hpp"
-#include "rat/compression.hpp"
-#include "rat/encryption/encryption.hpp"
-#include "rat/encryption/xor.hpp"
 #include "rat/handler/debug.hpp"
-#include "rat/networking/helpers.hpp"
 #include "rat/system.hpp"
 
 #include <filesystem>
