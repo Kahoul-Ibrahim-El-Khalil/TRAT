@@ -15,9 +15,8 @@ Server &Server::setIps(const std::vector<std::string> &arg_Ips) {
 void Server::run() {
   this->generateSelfSignedCert(this->certificate_path, this->key_path);
 
-  handler.registerRoutes(drogon::app());
   for (const auto &ip : this->ips) {
-    drogon::app()
+    handler.drogon_app
         .addListener(ip, 8080) // HTTP
         .addListener(ip, 8443, true, this->certificate_path,
                      this->key_path) // HTTPS

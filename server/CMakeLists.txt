@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Option for debug logging
+option(DEBUG "Enable debug logging with spdlog" OFF)
+
 # Find Drogon
 find_package(Drogon REQUIRED)
 
@@ -23,6 +26,7 @@ set(SRCS
     src/main.cpp
     src/Server/methods.cpp
     src/Handler/methods.cpp
+    src/Handler/constructor.cpp
 )
 
 # Executable
@@ -36,6 +40,7 @@ target_link_libraries(server
         OpenSSL::Crypto
         DrogonRatDatabase
 )
+
 
 # On Windows/MinGW: copy OpenSSL DLLs into output dir
 if(WIN32)
@@ -51,4 +56,3 @@ if(WIN32)
             $<TARGET_FILE_DIR:server>
         COMMENT "Copying OpenSSL DLLs into output directory")
 endif()
-

@@ -1,6 +1,7 @@
 /*include/DrogonRatServer/Server.hpp*/
 #pragma once
 #include "DrogonRatServer/Handler.hpp"
+#include <drogon/HttpAppFramework.h>
 #include <drogon/drogon.h>
 #include <string>
 
@@ -8,15 +9,18 @@ namespace DrogonRatServer {
 
 class Server {
 private:
-  std::vector<std::string> ips;
   Handler handler;
+
+  std::vector<std::string> ips;
   std::string key_path = "key.key";
   std::string certificate_path = "certificate.cert";
 
 public:
-  Server() = default;
   Server(const Server &Other_Server) = delete;
   Server(Server &&Other_Server) = delete;
+  explicit Server(drogon::HttpAppFramework &Drogon_Singelton)
+      : handler(Drogon_Singelton) {}
+
   Server &setIps(const std::vector<std::string> &arg_Ips);
 
   void run();

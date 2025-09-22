@@ -5,8 +5,6 @@ project(DrogonRatDatabase LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find Drogon
-find_package(Drogon REQUIRED)
 
 # Collect generated model sources
 file(GLOB_RECURSE DB_SOURCES
