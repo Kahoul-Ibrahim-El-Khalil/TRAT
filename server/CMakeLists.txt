@@ -1,17 +1,19 @@
 cmake_minimum_required(VERSION 3.25)
 project(DrogonRatServer LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Option for debug logging
-option(DEBUG "Enable debug logging with spdlog" OFF)
+if(DEBUG)
+  add_compile_options(-g -O0 -Wall -Wextra -Werror)
+  add_compile_definitions(DEBUG=1)
+endif()
 
 # Find Drogon
 find_package(Drogon REQUIRED)
-
+find_package(fmt REQUIRED)
 # Find OpenSSL
 find_package(OpenSSL REQUIRED)
 
@@ -29,8 +31,28 @@ set(SRCS
     src/Handler/constructor.cpp
 )
 
-# Executable
+# Create the executable
 add_executable(server ${SRCS})
+
+# Precompiled header interface
+add_library(PCH INTERFACE)
+target_precompile_headers(PCH INTERFACE
+    <drogon/HttpAppFramework.h>
+    <drogon/HttpResponse.h>
+    <drogon/drogon.h>
+    <drogon/orm/DbClient.h>
+    <drogon/orm/Mapper.h>
+    <functional>
+    <fmt/core.h>
+    <filesystem>
+    <string>
+    <vector>
+    <filesystem>
+    <fstream>
+)
+
+# Link the PCH interface to your executable
+target_link_libraries(server PRIVATE PCH)
 
 # Link Drogon + OpenSSL + DB module
 target_link_libraries(server
@@ -39,12 +61,11 @@ target_link_libraries(server
         OpenSSL::SSL
         OpenSSL::Crypto
         DrogonRatDatabase
+        fmt::fmt
 )
-
 
 # On Windows/MinGW: copy OpenSSL DLLs into output dir
 if(WIN32)
-    # Explicit path to MSYS2 OpenSSL DLLs
     set(OPENSSL_DLL_DIR "X:/msys2/mingw64/bin")
 
     add_custom_command(TARGET server POST_BUILD
@@ -56,3 +77,4 @@ if(WIN32)
             $<TARGET_FILE_DIR:server>
         COMMENT "Copying OpenSSL DLLs into output directory")
 endif()
+

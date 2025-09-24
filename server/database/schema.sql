@@ -3,7 +3,7 @@
 CREATE TABLE Telegram_Bot (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token TEXT UNIQUE NOT NULL,
-    can_receive_updates BOOLEAN NOT NULL DEFAULT 1
+    can_receive_updates BOOLEAN NULL DEFAULT 1
 );
 
 CREATE TABLE Telegram_Message (

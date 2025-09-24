@@ -1,49 +1,44 @@
 /*include/DrogonRatServer/Handler.hpp*/
 #pragma once
-#include <array>
 #include <drogon/HttpAppFramework.h>
 #include <drogon/HttpResponse.h>
 #include <drogon/drogon.h>
+#include <drogon/orm/DbClient.h>
+#include <drogon/orm/Mapper.h>
 #include <functional>
-#include <string>
-
-#define HANDLER_ROUTE_MAP                                                      \
-  {                                                                            \
-    { "/hello", &Handler::hello }                                              \
-  }
 
 namespace DrogonRatServer {
 using DrogonHandlerCallback =
     std::function<void(const drogon::HttpResponsePtr &)>;
 
 class Handler {
-public:
-  using Method = void (Handler::*)(const drogon::HttpRequestPtr &,
-                                   DrogonHandlerCallback &&);
-  struct Route {
-    std::string path;
-    Method method;
-  };
+  private:
+	std::filesystem::path db_file_path;
+	drogon::orm::DbClientPtr p_db_client;
 
-private:
-  const std::array<Route, 1> routes = HANDLER_ROUTE_MAP;
+	std::vector<std::string> cached_tokens = {};
 
-public:
-  drogon::HttpAppFramework &drogon_app;
+  public:
+	drogon::HttpAppFramework &drogon_app; // The parent class of this calls it,
+	/*Default constructors must be deleted*/
+	Handler() = delete;
+	Handler(const Handler &Other_Handler) = delete;
+	Handler(Handler &&Other_Handler) = delete;
 
-  /*Default constructors must be deleted*/
-  Handler() = delete;
-  Handler(const Handler &Other_Handler) = delete;
-  Handler(Handler &&Other_Handler) = delete;
+	Handler(drogon::HttpAppFramework &Drogon_App);
 
-  Handler(drogon::HttpAppFramework &Drogon_App);
+	Handler &setDbFilePath(const std::filesystem::path &Db_File_Path);
+	Handler &initDbClient(void);
 
-  void hello(const drogon::HttpRequestPtr &p_Request,
-             DrogonHandlerCallback &&arg_Callback);
+	Handler &registerAll();
+	// Implimentation in src/Handler/methods.cpp
+  protected:
+	void registerUploadHandler();
+	void registerEchoHandler();
 
-  void notFound(const drogon::HttpRequestPtr &,
-                DrogonHandlerCallback &&arg_Callback);
+	void registerTelegramBotApiHandler();
 };
 
 } // namespace DrogonRatServer
+
 #undef HANDLER_ROUTE_MAP

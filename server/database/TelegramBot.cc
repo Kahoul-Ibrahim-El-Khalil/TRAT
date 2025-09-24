@@ -23,7 +23,7 @@ const std::string TelegramBot::tableName = "telegram_bot";
 const std::vector<typename TelegramBot::MetaData> TelegramBot::metaData_={
 {"id","int64_t","integer",8,1,1,0},
 {"token","std::string","text",0,0,0,1},
-{"can_receive_updates","std::string","boolean",0,0,0,1}
+{"can_receive_updates","std::string","boolean",0,0,0,0}
 };
 const std::string &TelegramBot::getColumnName(size_t index) noexcept(false)
 {
@@ -264,6 +264,11 @@ void TelegramBot::setCanReceiveUpdates(const std::string &pCanReceiveUpdates) no
 void TelegramBot::setCanReceiveUpdates(std::string &&pCanReceiveUpdates) noexcept
 {
     canReceiveUpdates_ = std::make_shared<std::string>(std::move(pCanReceiveUpdates));
+    dirtyFlag_[2] = true;
+}
+void TelegramBot::setCanReceiveUpdatesToNull() noexcept
+{
+    canReceiveUpdates_.reset();
     dirtyFlag_[2] = true;
 }
 
@@ -622,8 +627,7 @@ bool TelegramBot::validJsonOfField(size_t index,
         case 2:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {

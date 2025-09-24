@@ -1,0 +1,25 @@
+Server
+-Handler
+--TelegramBotApi::Handler
+
+The Server is the interface where the ports and ip endpoints are defined, it has a refernece of a Drogon
+Singelton that it passes it to DrogonRatServer::Handler that it composites over it.
+
+The DrogonRatServer::Handler is where the main logic of handling url paths happens, it handles /method
+on its own but delegates bot{token} to its member TelegramBotApi::Handler.
+
+class Server {
+    private:
+      Handler handler;
+  }
+
+class Handler {
+    private:
+        drogon_orm_database_db; //connecting to the database will fetch the tok
+        std::vector<std::string> tokens = {}
+        std::vector<TelegramBotApi::Handler> bot_handler;
+        
+    handleBotUrlPath()
+  }
+
+  for the path /bot{token} first the handler fetches 

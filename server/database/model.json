@@ -1,6 +1,6 @@
 {
   "rdbms": "sqlite3",
   "filename": "./data.db",
-  "namespace": "DrogonRatServer::db",
-  "output": "./models"
+  "namespace": "TelegramBotApi::db",
+  "output": "./"
 }

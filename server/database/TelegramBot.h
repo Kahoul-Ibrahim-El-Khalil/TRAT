@@ -124,6 +124,7 @@ class TelegramBot
     ///Set the value of the column can_receive_updates
     void setCanReceiveUpdates(const std::string &pCanReceiveUpdates) noexcept;
     void setCanReceiveUpdates(std::string &&pCanReceiveUpdates) noexcept;
+    void setCanReceiveUpdatesToNull() noexcept;
 
 
     static size_t getColumnNumber() noexcept {  return 3;  }
