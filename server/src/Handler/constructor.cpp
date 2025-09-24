@@ -2,6 +2,7 @@
 #include "DrogonRatServer/debug.hpp"
 
 #include <filesystem>
+#include <string_view>
 
 #ifdef DEBUG
 #include <array>
@@ -38,10 +39,39 @@
 
 namespace DrogonRatServer {
 
-/* Get a reference of the drogon app singleton from the scope of the server,
-   which in return gets it from the scope of main.
-   Register the routes from the map and call the callback that is the value.
-*/
+// --- Embed schema.sql here ---
+constexpr std::string_view TELEGRAM_SCHEMA_SQL = R"sql(
+CREATE TABLE IF NOT EXISTS telegram_bot (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT UNIQUE NOT NULL,
+    can_receive_updates BOOLEAN DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS telegram_message (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bot_id INTEGER NOT NULL REFERENCES telegram_bot(id),
+    text TEXT,
+    caption TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS telegram_file (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id INTEGER NOT NULL REFERENCES telegram_message(id) ON DELETE CASCADE,
+    file_path TEXT NOT NULL,
+    mime_type TEXT,
+    extension TEXT,
+    data BLOB NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS telegram_update (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bot_id INTEGER NOT NULL REFERENCES telegram_bot(id),
+    message_id INTEGER REFERENCES telegram_message(id),
+    delivered BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+)sql";
 
 Handler::Handler(drogon::HttpAppFramework &Drogon_App)
     : drogon_app(Drogon_App) {
@@ -54,24 +84,25 @@ Handler &Handler::setDbFilePath(const std::filesystem::path &Db_File_Path) {
 }
 
 Handler &Handler::initDbClient(void) {
-		if(std::filesystem::exists(this->db_file_path)) {
-			this->p_db_client = drogon::orm::DbClient::newSqlite3Client(
-			    this->db_file_path.string(), // path to your SQLite file
-			    1); // max connection pool size (SQLite iis file-based)
-			INFO_LOG("Instantiating SQLITE3 client from file {}",
+	// Always create/open the SQLite file
+	this->p_db_client =
+	    drogon::orm::DbClient::newSqlite3Client(this->db_file_path.string(), 1);
+
+	INFO_LOG("Instantiating SQLITE3 client from file {}",
+	         this->db_file_path.string());
+
+	    // Apply schema (synchronously for simplicity at startup)
+		try {
+			this->p_db_client->execSqlSync(std::string(TELEGRAM_SCHEMA_SQL));
+			INFO_LOG("Database schema ensured at {}",
 			         this->db_file_path.string());
-
-			DEBUG_SQLITE3_DB_FILE_CONTENT(db_file_path.string());
-			return *this;
 		}
-	ERROR_LOG("Failed to start since database file does not exist");
-	return *this;
-}
+		catch(const std::exception &e) {
+			ERROR_LOG("Failed to apply schema: {}", e.what());
+		}
 
-Handler &Handler::registerAll() {
-	this->registerEchoHandler();
-	this->registerUploadHandler();
-	this->registerTelegramBotApiHandler();
+	DEBUG_SQLITE3_DB_FILE_CONTENT(db_file_path.string());
+
 	return *this;
 }
 } // namespace DrogonRatServer

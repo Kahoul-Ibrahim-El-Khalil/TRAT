@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(DrogonRatServer LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -18,10 +18,12 @@ find_package(fmt REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 # Database submodule
-add_subdirectory(database)
+add_subdirectory(TelegramBotApiModels)
 
 # Include your headers
-include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/include
+                    ${CMAKE_SOURCE_DIR} #for the models
+)
 
 # Sources
 set(SRCS
@@ -50,17 +52,13 @@ target_precompile_headers(PCH INTERFACE
     <filesystem>
     <fstream>
 )
-
-# Link the PCH interface to your executable
-target_link_libraries(server PRIVATE PCH)
-
-# Link Drogon + OpenSSL + DB module
 target_link_libraries(server
     PRIVATE
+        PCH
+        TelegramBotApiModels
         Drogon::Drogon
         OpenSSL::SSL
         OpenSSL::Crypto
-        DrogonRatDatabase
         fmt::fmt
 )
 

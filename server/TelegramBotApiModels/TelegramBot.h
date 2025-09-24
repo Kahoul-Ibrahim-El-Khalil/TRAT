@@ -191,10 +191,6 @@ class TelegramBot
             sql += "can_receive_updates,";
             ++parametersCount;
         }
-        if(!dirtyFlag_[2])
-        {
-            needSelection=true;
-        }
         if(parametersCount > 0)
         {
             sql[sql.length()-1]=')';

@@ -3,7 +3,7 @@
 #include <filesystem>
 
 const std::filesystem::path &DB_FILE_PATH = std::filesystem::absolute(
-    std::filesystem::current_path() / "../database/data.db");
+    std::filesystem::current_path() / "../TelegramBotApiModels/data.db");
 
 using namespace DrogonRatServer;
 
