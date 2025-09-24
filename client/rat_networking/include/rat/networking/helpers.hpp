@@ -22,6 +22,8 @@ size_t _cbVectorUint8Write(void *p_Contents, size_t arg_Size, size_t arg_Nmemb,
                            void *p_User);
 size_t _cbVectorCharWrite(void *p_Contents, size_t arg_Size, size_t arg_Nmemb,
                           void *p_User);
+size_t
+_cbFileRead(char *p_Contents, size_t arg_Size, size_t arg_Nnemb, void *p_User);
 
 struct XorDataContext {
 	std::string *p_key;

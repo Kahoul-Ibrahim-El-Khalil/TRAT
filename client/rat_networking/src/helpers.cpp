@@ -93,4 +93,9 @@ size_t _cbVectorXoredDataWrite(void *p_Contents, size_t arg_Size,
 	return totalBytes; // tell libcurl we consumed everything
 }
 
+size_t
+_cbFileRead(char *p_Contents, size_t arg_Size, size_t arg_Nnemb, void *p_User) {
+	FILE *fp = static_cast<FILE *>(p_User);
+	return fread(p_Contents, arg_Size, arg_Nnemb, fp);
+}
 } // namespace rat::networking

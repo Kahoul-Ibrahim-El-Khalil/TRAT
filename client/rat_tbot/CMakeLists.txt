@@ -12,7 +12,7 @@ target_include_directories(rat_tbot
 
 target_link_libraries(rat_tbot
     PUBLIC
-		SIMDJSON::simdjson
+		simdjson
         rat_networking        # internal dependency
         fmt              # from root
 )

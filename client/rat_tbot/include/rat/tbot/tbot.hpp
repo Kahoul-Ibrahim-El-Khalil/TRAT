@@ -8,7 +8,6 @@
 #include <filesystem>
 #include <simdjson.h>
 #include <string>
-#include <string_view>
 
 #define KB 1024
 
@@ -16,7 +15,7 @@ namespace rat::tbot {
 
 constexpr size_t HTTP_RESPONSE_BUFFER_SIZE = 8 * KB;
 
-constexpr std::string_view TELEGRAM_API_URL = "https://api.telegram.org";
+constexpr char TELEGRAM_API_URL[] = "https://api.telegram.org";
 
 class BaseBot {
   protected:
@@ -105,7 +104,8 @@ class Bot : public BaseBot {
   public:
 	Bot() = default;
 	Bot(const std::string &arg_Token, const int64_t &Master_Id,
-	    uint8_t Telegram_Connection_Timeout = 20, const std::string& Url_Endpoint = ::rat::tbot::TELEGRAM_API_URL));
+	    uint8_t Telegram_Connection_Timeout = 20,
+	    const std::string &Url_Endpoint = ::rat::tbot::TELEGRAM_API_URL);
 	Bot(const Bot &Other_Bot) = delete;
 	Update getUpdate(); // override if BaseBot has virtual equivalent
 };
