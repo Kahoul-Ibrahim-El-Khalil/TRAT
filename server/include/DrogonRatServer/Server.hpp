@@ -11,30 +11,27 @@ namespace DrogonRatServer {
 
 class Server {
   private:
-	Handler handler;
+    Handler handler;
 
-	std::vector<std::string> ips;
-	std::string key_path = "key.key";
-	std::string certificate_path = "certificate.cert";
+    std::vector<std::string> ips;
+    std::string key_path = "key.key";
+    std::string certificate_path = "certificate.cert";
 
   public:
-	Server(const Server &Other_Server) = delete;
-	Server(Server &&Other_Server) = delete;
+    Server(const Server &Other_Server) = delete;
+    Server(Server &&Other_Server) = delete;
 
-	explicit Server(drogon::HttpAppFramework &Drogon_Singelton,
-	                const std::filesystem::path &Db_File_Path)
-	    : handler(Drogon_Singelton) {
-		this->handler.setDbFilePath(Db_File_Path).initDbClient().registerAll();
-	}
+    explicit Server(drogon::HttpAppFramework &Drogon_Singelton,
+                    const std::filesystem::path &Db_File_Path);
 
-	Server &setIps(const std::vector<std::string> &arg_Ips);
+    Server &setIps(const std::vector<std::string> &arg_Ips);
 
-	void run();
-	~Server();
+    void run();
+    ~Server();
 
   private:
-	void generateSelfSignedCert(const std::string &Cert_Path,
-	                            const std::string &Key_Path);
+    void generateSelfSignedCert(const std::string &Cert_Path,
+                                const std::string &Key_Path);
 };
 
 } // namespace DrogonRatServer

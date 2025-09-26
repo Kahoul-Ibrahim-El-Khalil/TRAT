@@ -19,10 +19,8 @@ target_link_libraries(rat_tbot
 
 if (DEBUG_RAT_TBOT)
 	target_compile_definitions(rat_tbot PUBLIC DEBUG_RAT_TBOT)
-    target_link_libraries(rat_tbot PUBLIC spdlog::spdlog)
 endif()
 
 if(BUILD_DUMMY_BOT)
 	add_executable(DummyBot src/DummyBot.cpp)
-	target_link_libraries(DummyBot PUBLIC rat_tbot spdlog::spdlog)
 endif()

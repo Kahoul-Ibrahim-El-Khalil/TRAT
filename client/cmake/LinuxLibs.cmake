@@ -4,7 +4,6 @@ if(UNIX)
     find_package(fmt REQUIRED)
     find_package(CURL REQUIRED)
     find_package(ZLIB REQUIRED)
-
     # zstd (Conda package might not ship a CMake config)
     find_package(ZSTD QUIET)
     if(NOT ZSTD_FOUND)
@@ -33,9 +32,5 @@ if(UNIX)
     )
     add_library(TINY_PROCESS_LIBRARY::tiny-process-library ALIAS tiny-process-library)
 
-    # Optional logging library
-    if(DEBUG)
-        find_package(spdlog REQUIRED)
-    endif()
 endif()
 

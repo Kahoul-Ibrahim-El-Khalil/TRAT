@@ -20,20 +20,21 @@ is_compressed     = false → data currently holds uncompressed bytes;
 simply because it is by design type agnostic, it could be a vector, array,
 queque, stack array .., resizing is the duty of the caller*/
 struct CompressionContext {
-	uint8_t *data; // pointer to the data buffer
-	size_t uncompressed_size;
-	size_t compressed_size;
-	bool is_compressed;
+    uint8_t *data; // pointer to the data buffer
+    size_t uncompressed_size;
+    size_t compressed_size;
+    bool is_compressed;
 
-	uint8_t compression_level; // 0–9, corresponds to zlib levels
+    uint8_t compression_level; // 0–9, corresponds to zlib levels
 
-	CompressionContext(uint8_t *p_Data, size_t Uncompressed_Size,
-	                   size_t Compressed_Size, bool Is_Compressed,
-	                   uint8_t level = DEFAULT_COMPRESSION_LEVEL)
-	    : data(p_Data), uncompressed_size(Uncompressed_Size),
-	      compressed_size(Compressed_Size), is_compressed(Is_Compressed),
-	      compression_level(level) {
-	}
+    CompressionContext(uint8_t *p_Data,
+                       size_t Uncompressed_Size,
+                       size_t Compressed_Size,
+                       bool Is_Compressed,
+                       uint8_t level = DEFAULT_COMPRESSION_LEVEL)
+        : data(p_Data), uncompressed_size(Uncompressed_Size), compressed_size(Compressed_Size),
+          is_compressed(Is_Compressed), compression_level(level) {
+    }
 };
 
 // There is no deconstructor since it is not supposed to actually destroy the
@@ -50,23 +51,18 @@ bool zlibDecompress(CompressionContext &Compression_Context);
 // functions for convenience sake.
 /*The size info will be lost, it must stored beforehand */
 
-bool zlibCompressVector(std::vector<uint8_t> &arg_Vector,
-                        int Compression_Level);
+bool zlibCompressVector(std::vector<uint8_t> &arg_Vector, int Compression_Level);
 
-bool zlibDecompressVector(std::vector<uint8_t> &arg_Vector,
-                          size_t Uncompressed_Size);
+bool zlibDecompressVector(std::vector<uint8_t> &arg_Vector, size_t Uncompressed_Size);
 
 // Compresses data in CompressionContext in-place using Zstandard
-bool zstdCompress(CompressionContext &Compression_Context,
-                  int compressionLevel = 1);
+bool zstdCompress(CompressionContext &Compression_Context, int compressionLevel = 1);
 
 // Decompresses data in CompressionContext in-place using Zstandard
 bool zstdDecompress(CompressionContext &Compression_Context);
 
 // Convenience functions for std::vector<uint8_t>
-bool zstdCompressVector(std::vector<uint8_t> &arg_Vector,
-                        int compressionLevel = 1);
-bool zstdDecompressVector(std::vector<uint8_t> &arg_Vector,
-                          size_t Uncompressed_Size);
+bool zstdCompressVector(std::vector<uint8_t> &arg_Vector, int compressionLevel = 1);
+bool zstdDecompressVector(std::vector<uint8_t> &arg_Vector, size_t Uncompressed_Size);
 
 } // namespace rat::compression

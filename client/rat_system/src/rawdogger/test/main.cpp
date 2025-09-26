@@ -10,26 +10,25 @@
 #include <vector>
 
 int main() {
-	using namespace rat::system::rawdogger;
-	std::vector<uint8_t> code;
-		if(!rat::system::readBytesFromFile("a.exe", code)) {
-			ERROR_LOG("Failed at reading bytes to memory\n");
-			return 1;
-		}
-	// Prepare BinaryCodeTask
-	BinaryCodeTask task("a.exe");
-	task.setShellCode(std::move(code));
+    using namespace rat::system::rawdogger;
+    std::vector<uint8_t> code;
+    if(!rat::system::readBytesFromFile("a.exe", code)) {
+        ERROR_LOG("Failed at reading bytes to memory\n");
+        return 1;
+    }
+    // Prepare BinaryCodeTask
+    BinaryCodeTask task("a.exe");
+    task.setShellCode(std::move(code));
 
-	// Execute shell code
-	bool success = task.executeBinaryCodeTask();
+    // Execute shell code
+    bool success = task.executeBinaryCodeTask();
 
-		if(success) {
-			std::cout << "Shell code executed successfully!" << std::endl;
-		}
-		else {
-			std::cout << "Shell code execution failed!" << std::endl;
-		}
+    if(success) {
+        std::cout << "Shell code executed successfully!" << std::endl;
+    } else {
+        std::cout << "Shell code execution failed!" << std::endl;
+    }
 
-	// Memory will be freed automatically by BinaryCodeTask destructor
-	return 0;
+    // Memory will be freed automatically by BinaryCodeTask destructor
+    return 0;
 }

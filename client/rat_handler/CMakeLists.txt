@@ -38,5 +38,4 @@ target_link_libraries(rat_handler
 )
 if (DEBUG_RAT_HANDLER)
 	target_compile_definitions(rat_handler PUBLIC DEBUG_RAT_HANDLER)
-    target_link_libraries(rat_handler PUBLIC spdlog::spdlog)
 endif()

@@ -48,9 +48,9 @@ if(WIN32)
 
     add_library(CURL::libcurl ALIAS curl)
     add_library(FMT::fmt ALIAS fmt)
-	add_library(ZLIB::ZLIB ALIAS zlib)
-	add_library(ZSTD::ZSTD ALIAS zstd)
-	add_library(SIMDJSON::simdjson ALIAS simdjson)
+  	add_library(ZLIB::ZLIB ALIAS zlib)
+	  add_library(ZSTD::ZSTD ALIAS zstd)
+	  add_library(SIMDJSON::simdjson ALIAS simdjson)
     add_library(TINY_PROCESS_LIBRARY::tiny-process-library ALIAS tiny-process-library)
 endif()
 

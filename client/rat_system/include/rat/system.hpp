@@ -77,47 +77,34 @@ std::string cd(const std::filesystem::path &arg_Path);
 // -------------------------------
 // File Operations
 // -------------------------------
-bool createFile(
-    const std::filesystem::path &File_Path); // May require elevated privileges
+bool createFile(const std::filesystem::path &File_Path); // May require elevated privileges
 bool copyFile(const std::filesystem::path &Origin_Path,
-              const std::filesystem::path
-                  &Target_Path); // May require elevated privileges
+              const std::filesystem::path &Target_Path); // May require elevated privileges
 bool renameFile(const std::filesystem::path &Original_Path,
-                const std::filesystem::path
-                    &Target_Path); // May require elevated privileges
-bool removeFile(
-    const std::filesystem::path &File_Path); // May require elevated privileges
+                const std::filesystem::path &Target_Path); // May require elevated privileges
+bool removeFile(const std::filesystem::path &File_Path);   // May require elevated privileges
 size_t getFileSize(const std::filesystem::path &File_Path);
-std::string readFile(
-    const std::filesystem::path &File_Path); // May require elevated privileges
-bool echo(
-    const std::string &arg_Buffer,
-    const std::filesystem::path &File_Path); // May require elevated privileges
-bool echo(const std::vector<std::string> &arg_Buffers,
-          const std::filesystem::path &File_Path);
+std::string readFile(const std::filesystem::path &File_Path); // May require elevated privileges
+bool echo(const std::string &arg_Buffer,
+          const std::filesystem::path &File_Path); // May require elevated privileges
+bool echo(const std::vector<std::string> &arg_Buffers, const std::filesystem::path &File_Path);
 
-bool appendToFile(
-    const std::string &arg_Buffer,
-    const std::filesystem::path &File_Path); // May require elevated privileges
+bool appendToFile(const std::string &arg_Buffer,
+                  const std::filesystem::path &File_Path); // May require elevated privileges
 
-bool readBytesFromFile(const std::filesystem::path &File_Path,
-                       std::vector<uint8_t> &arg_Buffer);
+bool readBytesFromFile(const std::filesystem::path &File_Path, std::vector<uint8_t> &arg_Buffer);
 
 bool writeBytesIntoFile(const std::filesystem::path &File_Path,
                         const std::vector<uint8_t> &arg_Buffer);
 // -------------------------------
 // Directory Operations
 // -------------------------------
-bool removeDir(
-    const std::filesystem::path &Dir_Path); // May require elevated privileges
-                                            //
-bool copyDir(const std::filesystem::path &Original_Dir,
-             const std::filesystem::path &Target_Dir);
+bool removeDir(const std::filesystem::path &Dir_Path); // May require elevated privileges
+                                                       //
+bool copyDir(const std::filesystem::path &Original_Dir, const std::filesystem::path &Target_Dir);
 bool moveDir(const std::filesystem::path &Original_Path,
-             const std::filesystem::path
-                 &Target_Path); // May require elevated privileges
+             const std::filesystem::path &Target_Path); // May require elevated privileges
 size_t getDirSize(const std::filesystem::path &Dir_Path);
-bool createDir(
-    const std::filesystem::path &Dir_Path); // May require elevated privileges
+bool createDir(const std::filesystem::path &Dir_Path); // May require elevated privileges
 
 } // namespace rat::system

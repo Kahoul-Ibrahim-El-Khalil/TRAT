@@ -1,63 +1,53 @@
+# Standard headers (precompiled)
 set(STANDARD_LIBRARY_HEADERS
-    <iostream>
-    <vector>
-    <array>
-    <unordered_map>
-	<string>
-    <filesystem>
-    <chrono>
-    <future>
-    <queue>
-    <functional>
-    <optional>
-    <utility>
-    <fstream>
-    <sstream>
-    <cstdint>
-    <cstring>
-    <cstddef>
-    <cstdio>
-    <cstdlib>
-    <csignal>
-    <map>
-    <thread>
-    <mutex>
-    <memory>
-    <algorithm>
+    "<iostream>"
+    "<vector>"
+    "<array>"
+    "<unordered_map>"
+    "<string>"
+    "<filesystem>"
+    "<chrono>"
+    "<future>"
+    "<queue>"
+    "<functional>"
+    "<optional>"
+    "<utility>"
+    "<fstream>"
+    "<sstream>"
+    "<cstdint>"
+    "<cstring>"
+    "<cstddef>"
+    "<cstdio>"
+    "<cstdlib>"
+    "<csignal>"
+    "<map>"
+    "<thread>"
+    "<mutex>"
+    "<memory>"
+    "<algorithm>"
 )
 
-set(THIRD_PARTY_HEADERS
-    <zlib.h>
-	<zstd.h>
-	<curl/curl.h>
-    <fmt/core.h>
-    <fmt/chrono.h>
-	<fmt/format.h>
-    <simdjson.h>
-    <tiny-process-library/process.hpp>
-    <boost/algorithm/string.hpp>
-)
-
-
-if(DEBUG)
-    find_package(spdlog REQUIRED)
-    list(APPEND  <spdlog/spdlog.h>
-				 <spdlog/sinks/stdout_color_sinks.h>
-	)
-endif()
 add_library(rat_precompiled_headers INTERFACE)
 
+# Third-party include paths
+find_package(ZLIB REQUIRED)
+find_package(CURL REQUIRED)
+find_package(fmt REQUIRED)
+
+target_include_directories(rat_precompiled_headers INTERFACE
+    ${ZLIB_INCLUDE_DIRS}
+    ${CURL_INCLUDE_DIRS}
+    ${FMT_INCLUDE_DIRS}
+)
+
+# Precompile only standard headers and your own headers (not zlib, curl, etc.)
 if(WIN32)
-    set(WINDOWS_API_HEADERS <windows.h>)
     target_precompile_headers(rat_precompiled_headers INTERFACE
         ${STANDARD_LIBRARY_HEADERS}
-        ${THIRD_PARTY_HEADERS}
-        ${WINDOWS_API_HEADERS}
+        "windows.h"
     )
-elseif(UNIX)
+else()
     target_precompile_headers(rat_precompiled_headers INTERFACE
         ${STANDARD_LIBRARY_HEADERS}
-        ${THIRD_PARTY_HEADERS}
     )
 endif()
-

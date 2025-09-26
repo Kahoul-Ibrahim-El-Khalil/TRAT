@@ -1,23 +1,29 @@
 #pragma once
+
+#include <fmt/core.h>
+
+// ===========================
+// System Logging
+// ===========================
 #ifdef DEBUG_RAT_SYSTEM
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog.h>
+#define SYSTEM_DEBUG_LOG(...)                                                                      \
+    do {                                                                                           \
+        fmt::print("[SYSTEM:DEBUG] {}:{}: ", __FILE__, __LINE__);                                  \
+        fmt::print(__VA_ARGS__);                                                                   \
+        fmt::print("\n");                                                                          \
+    } while(0)
 
-struct _rat_logging_initializer {
-	_rat_logging_initializer() {
-		spdlog::set_level(spdlog::level::debug); // Show debug and above
-		spdlog::set_pattern(
-		    "[%H:%M:%S] [%^%l%$] %v"); // Optional: pretty format
-	}
-} _rat_logging_initializer_instance;
-
-#define DEBUG_LOG(...) spdlog::debug(__VA_ARGS__)
-#define ERROR_LOG(...) spdlog::error(__VA_ARGS__)
+#define SYSTEM_ERROR_LOG(...)                                                                      \
+    do {                                                                                           \
+        fmt::print(stderr, "[SYSTEM:ERROR] {}:{}: ", __FILE__, __LINE__);                          \
+        fmt::print(stderr, __VA_ARGS__);                                                           \
+        fmt::print(stderr, "\n");                                                                  \
+    } while(0)
 #else
-#define DEBUG_LOG(...)                                                         \
-		do {                                                                   \
-	} while(0)
-#define ERROR_LOG(...)                                                         \
-		do {                                                                   \
-	} while(0)
+#define SYSTEM_DEBUG_LOG(...)                                                                      \
+    do {                                                                                           \
+    } while(0)
+#define SYSTEM_ERROR_LOG(...)                                                                      \
+    do {                                                                                           \
+    } while(0)
 #endif

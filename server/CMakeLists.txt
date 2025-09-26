@@ -17,9 +17,6 @@ find_package(fmt REQUIRED)
 # Find OpenSSL
 find_package(OpenSSL REQUIRED)
 
-# Database submodule
-add_subdirectory(TelegramBotApiModels)
-
 # Include your headers
 include_directories(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_SOURCE_DIR} #for the models
@@ -28,9 +25,11 @@ include_directories(${CMAKE_SOURCE_DIR}/include
 # Sources
 set(SRCS
     src/main.cpp
+    src/Server/constructor.cpp
     src/Server/methods.cpp
-    src/Handler/methods.cpp
     src/Handler/constructor.cpp
+    src/Handler/methods.cpp
+    src/Handler/TelegramBotApiMethods.cpp
 )
 
 # Create the executable
@@ -41,21 +40,23 @@ add_library(PCH INTERFACE)
 target_precompile_headers(PCH INTERFACE
     <drogon/HttpAppFramework.h>
     <drogon/HttpResponse.h>
+    <drogon/HttpRequest.h>
     <drogon/drogon.h>
     <drogon/orm/DbClient.h>
     <drogon/orm/Mapper.h>
     <functional>
     <fmt/core.h>
     <filesystem>
+    <algorithm>
     <string>
     <vector>
     <filesystem>
     <fstream>
+    <string_view>
 )
 target_link_libraries(server
     PRIVATE
         PCH
-        TelegramBotApiModels
         Drogon::Drogon
         OpenSSL::SSL
         OpenSSL::Crypto

@@ -1,0 +1,66 @@
+# Base style
+BasedOnStyle: LLVM
+
+# ===========================
+# Indentation
+# ===========================
+ColumnLimit: 100
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never   # use spaces only, no tabs
+
+# ===========================
+# Control Statements
+# ===========================
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false   # Force multi-line if with braces
+AllowShortLoopsOnASingleLine: false          # Force multi-line loops with braces
+
+# ===========================
+# Function Declarations/Definitions
+# ===========================
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+PenaltyReturnTypeOnItsOwnLine: 1
+SeparateDefinitionBlocks: Always   # Ensure one empty line between function definitions
+
+# ===========================
+# Namespaces
+# ===========================
+NamespaceIndentation: None
+
+# ===========================
+# Includes
+# ===========================
+SortIncludes: true
+IncludeBlocks: Regroup   # Regroup system/project headers together
+
+# ===========================
+# Spacing
+# ===========================
+SpaceBeforeParens: Never
+SpacesInContainerLiterals: false
+# ===========================
+# Function Calls / Arguments
+# ===========================
+BinPackArguments: false        # Don't pack multiple args into one line
+BinPackParameters: false       # Don't pack params in declarations either
+AllowAllArgumentsOnNextLine: false
+# ===========================
+# Empty Lines
+# ===========================
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+
+# ===========================
+# Pointers & Alignment
+# ===========================
+PointerAlignment: Right
+AlignAfterOpenBracket: Align
+
+# ===========================
+# Penalties (line-breaking costs)
+# ===========================
+PenaltyExcessCharacter: 140

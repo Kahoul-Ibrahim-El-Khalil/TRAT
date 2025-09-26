@@ -11,5 +11,4 @@ target_link_libraries(rat_threading PUBLIC rat_precompiled_headers)
 
 if (DEBUG_RAT_THREADING)
     target_compile_definitions(rat_threading PUBLIC DEBUG_RAT_THREADING)
-    target_link_libraries(rat_threading PUBLIC spdlog::spdlog)
 endif()

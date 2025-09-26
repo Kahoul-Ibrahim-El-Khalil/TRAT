@@ -1,6 +1,0 @@
-{
-  "rdbms": "sqlite3",
-  "filename": "./data.db",
-  "namespace": "TelegramBotApi::db",
-  "output": "./"
-}
