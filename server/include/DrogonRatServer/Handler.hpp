@@ -8,8 +8,8 @@
 #include <functional>
 
 namespace DrogonRatServer {
-using DrogonHandlerCallback =
-    std::function<void(const drogon::HttpResponsePtr &)>;
+using DrogonHandlerCallback = std::function<void(const drogon::HttpResponsePtr &)>;
+using HttpResponseCallback = std::function<void(const drogon::HttpResponsePtr &)>;
 
 class Handler {
   public:
@@ -46,6 +46,10 @@ class Handler {
     void registerTelegramBotApiHandler();
 };
 
+namespace TelegramBotApi {
+constexpr char SUCCESS_JSON_RESPONSE[] = R"({{"ok ":true, " result ": {}})";
+
+} // namespace TelegramBotApi
 } // namespace DrogonRatServer
 
 #undef HANDLER_ROUTE_MAP

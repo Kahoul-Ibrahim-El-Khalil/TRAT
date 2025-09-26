@@ -24,12 +24,12 @@ include_directories(${CMAKE_SOURCE_DIR}/include
 
 # Sources
 set(SRCS
-    src/main.cpp
     src/Server/constructor.cpp
     src/Server/methods.cpp
     src/Handler/constructor.cpp
-    src/Handler/methods.cpp
     src/Handler/TelegramBotApiMethods.cpp
+    src/Handler/methods.cpp
+    src/main.cpp
 )
 
 # Create the executable

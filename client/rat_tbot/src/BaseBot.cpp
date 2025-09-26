@@ -167,14 +167,12 @@ BaseBot::sendFile(const std::filesystem::path &File_Path, const std::string &arg
             TBOT_ERROR_LOG("sendFile: file does not exist: {}", File_Path.string());
             return BotResponse::CONNECTION_ERROR;
         }
-
         std::string extension = File_Path.extension().string();
         std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
 
         if(extension == ".jpg" || extension == ".jpeg" || extension == ".png") {
             return sendPhoto(File_Path, arg_Caption);
         }
-
         rat::networking::MimeContext ctx;
         ctx.file_path = File_Path;
         ctx.url = sending_document_url;

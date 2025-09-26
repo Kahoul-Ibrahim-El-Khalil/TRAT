@@ -3,16 +3,15 @@
 
 namespace DrogonRatServer {
 
-static constexpr std::array<std::string_view, 4>
-    SCHEMA_TABLE_CREATION_STATEMENTS = {{
-        R"sql(
+static constexpr std::array<std::string_view, 4> SCHEMA_TABLE_CREATION_STATEMENTS = {{
+    R"sql(
     CREATE TABLE IF NOT EXISTS telegram_bot (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         token TEXT UNIQUE NOT NULL,
         can_receive_updates BOOLEAN DEFAULT 1
     );
     )sql",
-        R"sql(
+    R"sql(
     CREATE TABLE IF NOT EXISTS telegram_message (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         bot_id INTEGER NOT NULL REFERENCES telegram_bot(id),
@@ -21,7 +20,7 @@ static constexpr std::array<std::string_view, 4>
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     )sql",
-        R"sql(
+    R"sql(
     CREATE TABLE IF NOT EXISTS telegram_file (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         message_id INTEGER NOT NULL REFERENCES telegram_message(id) ON DELETE CASCADE,
@@ -31,7 +30,7 @@ static constexpr std::array<std::string_view, 4>
         data BLOB NOT NULL
     );
     )sql",
-        R"sql(
+    R"sql(
     CREATE TABLE IF NOT EXISTS telegram_update (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         bot_id INTEGER NOT NULL REFERENCES telegram_bot(id),
