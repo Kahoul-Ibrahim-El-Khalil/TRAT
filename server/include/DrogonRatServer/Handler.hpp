@@ -27,17 +27,16 @@ using HttpResponseCallback = std::function<void(const drogon::HttpResponsePtr &)
 namespace TelegramBotApi {
 constexpr char SUCCESS_JSON_RESPONSE[] = R"({"ok":true, "result": {}})";
 
-void handleSendDocument(const drogon::HttpRequestPtr &arg_Req,
-                        Bot *p_Bot,
-                        const std::string &arg_Token,
-                        const drogon::orm::DbClientPtr &p_Db,
-                        HttpResponseCallback &&arg_Callback);
+#define TELEGRAM_BOT_API_HANDLER_METHOD_SIGNATURE_PARAMS                                           \
+    const drogon::HttpRequestPtr &arg_Req, Bot *p_Bot, const std::string &arg_Token,               \
+        const drogon::orm::DbClientPtr &p_Db, HttpResponseCallback &&arg_Callback
 
-void handleSendMessage(const drogon::HttpRequestPtr &arg_Req,
-                       Bot *p_Bot,
-                       const std::string &arg_Token,
-                       const drogon::orm::DbClientPtr &p_Db,
-                       HttpResponseCallback &&arg_Callback);
+void handleSendMessage(TELEGRAM_BOT_API_HANDLER_METHOD_SIGNATURE_PARAMS);
+void handleSendDocument(TELEGRAM_BOT_API_HANDLER_METHOD_SIGNATURE_PARAMS);
+void handleFileQueryById(TELEGRAM_BOT_API_HANDLER_METHOD_SIGNATURE_PARAMS);
+
+#undef TELEGRAM_BOT_API_HANDLER_METHOD_SIGNATURE_PARAMS
+
 } // namespace TelegramBotApi
 
 class Handler {
@@ -53,10 +52,10 @@ class Handler {
                                           const std::string &,
                                           const drogon::orm::DbClientPtr &,
                                           HttpResponseCallback &&);
-
-    const std::array<std::pair<std::string_view, HandlerMethodFuncPtr>, 2> method_handler_map = {
+    const std::array<std::pair<std::string_view, HandlerMethodFuncPtr>, 3> method_handler_map = {
         {{"sendMessage", TelegramBotApi::handleSendMessage},
-         {"sendDocument", TelegramBotApi::handleSendDocument}}};
+         {"sendDocument", TelegramBotApi::handleSendDocument},
+         {"getFile", TelegramBotApi::handleFileQueryById}}};
 
   public:
     drogon::HttpAppFramework &drogon_app;
@@ -72,7 +71,6 @@ class Handler {
     Handler &initDbClient(void);
 
     void registerAll();
-    // Implementation in src/Handler/methods.cpp
 
   protected:
     void registerUploadHandler();

@@ -45,6 +45,8 @@ inline void _insertBotAsync(const drogon::orm::DbClientPtr &p_Db,
 }
 
 void Handler::registerTelegramBotApiHandler() {
+    // this->getting_file_url = fmt::format("{}/bot{}/getFile?file_id=", this->server_api_url, token);
+
     this->drogon_app.registerHandlerViaRegex(
         bot_regex_template,
         [this](const drogon::HttpRequestPtr &arg_Req,
@@ -52,10 +54,12 @@ void Handler::registerTelegramBotApiHandler() {
                const std::string &arg_Token,
                const std::string &arg_Method) {
             auto p_Bot = _findCachedBot(this->cached_bots, arg_Token);
+
             if(!p_Bot) {
                 _insertBotAsync(p_db_client, this->cached_bots, arg_Token);
                 p_Bot = _findCachedBot(this->cached_bots, arg_Token);
             }
+
             this->_dispatchHandlerAccordingToMethod(arg_Method,
                                                     arg_Req,
                                                     p_Bot,

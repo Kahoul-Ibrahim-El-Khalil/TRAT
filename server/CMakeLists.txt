@@ -27,6 +27,7 @@ set(SRCS
     src/Server/constructor.cpp
     src/Server/methods.cpp
     src/Handler/constructor.cpp
+    src/Handler/TelegramBotApiMethods/handleFileQueryById.cpp
     src/Handler/TelegramBotApiMethods/handleSendDocument.cpp
     src/Handler/TelegramBotApiMethods/handleSendMessage.cpp
     src/Handler/TelegramBotApiMethods.cpp

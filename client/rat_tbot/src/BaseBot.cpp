@@ -16,7 +16,6 @@ BaseBot::BaseBot(const std::string &arg_Token,
                  const std::string &Url_Endpoint)
     : token(std::move(arg_Token)), master_id(std::move(Master_Id)), curl_client() {
     this->setServerApiUrl(Url_Endpoint);
-
     this->update_interval = 1000;
     this->last_update_id = 0;
 }
@@ -78,12 +77,13 @@ void BaseBot::setServerApiUrl(const std::string &Server_Api_Url) {
 }
 
 void BaseBot::setOffset() {
-    const std::string init_url = fmt::format("{}/bot{}/getUpdates?offset=-1&limit=1",
-                                             this->server_api_url,
-                                             token); // <<< FIX
+    const std::string init_url =
+        fmt::format("{}/bot{}/getUpdates?offset=-1&limit=1", this->server_api_url, token);
+
     std::vector<char> http_buffer;
     http_buffer.reserve(512);
-    const auto response = this->curl_client.sendHttpRequest(init_url.c_str(), http_buffer);
+
+    const auto &response = this->curl_client.sendHttpRequest(init_url.c_str(), http_buffer);
     if(response.size == 0 || response.curl_code != CURLE_OK) {
         TBOT_ERROR_LOG("Failed to fetch updates (empty response).");
         return;
@@ -138,12 +138,10 @@ BotResponse BaseBot::sendMessage(const std::string &Text_Message) {
 
         const auto response = this->curl_client.sendHttpRequest(url.c_str(), http_buffer);
 
-        // Check connection error
         if(response.size == 0 || response.curl_code != CURLE_OK) {
             return BotResponse::CONNECTION_ERROR;
         }
 
-        // Parse JSON
         std::string json_raw(http_buffer.begin(), http_buffer.begin() + response.size);
         simdjson::padded_string padded_json(json_raw);
         simdjson::ondemand::parser parser;
@@ -349,7 +347,7 @@ BaseBot::sendVoice(const std::filesystem::path &Voice_Path, const std::string &a
 }
 
 bool BaseBot::downloadFile(const std::string &File_Id, const std::filesystem::path &Out_Path) {
-    const std::string get_file_url = fmt::format("{}{}", getting_file_url, File_Id);
+    const std::string &get_file_url = fmt::format("{}{}", getting_file_url, File_Id);
 
     std::vector<char> http_buffer;
 

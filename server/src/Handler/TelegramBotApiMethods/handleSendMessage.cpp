@@ -7,7 +7,7 @@ void DrogonRatServer::TelegramBotApi::handleSendMessage(
     const std::string &arg_Token,
     const drogon::orm::DbClientPtr &p_Db,
     DrogonRatServer::HttpResponseCallback &&arg_Callback) {
-    auto params = arg_Req->getParameters();
+    const auto &params = arg_Req->getParameters();
     if(params.find("chat_id") == params.end() || params.find("text") == params.end()) {
         auto resp = drogon::HttpResponse::newHttpResponse();
         resp->setStatusCode(drogon::k400BadRequest);
@@ -15,10 +15,10 @@ void DrogonRatServer::TelegramBotApi::handleSendMessage(
         return arg_Callback(resp);
     }
 
-    int chatId = std::stoi(params.at("chat_id"));
-    std::string text = params.at("text");
+    const int chat_id = std::stoi(params.at("chat_id"));
+    const std::string &text = params.at("text");
 
-    DEBUG_LOG("sendMessage called with chat_id={} and text=\"{}\"", chatId, text);
+    DEBUG_LOG("sendMessage called with chat_id={} and text=\"{}\"", chat_id, text);
 
     if(p_Bot && p_Bot->id > 0) {
         p_Db->execSqlAsync(
