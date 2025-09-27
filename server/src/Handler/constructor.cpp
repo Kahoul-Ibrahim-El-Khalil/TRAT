@@ -1,8 +1,7 @@
-#include "constructor.hpp"
-
+/*server/src/Handler/constructor.cpp*/
 #include "DrogonRatServer/Handler.hpp"
+#include "DrogonRatServer/SQLSchemaStatements.hpp"
 #include "DrogonRatServer/debug.hpp"
-#include "SQLSchemaStatements.hpp"
 
 #include <filesystem>
 
@@ -18,8 +17,7 @@ inline void _applySqlSchema(const drogon::orm::DbClientPtr &Data_Base) {
     }
 }
 
-Handler::Handler(drogon::HttpAppFramework &Drogon_App)
-    : drogon_app(Drogon_App) {
+Handler::Handler(drogon::HttpAppFramework &Drogon_App) : drogon_app(Drogon_App) {
     INFO_LOG("Handler constructed");
 }
 
@@ -30,8 +28,28 @@ Handler &Handler::setDbFilePath(const std::filesystem::path &Db_File_Path) {
 
 Handler &Handler::initDbClient() {
     try {
+        // data_dowload_dir = std::filesystem::current_path() / "data/downloads"
+        if(!std::filesystem::exists(this->data_dowload_dir)) {
+            DEBUG_LOG("{} does not exist, creating it", this->data_dowload_dir.string());
+            if(std::filesystem::create_directories(this->data_dowload_dir)) {
+                DEBUG_LOG("{} was created", this->data_dowload_dir.string());
+            } else {
+                ERROR_LOG("{} failed to be created", this->data_dowload_dir.string());
+            }
+        }
+        // file_db_path = std::filesystem::current_path() / "data/data.db"
+        const std::filesystem::path &db_file_parent_dir = this->db_file_path.parent_path();
+        if(!std::filesystem::exists(db_file_parent_dir)) {
+            DEBUG_LOG("{} does not exist, creating it", db_file_parent_dir.string());
+            if(std::filesystem::create_directories(db_file_parent_dir)) {
+                DEBUG_LOG("{} was created", db_file_parent_dir.string());
+            } else {
+                ERROR_LOG("{} failed to be created", db_file_parent_dir.string());
+            }
+        }
         this->p_db_client = drogon::orm::DbClient::newSqlite3Client(
-            "filename=" + this->db_file_path.string(), 1);
+            fmt::format("filename={}", std::filesystem::absolute(this->db_file_path).string()),
+            1);
 
         if(!this->p_db_client) {
             throw std::runtime_error("Failed to create SQLite3 client");
@@ -43,12 +61,10 @@ Handler &Handler::initDbClient() {
     }
 
     try {
-        auto result =
-            p_db_client->execSqlSync("SELECT id, token FROM telegram_bot;");
+        auto result = p_db_client->execSqlSync("SELECT id, token FROM telegram_bot;");
         this->cached_bots.clear();
         for(auto const &row : result) {
-            cached_bots.push_back(
-                {row["id"].as<int64_t>(), row["token"].as<std::string>()});
+            cached_bots.push_back({row["id"].as<int64_t>(), row["token"].as<std::string>()});
         }
         INFO_LOG("Loaded {} bots into cache", cached_bots.size());
     } catch(const std::exception &e) {

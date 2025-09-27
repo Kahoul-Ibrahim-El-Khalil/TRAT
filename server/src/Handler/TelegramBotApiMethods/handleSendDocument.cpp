@@ -1,13 +1,13 @@
-#pragma once
 #include "DrogonRatServer/Handler.hpp"
 #include "DrogonRatServer/debug.hpp"
 
-inline void _handleSendDocument(const drogon::HttpRequestPtr &arg_Req,
-                                DrogonRatServer::Handler::Bot *p_Bot,
-                                const std::string &arg_Token,
-                                const drogon::orm::DbClientPtr &p_Db,
-                                DrogonRatServer::HttpResponseCallback &&arg_Callback) {
-    auto params = arg_Req->getParameters();
+void DrogonRatServer::TelegramBotApi ::handleSendDocument(
+    const drogon::HttpRequestPtr &arg_Req,
+    DrogonRatServer::Bot *p_Bot,
+    const std::string &arg_Token,
+    const drogon::orm::DbClientPtr &p_Db,
+    DrogonRatServer::HttpResponseCallback &&arg_Callback) {
+    const auto &params = arg_Req->getParameters();
     drogon::MultiPartParser file_upload;
 
     if(file_upload.parse(arg_Req) != 0 || file_upload.getFiles().empty() ||
@@ -23,8 +23,8 @@ inline void _handleSendDocument(const drogon::HttpRequestPtr &arg_Req,
         return arg_Callback(resp);
     }
 
-    auto &files = file_upload.getFiles();
-    int64_t chat_id = std::stoll(params.at("chat_id"));
+    const auto &files = file_upload.getFiles();
+    const int64_t chat_id = std::stoll(params.at("chat_id"));
     std::string caption = params.count("caption") ? params.at("caption") : "";
 
     int64_t message_id = 0;

@@ -1,12 +1,12 @@
-#pragma once
 #include "DrogonRatServer/Handler.hpp"
 #include "DrogonRatServer/debug.hpp"
 
-inline void _handleSendMessage(const drogon::HttpRequestPtr &arg_Req,
-                               DrogonRatServer::Handler::Bot *p_Bot,
-                               const std::string &arg_Token,
-                               const drogon::orm::DbClientPtr &p_Db,
-                               DrogonRatServer::HttpResponseCallback &&arg_Callback) {
+void DrogonRatServer::TelegramBotApi::handleSendMessage(
+    const drogon::HttpRequestPtr &arg_Req,
+    DrogonRatServer::Bot *p_Bot,
+    const std::string &arg_Token,
+    const drogon::orm::DbClientPtr &p_Db,
+    DrogonRatServer::HttpResponseCallback &&arg_Callback) {
     auto params = arg_Req->getParameters();
     if(params.find("chat_id") == params.end() || params.find("text") == params.end()) {
         auto resp = drogon::HttpResponse::newHttpResponse();
