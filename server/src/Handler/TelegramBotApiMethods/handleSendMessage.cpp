@@ -1,6 +1,38 @@
 #include "DrogonRatServer/Handler.hpp"
 #include "DrogonRatServer/debug.hpp"
 
+#include <memory>
+#define SEND_ERROR_RESPONSE(arg_Callback, arg_Status, arg_Message)                                 \
+    do {                                                                                           \
+        Json::Value error;                                                                         \
+        error["ok"] = false;                                                                       \
+        error["description"] = (arg_Message);                                                      \
+        auto resp = drogon::HttpResponse::newHttpJsonResponse(error);                              \
+        resp->setStatusCode((arg_Status));                                                         \
+        (arg_Callback)(resp);                                                                      \
+        return;                                                                                    \
+    } while(0)
+
+#define SEND_SUCCESS_RESPONSE(arg_Callback, Result_Json)                                           \
+    do {                                                                                           \
+        Json::Value response;                                                                      \
+        response["ok"] = true;                                                                     \
+        response["result"] = (Result_Json);                                                        \
+        auto resp = drogon::HttpResponse::newHttpJsonResponse(response);                           \
+        resp->setStatusCode(drogon::k200OK);                                                       \
+        (arg_Callback)(resp);                                                                      \
+        return;                                                                                    \
+    } while(0)
+
+#define SEND_PLAIN_RESPONSE(arg_Callback, arg_Status, arg_Text)                                    \
+    do {                                                                                           \
+        auto resp = drogon::HttpResponse::newHttpResponse();                                       \
+        resp->setStatusCode((arg_Status));                                                         \
+        resp->setBody((arg_Text));                                                                 \
+        (arg_Callback)(resp);                                                                      \
+        return;                                                                                    \
+    } while(0)
+
 void DrogonRatServer::TelegramBotApi::handleSendMessage(
     const drogon::HttpRequestPtr &arg_Req,
     DrogonRatServer::Bot *p_Bot,
@@ -8,37 +40,67 @@ void DrogonRatServer::TelegramBotApi::handleSendMessage(
     const drogon::orm::DbClientPtr &p_Db,
     DrogonRatServer::HttpResponseCallback &&arg_Callback) {
     const auto &params = arg_Req->getParameters();
+
     if(params.find("chat_id") == params.end() || params.find("text") == params.end()) {
-        auto resp = drogon::HttpResponse::newHttpResponse();
-        resp->setStatusCode(drogon::k400BadRequest);
-        resp->setBody("Missing chat_id or text");
-        return arg_Callback(resp);
+        SEND_ERROR_RESPONSE(arg_Callback, drogon::k400BadRequest, "Missing chat_id or text");
     }
 
-    const int chat_id = std::stoi(params.at("chat_id"));
-    const std::string &text = params.at("text");
+    int chat_id = 0;
+    try {
+        chat_id = std::stoi(params.at("chat_id"));
+    } catch(...) {
+        SEND_ERROR_RESPONSE(arg_Callback,
+                            drogon::k400BadRequest,
+                            "Invalid 'chat_id' parameter (must be integer)");
+    }
 
+    const std::string &text = params.at("text");
     DEBUG_LOG("sendMessage called with chat_id={} and text=\"{}\"", chat_id, text);
 
-    if(p_Bot && p_Bot->id > 0) {
-        p_Db->execSqlAsync(
-            "INSERT INTO telegram_message (bot_id, text) VALUES (?, ?);",
-            [p_Bot, text](const drogon::orm::Result &) {
-                DEBUG_LOG("Message stored for bot_id={} text={}", p_Bot->id, text);
-            },
-            [p_Bot, text](const drogon::orm::DrogonDbException &err) {
-                ERROR_LOG("DB insert failed for message bot_id={} text={} err={}",
-                          p_Bot->id,
-                          text,
-                          err.base().what());
-            },
-            p_Bot->id,
-            text);
-    } else {
+    // Check bot validity
+    if(!p_Bot || p_Bot->id <= 0) {
         ERROR_LOG("sendMessage for token {} but bot_id not yet resolved", arg_Token);
+        SEND_ERROR_RESPONSE(arg_Callback, drogon::k400BadRequest, "Bot not initialized");
     }
-    auto resp = drogon::HttpResponse::newHttpResponse();
-    resp->setStatusCode(drogon::k200OK);
-    resp->setBody(DrogonRatServer::TelegramBotApi::SUCCESS_JSON_RESPONSE);
-    arg_Callback(resp);
+
+    static constexpr const char *SQL_INSERT =
+        "INSERT INTO telegram_message (bot_id, text) VALUES (?, ?);";
+
+#ifdef DEBUG
+    auto text_sptr = std::make_shared<std::string>(text);
+
+    auto success_lambda = [p_Bot, text_sptr, chat_id](const drogon::orm::Result &) {
+        DEBUG_LOG("Message stored for bot_id={} chat_id={} text={}",
+                  p_Bot->id,
+                  chat_id,
+                  *text_sptr);
+    };
+
+    auto failure_lambda = [p_Bot, text_sptr](const drogon::orm::DrogonDbException &arg_Err) {
+        ERROR_LOG("DB insert failed for message bot_id={} text={} err={}",
+                  p_Bot->id,
+                  *text_sptr,
+                  arg_Err.base().what());
+    };
+
+    p_Db->execSqlAsync(SQL_INSERT,
+                       std::move(success_lambda),
+                       std::move(failure_lambda),
+                       p_Bot->id,
+                       *text_sptr);
+#else
+    p_Db->execSqlAsync(SQL_INSERT, nullptr, nullptr, p_Bot->id, text);
+#endif
+
+    // Build result JSON
+    Json::Value result;
+    result["chat_id"] = chat_id;
+    result["text"] = text;
+    result["status"] = "queued";
+
+    SEND_SUCCESS_RESPONSE(arg_Callback, result);
 }
+
+#undef SEND_SUCCESS_RESPONSE
+#undef SEND_ERROR_RESPONSE
+#undef SEND_PLAIN_RESPONSE

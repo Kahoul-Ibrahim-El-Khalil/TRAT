@@ -56,6 +56,9 @@ target_precompile_headers(PCH INTERFACE
     <filesystem>
     <fstream>
     <string_view>
+    <utility>
+    <chrono>
+    <random>
 )
 target_link_libraries(server
     PRIVATE

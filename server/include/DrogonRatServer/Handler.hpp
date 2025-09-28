@@ -10,6 +10,7 @@
 #include <drogon/orm/Mapper.h>
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <string_view>
 
 namespace DrogonRatServer {
@@ -18,11 +19,11 @@ struct Bot {
     std::string token;
 };
 
-// Forward declaration
 class Handler;
 
 using DrogonHandlerCallback = std::function<void(const drogon::HttpResponsePtr &)>;
 using HttpResponseCallback = std::function<void(const drogon::HttpResponsePtr &)>;
+using HttpResponseCallbackPtr = std::shared_ptr<HttpResponseCallback>;
 
 namespace TelegramBotApi {
 constexpr char SUCCESS_JSON_RESPONSE[] = R"({"ok":true, "result": {}})";
