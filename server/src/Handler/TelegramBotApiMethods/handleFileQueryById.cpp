@@ -1,4 +1,12 @@
+
 #include "DrogonRatServer/Handler.hpp"
+
+#include <drogon/HttpRequest.h>
+#include <drogon/HttpResponse.h>
+#include <drogon/orm/Result.h>
+#include <filesystem>
+#include <fmt/core.h>
+#include <optional>
 
 /*
     CREATE TABLE IF NOT EXISTS telegram_file (
@@ -8,94 +16,131 @@
         original_file_path TEXT,
         mime_type TEXT
     );
-
-
 */
-// fmt::format("{}/bot{}/getFile?file_id=", this->server_api_url, token);
+
+// ============================================================================
+// Utility Macros
+// ============================================================================
+
+#define SEND_ERROR_RESPONSE(arg_Callback, arg_Status, arg_Message)                                 \
+    do {                                                                                           \
+        Json::Value error;                                                                         \
+        error["ok"] = false;                                                                       \
+        error["description"] = (arg_Message);                                                      \
+        auto resp = drogon::HttpResponse::newHttpJsonResponse(error);                              \
+        resp->setStatusCode((arg_Status));                                                         \
+        (arg_Callback)(resp);                                                                      \
+    } while(0)
+
+#define SEND_SUCCESS_RESPONSE(arg_Callback, Result_Json)                                           \
+    do {                                                                                           \
+        Json::Value response;                                                                      \
+        response["ok"] = true;                                                                     \
+        response["result"] = (Result_Json);                                                        \
+        auto resp = drogon::HttpResponse::newHttpJsonResponse(response);                           \
+        resp->setStatusCode(drogon::k200OK);                                                       \
+        (arg_Callback)(resp);                                                                      \
+    } while(0)
+
+#define HANDLE_DB_ERROR(arg_Callback, p_Bot, File_Id, arg_Err)                                     \
+    do {                                                                                           \
+        ERROR_LOG("DB query failed for bot_id={} file_id={} err={}",                               \
+                  (p_Bot)->id,                                                                     \
+                  (File_Id),                                                                       \
+                  (arg_Err).base().what());                                                        \
+        SEND_ERROR_RESPONSE((arg_Callback), drogon::k500InternalServerError, "Database error");    \
+    } while(0)
+
+// ============================================================================
+// Internal helper functions
+// ============================================================================
+
+inline std::optional<int>
+_getFileIdFromHttpRequest(const drogon::HttpRequestPtr &arg_Req,
+                          DrogonRatServer::HttpResponseCallback &arg_Callback) {
+    const auto &params = arg_Req->getParameters();
+
+    // Check for file_id param
+    auto it = params.find("file_id");
+    if(it == params.end()) {
+        SEND_ERROR_RESPONSE(arg_Callback,
+                            drogon::k400BadRequest,
+                            "Missing required parameter 'file_id'");
+        return std::nullopt;
+    }
+
+    try {
+        return std::stoi(it->second);
+    } catch(...) {
+        SEND_ERROR_RESPONSE(arg_Callback,
+                            drogon::k400BadRequest,
+                            "Invalid 'file_id' parameter (must be integer)");
+        return std::nullopt;
+    }
+}
+
+inline void _handleNonResolvedToken(DrogonRatServer::Bot *p_Bot,
+                                    const std::string &arg_Token,
+                                    DrogonRatServer::HttpResponseCallback &arg_Callback) {
+    if(!p_Bot) {
+        ERROR_LOG("getFile for token {} but bot_id not yet resolved", arg_Token);
+        SEND_ERROR_RESPONSE(arg_Callback, drogon::k400BadRequest, "Bot not initialized");
+    }
+}
+
+// ============================================================================
+// Main Handler Implementation
+// ============================================================================
 
 void DrogonRatServer::TelegramBotApi::handleFileQueryById(const drogon::HttpRequestPtr &arg_Req,
                                                           Bot *p_Bot,
                                                           const std::string &arg_Token,
                                                           const drogon::orm::DbClientPtr &p_Db,
                                                           HttpResponseCallback &&arg_Callback) {
-    const auto &params = arg_Req->getParameters();
-
-    // Check for file_id param
-    auto it = params.find("file_id");
-    if(it == params.end()) {
-        Json::Value error;
-        error["ok"] = false;
-        error["description"] = "Missing required parameter 'file_id'";
-        auto resp = drogon::HttpResponse::newHttpJsonResponse(error);
-        resp->setStatusCode(drogon::k400BadRequest);
-        return arg_Callback(resp);
+    const std::optional<int> file_id_opt = _getFileIdFromHttpRequest(arg_Req, arg_Callback);
+    if(!file_id_opt.has_value()) {
+        DEBUG_LOG("Invalid or missing file id in the received HTTP request: {}",
+                  arg_Req->getBody());
+        return;
     }
-
-    int file_id = 0;
-    try {
-        file_id = std::stoi(it->second);
-    } catch(...) {
-        Json::Value error;
-        error["ok"] = false;
-        error["description"] = "Invalid 'file_id' parameter (must be integer)";
-        auto resp = drogon::HttpResponse::newHttpJsonResponse(error);
-        resp->setStatusCode(drogon::k400BadRequest);
-        return arg_Callback(resp);
+    if(!file_id_opt.has_value()) {
+        return;
     }
+    const int &file_id = file_id_opt.value();
+    _handleNonResolvedToken(p_Bot, arg_Token, arg_Callback);
 
-    if(!p_Bot) {
-        ERROR_LOG("getFile for token {} but bot_id not yet resolved", arg_Token);
-        Json::Value error;
-        error["ok"] = false;
-        error["description"] = "Bot not initialized";
-        auto resp = drogon::HttpResponse::newHttpJsonResponse(error);
-        resp->setStatusCode(drogon::k400BadRequest);
-        return arg_Callback(resp);
-    }
+    // Lambda for successful DB query
+    auto success_lambda = [cb = arg_Callback, file_id](const drogon::orm::Result &res) {
+        if(res.empty()) {
+            SEND_ERROR_RESPONSE(cb,
+                                drogon::k404NotFound,
+                                fmt::format("File with id = {} not found", file_id));
+        }
 
-    // Query the file data from your DB
-    p_Db->execSqlAsync(
-        "SELECT id, original_file_path, mime_type FROM telegram_file WHERE file_id = ?;",
-        [arg_Callback, file_id, arg_Token](const drogon::orm::Result &r) {
-            if(r.empty()) {
-                Json::Value error;
-                error["ok"] = false;
-                error["description"] = "File not found";
-                auto resp = drogon::HttpResponse::newHttpJsonResponse(error);
-                resp->setStatusCode(drogon::k404NotFound);
-                return arg_Callback(resp);
-            }
+        const auto &row = res[0];
+        const std::string file_path = row["path"].as<std::string>();
 
-            const auto &row = r[0];
-            std::string file_path = row["original_file_path"].as<std::string>();
-            std::string mime_type = row["mime_type"].as<std::string>();
+        Json::Value result;
+        result["file_id"] = std::to_string(file_id);
+        result["file_size"] = std::filesystem::file_size(file_path);
+        result["file_path"] = file_path;
 
-            // Build Telegram-style JSON
-            Json::Value result;
-            result["file_id"] = std::to_string(file_id);
-            result["file_unique_id"] = fmt::format("unique_{}", file_id); // optional placeholder
-            result["mime_type"] = mime_type;
-            result["file_path"] = file_path;
+        SEND_SUCCESS_RESPONSE(cb, result);
+    };
 
-            Json::Value response;
-            response["ok"] = true;
-            response["result"] = result;
+    // Lambda for failed DB query
+    auto failure_lambda =
+        [cb = arg_Callback, p_Bot, file_id](const drogon::orm::DrogonDbException &err) {
+            HANDLE_DB_ERROR(cb, p_Bot, file_id, err);
+        };
 
-            auto resp = drogon::HttpResponse::newHttpJsonResponse(response);
-            resp->setStatusCode(drogon::k200OK);
-            arg_Callback(resp);
-        },
-        [arg_Callback, p_Bot, file_id](const drogon::orm::DrogonDbException &err) {
-            ERROR_LOG("DB query failed for bot_id={} file_id={} err={}",
-                      p_Bot->id,
-                      file_id,
-                      err.base().what());
-            Json::Value error;
-            error["ok"] = false;
-            error["description"] = "Database error";
-            auto resp = drogon::HttpResponse::newHttpJsonResponse(error);
-            resp->setStatusCode(drogon::k500InternalServerError);
-            arg_Callback(resp);
-        },
-        file_id);
+    // Execute query asynchronously
+    p_Db->execSqlAsync("SELECT id, path, created_at FROM file WHERE file.id = ?",
+                       std::move(success_lambda),
+                       std::move(failure_lambda),
+                       file_id);
 }
+
+#undef SEND_ERROR_RESPONSE
+#undef SEND_SUCCESS_RESPONSE
+#undef HANDLE_DB_ERROR

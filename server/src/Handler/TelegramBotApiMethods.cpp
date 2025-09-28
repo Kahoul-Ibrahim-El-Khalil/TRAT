@@ -10,6 +10,7 @@
 #include <drogon/orm/Mapper.h>
 #include <drogon/orm/SqlBinder.h>
 #include <fmt/core.h>
+#include <json/value.h>
 
 namespace DrogonRatServer {
 using HttpResponseCallback = std::function<void(const drogon::HttpResponsePtr &)>;
@@ -25,6 +26,7 @@ inline Bot *_findCachedBot(std::vector<Bot> &arg_Cache, const std::string &arg_T
     return (it != arg_Cache.end()) ? &(*it) : nullptr;
 }
 
+/*
 inline void _insertBotAsync(const drogon::orm::DbClientPtr &p_Db,
                             std::vector<Bot> &arg_Cache,
                             const std::string &arg_Token) {
@@ -43,7 +45,7 @@ inline void _insertBotAsync(const drogon::orm::DbClientPtr &p_Db,
     DEBUG_LOG("Bot token {} cached optimistically (id unknown yet)", arg_Token);
     arg_Cache.push_back({-1, arg_Token});
 }
-
+*/
 void Handler::registerTelegramBotApiHandler() {
     // this->getting_file_url = fmt::format("{}/bot{}/getFile?file_id=", this->server_api_url, token);
 
@@ -53,13 +55,15 @@ void Handler::registerTelegramBotApiHandler() {
                HttpResponseCallback &&arg_Callback,
                const std::string &arg_Token,
                const std::string &arg_Method) {
-            auto p_Bot = _findCachedBot(this->cached_bots, arg_Token);
+            Bot *p_Bot = _findCachedBot(this->cached_bots, arg_Token);
 
             if(!p_Bot) {
-                _insertBotAsync(p_db_client, this->cached_bots, arg_Token);
-                p_Bot = _findCachedBot(this->cached_bots, arg_Token);
+                Json::Value json_response;
+                json_response["ok"] = "false";
+                json_response["description"] = "Server does not recognize the token";
+                const auto &resp = drogon::HttpResponse::newHttpJsonResponse(json_response);
+                arg_Callback(resp);
             }
-
             this->_dispatchHandlerAccordingToMethod(arg_Method,
                                                     arg_Req,
                                                     p_Bot,

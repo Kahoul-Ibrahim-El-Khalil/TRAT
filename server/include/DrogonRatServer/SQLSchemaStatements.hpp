@@ -23,7 +23,7 @@ static constexpr std::array<std::string_view, 5> SCHEMA_TABLE_CREATION_STATEMENT
     R"sql(
     CREATE TABLE IF NOT EXISTS file (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        file_path TEXT UNIQUE NOT NULL,
+        path TEXT UNIQUE NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     )sql",
