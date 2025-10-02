@@ -1,15 +1,13 @@
 #include "DrogonRatServer/Server.hpp"
 
-#include <filesystem>
-#include <fstream>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
 namespace DrogonRatServer {
 
-Server &Server::setIps(const std::vector<std::string> &arg_Ips) {
-    this->ips = arg_Ips;
+Server &Server::setIps(std::vector<std::string> &&arg_Ips) {
+    this->ips = std::move(arg_Ips);
     return *this;
 }
 
@@ -19,7 +17,10 @@ void Server::run() {
     for(const auto &ip : this->ips) {
         handler.drogon_app
             .addListener(ip, 8080) // HTTP
-            .addListener(ip, 8443, true, this->certificate_path,
+            .addListener(ip,
+                         8443,
+                         true,
+                         this->certificate_path,
                          this->key_path) // HTTPS
             .run();
     }
@@ -27,8 +28,7 @@ void Server::run() {
 
 Server::~Server() = default;
 
-void Server::generateSelfSignedCert(const std::string &Cert_Path,
-                                    const std::string &Key_Path) {
+void Server::generateSelfSignedCert(const std::string &Cert_Path, const std::string &Key_Path) {
     // 1. Generate RSA key using modern EVP_PKEY API
     EVP_PKEY *pkey = nullptr;
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr);
@@ -58,12 +58,15 @@ void Server::generateSelfSignedCert(const std::string &Cert_Path,
 
     // Set subject/issuer
     X509_NAME *name = X509_get_subject_name(x509);
-    X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (unsigned char *)"US",
-                               -1, -1, 0);
-    X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC,
-                               (unsigned char *)"DrogonRatServer", -1, -1, 0);
-    X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
-                               (unsigned char *)"localhost", -1, -1, 0);
+    X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (unsigned char *)"US", -1, -1, 0);
+    X509_NAME_add_entry_by_txt(name,
+                               "O",
+                               MBSTRING_ASC,
+                               (unsigned char *)"DrogonRatServer",
+                               -1,
+                               -1,
+                               0);
+    X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char *)"localhost", -1, -1, 0);
     X509_set_issuer_name(x509, name);
 
     // Self-sign
@@ -74,8 +77,7 @@ void Server::generateSelfSignedCert(const std::string &Cert_Path,
     FILE *pkey_file = fopen(Key_Path.c_str(), "wb");
     if(!pkey_file)
         throw std::runtime_error("Failed to open key file for writing");
-    PEM_write_PrivateKey(pkey_file, pkey, nullptr, nullptr, 0, nullptr,
-                         nullptr);
+    PEM_write_PrivateKey(pkey_file, pkey, nullptr, nullptr, 0, nullptr, nullptr);
     fclose(pkey_file);
 
     // 4. Write certificate to file

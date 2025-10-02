@@ -116,7 +116,6 @@ void DrogonRatServer::TelegramBotApi::handleSendDocument(
     const auto &files = file_upload.getFiles();
     const std::string message_text = caption.empty() ? "Document" : caption;
 
-    /*
     // Insert telegram_message record
     p_Db->execSqlAsync(
         "INSERT INTO telegram_message (bot_id, chat_id, text) VALUES (?, ?, ?);",

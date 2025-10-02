@@ -57,7 +57,6 @@ _getFileIdFromHttpRequest(const drogon::HttpRequestPtr &arg_Req,
                           DrogonRatServer::HttpResponseCallbackPtr &sptr_Callback) {
     const auto &params = arg_Req->getParameters();
 
-    // Check for file_id param
     auto it = params.find("file_id");
     if(it == params.end()) {
         SEND_ERROR_RESPONSE(sptr_Callback,
@@ -93,7 +92,7 @@ void DrogonRatServer::TelegramBotApi::handleFileQueryById(const drogon::HttpRequ
     auto callback_sptr =
         std::make_shared<DrogonRatServer::HttpResponseCallback>(std::move(arg_Callback));
 
-    const std::optional<int> file_id_opt = _getFileIdFromHttpRequest(arg_Req, callback_sptr);
+    const std::optional<int> &file_id_opt = _getFileIdFromHttpRequest(arg_Req, callback_sptr);
     if(!file_id_opt.has_value()) {
         DEBUG_LOG("Invalid or missing file id in the received HTTP request: {}",
                   arg_Req->getBody());
