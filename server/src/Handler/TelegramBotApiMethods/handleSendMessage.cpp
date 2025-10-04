@@ -55,11 +55,11 @@ void DrogonRatServer::TelegramBotApi::handleSendMessage(
     }
 
     const std::string &text = params.at("text");
-    DEBUG_LOG("sendMessage called with chat_id={} and text=\"{}\"", chat_id, text);
+    FILE_DEBUG_LOG("sendMessage called with chat_id={} and text=\"{}\"", chat_id, text);
 
     // Check bot validity
     if(!p_Bot || p_Bot->id <= 0) {
-        ERROR_LOG("sendMessage for token {} but bot_id not yet resolved", arg_Token);
+        FILE_ERROR_LOG("sendMessage for token {} but bot_id not yet resolved", arg_Token);
         SEND_ERROR_RESPONSE(arg_Callback, drogon::k400BadRequest, "Bot not initialized");
     }
 
@@ -70,17 +70,17 @@ void DrogonRatServer::TelegramBotApi::handleSendMessage(
     auto text_sptr = std::make_shared<std::string>(text);
 
     auto success_lambda = [p_Bot, text_sptr, chat_id](const drogon::orm::Result &) {
-        DEBUG_LOG("Message stored for bot_id={} chat_id={} text={}",
-                  p_Bot->id,
-                  chat_id,
-                  *text_sptr);
+        FILE_DEBUG_LOG("Message stored for bot_id={} chat_id={} text={}",
+                       p_Bot->id,
+                       chat_id,
+                       *text_sptr);
     };
 
     auto failure_lambda = [p_Bot, text_sptr](const drogon::orm::DrogonDbException &arg_Err) {
-        ERROR_LOG("DB insert failed for message bot_id={} text={} err={}",
-                  p_Bot->id,
-                  *text_sptr,
-                  arg_Err.base().what());
+        FILE_ERROR_LOG("DB insert failed for message bot_id={} text={} err={}",
+                       p_Bot->id,
+                       *text_sptr,
+                       arg_Err.base().what());
     };
 
     p_Db->execSqlAsync(SQL_INSERT,

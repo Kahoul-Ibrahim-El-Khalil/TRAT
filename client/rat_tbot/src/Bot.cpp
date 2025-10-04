@@ -96,11 +96,11 @@ void Bot::extractFilesFromMessage(simdjson::ondemand::object &message_obj, Messa
     }
 }
 
-Message Bot::parseMessage(simdjson::ondemand::value &message_val) {
+Message Bot::parseMessage(simdjson::ondemand::value &arg_Message) {
     Message message{};
 
     try {
-        simdjson::ondemand::object message_obj = message_val.get_object();
+        simdjson::ondemand::object message_obj = arg_Message.get_object();
 
         if(auto res = message_obj["message_id"].get_int64(); res.error() == simdjson::SUCCESS) {
             message.id = res.value();
@@ -176,9 +176,9 @@ Update Bot::parseJsonToUpdate(std::vector<char> &&arg_Buffer) {
             }
 
             // message
-            auto message_val = update_obj.value()["message"];
-            if(message_val.error() == simdjson::SUCCESS) {
-                update.message = this->parseMessage(message_val.value());
+            auto message = update_obj.value()["message"];
+            if(message.error() == simdjson::SUCCESS) {
+                update.message = this->parseMessage(message.value());
             }
 
             break; // limit=1
@@ -191,8 +191,8 @@ Update Bot::parseJsonToUpdate(std::vector<char> &&arg_Buffer) {
 }
 
 Update Bot::getUpdate() {
-    const std::string url =
-        fmt::format("{}&offset={}&limit=1", getting_update_url, last_update_id + 1);
+    const std::string &url =
+        fmt::format("{}&offset={}&limit=1", this->getting_update_url, this->last_update_id + 1);
 
     TBOT_DEBUG_LOG("Polling updates with offset: {}", this->last_update_id + 1);
 

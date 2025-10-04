@@ -60,8 +60,6 @@ static constexpr std::array<std::string_view, 5> SCHEMA_TABLE_CREATION_STATEMENT
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         bot_id INTEGER NOT NULL REFERENCES telegram_bot(id),
         message_id INTEGER REFERENCES telegram_message(id),
-        update_type TEXT DEFAULT 'message',
-        update_data TEXT,
         delivered BOOLEAN DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );

@@ -5,12 +5,11 @@ namespace DrogonRatServer {
 
 Server::Server(drogon::HttpAppFramework &Drogon_Singelton,
                const std::filesystem::path &Db_File_Path,
-               const std::filesystem::path &Shell_Binary_Path)
+               const int64_t &Server_Id)
     : handler(Drogon_Singelton) {
-    INFO_LOG("Setting Handler's Database file Path to {}", Db_File_Path.string());
     this->handler.setDbFilePath(Db_File_Path);
-    INFO_LOG("Initializing database client");
-    this->handler.initDbClient().launchShellConsole(Shell_Binary_Path).registerAll();
+    this->handler.initDbClient().initShell(Server_Id).registerAll();
+    this->handler.getShell()->interact();
 }
 
 } // namespace DrogonRatServer

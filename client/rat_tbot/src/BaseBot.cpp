@@ -20,7 +20,6 @@ BaseBot::BaseBot(const std::string &arg_Token,
     this->last_update_id = 0;
 }
 
-// ---------------------- Getters ----------------------
 std::string BaseBot::getToken() const {
     return this->token;
 }
@@ -77,7 +76,7 @@ void BaseBot::setServerApiUrl(const std::string &Server_Api_Url) {
 }
 
 void BaseBot::setOffset() {
-    const std::string init_url =
+    const std::string &init_url =
         fmt::format("{}/bot{}/getUpdates?offset=-1&limit=1", this->server_api_url, token);
 
     std::vector<char> http_buffer;
@@ -128,7 +127,7 @@ BotResponse BaseBot::sendMessage(const std::string &Text_Message) {
         if(!escaped)
             return BotResponse::UNKNOWN_ERROR;
 
-        const std::string url = fmt::format("{}{}", sending_message_url_base, escaped);
+        const std::string &url = fmt::format("{}{}", this->sending_message_url_base, escaped);
         curl_free(escaped);
 
         TBOT_DEBUG_LOG("Sending message to {}", url);

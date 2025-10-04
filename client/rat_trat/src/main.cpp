@@ -28,7 +28,7 @@ int main(void) {
                          NUMBER_OF_THREADS_INSISDE_HELPER_POOL)
         .bot->sendMessage(
             fmt::format("Session started at: {}", ::rat::system::getCurrentDateTime()));
-    //session_handler.bot->sendFile(std::filesystem::current_path() / "Makefile", "hello");
+    // session_handler.bot->sendFile(std::filesystem::current_path() / "Makefile", "hello");
     session_handler.handleUpdates();
 
     return 0;

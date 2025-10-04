@@ -10,12 +10,10 @@
 
 namespace rat::handler {
 
-// Keep this function static (it doesn't use member variables)
 static inline bool _isUpdateEmpty(const rat::tbot::Update *p_Update) {
     return (p_Update->message.text.empty() && p_Update->message.files.empty());
 }
 
-// Change to member function, remove parameter
 void Handler::_dynamicSleep() {
     constexpr uint32_t base_sleep_ms = 500;
     constexpr double growth_factor = 1.001;
@@ -24,9 +22,8 @@ void Handler::_dynamicSleep() {
     double computed =
         base_sleep_ms * std::pow(growth_factor, static_cast<double>(this->empty_updates_count));
 
-    // ...but not used here! Need to apply the max limit:
     if(computed > max_sleep_ms) {
-        computed = max_sleep_ms; // ← Apply the maximum limit
+        computed = max_sleep_ms;
     }
 
     this->sleep_timeout_ms = computed;

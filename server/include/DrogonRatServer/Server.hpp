@@ -5,7 +5,6 @@
 #include <drogon/HttpAppFramework.h>
 #include <drogon/drogon.h>
 #include <filesystem>
-#include <mutex>
 #include <string>
 
 namespace DrogonRatServer {
@@ -14,8 +13,8 @@ class Server {
   private:
     Handler handler;
     std::vector<std::string> ips;
-    std::string key_path = "key.key";
-    std::string certificate_path = "certificate.cert";
+    const std::string key_path = "key.key";
+    const std::string certificate_path = "certificate.cert";
 
   public:
     Server(const Server &Other_Server) = delete;
@@ -23,7 +22,7 @@ class Server {
 
     explicit Server(drogon::HttpAppFramework &Drogon_Singelton,
                     const std::filesystem::path &Db_File_Path,
-                    const std::filesystem::path &Shell_Binary_Path);
+                    const int64_t &Server_id);
     Server &setIps(std::vector<std::string> &&arg_Ips);
 
     void run();

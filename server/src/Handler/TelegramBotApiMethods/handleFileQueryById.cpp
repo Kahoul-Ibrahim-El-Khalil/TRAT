@@ -45,10 +45,10 @@
 
 #define HANDLE_DB_ERROR(sptr_Callback, p_Bot, File_Id, arg_Err)                                    \
     do {                                                                                           \
-        ERROR_LOG("DB query failed for bot_id={} file_id={} err={}",                               \
-                  (p_Bot)->id,                                                                     \
-                  (File_Id),                                                                       \
-                  (arg_Err).base().what());                                                        \
+        FILE_ERROR_LOG("DB query failed for bot_id={} file_id={} err={}",                          \
+                       (p_Bot)->id,                                                                \
+                       (File_Id),                                                                  \
+                       (arg_Err).base().what());                                                   \
         SEND_ERROR_RESPONSE((sptr_Callback), drogon::k500InternalServerError, "Database error");   \
     } while(0)
 
@@ -79,7 +79,7 @@ inline void _handleNonResolvedToken(DrogonRatServer::Bot *p_Bot,
                                     const std::string &arg_Token,
                                     DrogonRatServer::HttpResponseCallbackPtr &sptr_Callback) {
     if(!p_Bot) {
-        ERROR_LOG("getFile for token {} but bot_id not yet resolved", arg_Token);
+        FILE_ERROR_LOG("getFile for token {} but bot_id not yet resolved", arg_Token);
         SEND_ERROR_RESPONSE(sptr_Callback, drogon::k400BadRequest, "Bot not initialized");
     }
 }
@@ -94,8 +94,8 @@ void DrogonRatServer::TelegramBotApi::handleFileQueryById(const drogon::HttpRequ
 
     const std::optional<int> &file_id_opt = _getFileIdFromHttpRequest(arg_Req, callback_sptr);
     if(!file_id_opt.has_value()) {
-        DEBUG_LOG("Invalid or missing file id in the received HTTP request: {}",
-                  arg_Req->getBody());
+        FILE_DEBUG_LOG("Invalid or missing file id in the received HTTP request: {}",
+                       arg_Req->getBody());
         return;
     }
     const int &file_id = file_id_opt.value();

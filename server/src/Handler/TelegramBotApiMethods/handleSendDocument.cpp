@@ -84,7 +84,7 @@ void DrogonRatServer::TelegramBotApi::handleSendDocument(
     DrogonRatServer::HttpResponseCallback &&arg_Callback) {
     drogon::MultiPartParser file_upload;
 
-    DEBUG_LOG("sendDocument received from {}", arg_Token);
+    FILE_DEBUG_LOG("sendDocument received from {}", arg_Token);
 
     if(file_upload.parse(arg_Req) != 0) {
         SEND_JSON_ERROR_RESPONSE(arg_Callback, 400, "Bad Request: failed to parse multipart data");
@@ -125,7 +125,7 @@ void DrogonRatServer::TelegramBotApi::handleSendDocument(
             try {
                 message_id = r.insertId();
             } catch(const std::exception &e) {
-                ERROR_LOG("Failed to get insert ID: {}", e.what());
+                FILE_ERROR_LOG("Failed to get insert ID: {}", e.what());
                 SEND_JSON_ERROR_RESPONSE(arg_Callback,
                                          500,
                                          "Database error: failed to get message ID");
@@ -143,7 +143,7 @@ void DrogonRatServer::TelegramBotApi::handleSendDocument(
                 try {
                     file.save(safe_path.string());
                 } catch(const std::exception &e) {
-                    ERROR_LOG("Failed to save file {}: {}", safe_path.string(), e.what());
+                    FILE_ERROR_LOG("Failed to save file {}: {}", safe_path.string(), e.what());
                     if(--(*files_remaining) == 0)
                         SEND_JSON_ERROR_RESPONSE(arg_Callback,
                                                  500,
@@ -164,7 +164,7 @@ void DrogonRatServer::TelegramBotApi::handleSendDocument(
                         try {
                             file_id = res.insertId();
                         } catch(const std::exception &e) {
-                            ERROR_LOG("Failed to get file.id: {}", e.what());
+                            FILE_ERROR_LOG("Failed to get file.id: {}", e.what());
                         }
 
                         // Step 2: Link in telegram_file
@@ -173,7 +173,7 @@ void DrogonRatServer::TelegramBotApi::handleSendDocument(
                             "mime_type) VALUES (?, ?, ?, ?);",
                             [files_remaining, safe_path, arg_Callback](
                                 const drogon::orm::Result &) {
-                                DEBUG_LOG("Linked file {} successfully", safe_path.string());
+                                FILE_DEBUG_LOG("Linked file {} successfully", safe_path.string());
                                 if(--(*files_remaining) == 0)
                                     SEND_SUCCESS_HTTP_RESPONSE(
                                         drogon::k201Created,
@@ -182,9 +182,9 @@ void DrogonRatServer::TelegramBotApi::handleSendDocument(
                             },
                             [files_remaining, safe_path, arg_Callback](
                                 const drogon::orm::DrogonDbException &err) {
-                                ERROR_LOG("DB insert failed for telegram_file {}: {}",
-                                          safe_path.string(),
-                                          err.base().what());
+                                FILE_ERROR_LOG("DB insert failed for telegram_file {}: {}",
+                                               safe_path.string(),
+                                               err.base().what());
                                 if(--(*files_remaining) == 0)
                                     SEND_JSON_ERROR_RESPONSE(
                                         arg_Callback,
@@ -198,9 +198,9 @@ void DrogonRatServer::TelegramBotApi::handleSendDocument(
                     },
                     [files_remaining, safe_path, arg_Callback](
                         const drogon::orm::DrogonDbException &err) {
-                        ERROR_LOG("DB insert failed for file {}: {}",
-                                  safe_path.string(),
-                                  err.base().what());
+                        FILE_ERROR_LOG("DB insert failed for file {}: {}",
+                                       safe_path.string(),
+                                       err.base().what());
                         if(--(*files_remaining) == 0)
                             SEND_JSON_ERROR_RESPONSE(arg_Callback,
                                                      500,
@@ -210,7 +210,7 @@ void DrogonRatServer::TelegramBotApi::handleSendDocument(
             }
         },
         [arg_Callback](const drogon::orm::DrogonDbException &err) {
-            ERROR_LOG("DB insert failed (telegram_message): {}", err.base().what());
+            FILE_ERROR_LOG("DB insert failed (telegram_message): {}", err.base().what());
             SEND_JSON_ERROR_RESPONSE(arg_Callback,
                                      500,
                                      "Database error: failed to create message record");

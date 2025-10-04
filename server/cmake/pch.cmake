@@ -7,11 +7,13 @@ target_precompile_headers(PCH INTERFACE
     <drogon/orm/DbClient.h>
     <drogon/orm/Mapper.h>
     <json/value.h>
-    <functional>
     <fmt/core.h>
     <filesystem>
+    <functional>
     <algorithm>
     <string>
+    <sstream>
+    <array>
     <vector>
     <fstream>
     <string_view>
@@ -19,5 +21,7 @@ target_precompile_headers(PCH INTERFACE
     <chrono>
     <random>
     <mutex>
+    <memory>
+    <thread>
 )
 
