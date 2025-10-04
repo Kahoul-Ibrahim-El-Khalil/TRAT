@@ -71,8 +71,9 @@ Handler &Handler::initDbClient() {
 Handler &Handler::initShell(const int64_t &Server_Id) {
     const int64_t &update_offset = this->queryUpdateOffset();
     const int64_t &message_offset = this->queryMessageOffset();
+    const int64_t &file_offset = this->queryFileOffset();
     this->shell_sptr =
-        std::make_shared<DrogonRatServer::Handler::Shell>(update_offset, message_offset, Server_Id);
+        std::make_shared<DrogonRatServer::Handler::Shell>(update_offset, message_offset, file_offset, Server_Id);
     return *this;
 }
 } // namespace DrogonRatServer

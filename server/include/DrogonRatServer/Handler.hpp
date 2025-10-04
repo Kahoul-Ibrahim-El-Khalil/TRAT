@@ -58,7 +58,7 @@ class Handler {
 
     int64_t queryUpdateOffset();
     int64_t queryMessageOffset();
-
+    int64_t queryFileOffset();
     /*Defined in DrogonRatServer/Handler/Shell.hpp*/
     SHELL_INLINED_MACRO
     /*Defined in DrogonRatServer/Handler/TelegramBotApi.hpp*/

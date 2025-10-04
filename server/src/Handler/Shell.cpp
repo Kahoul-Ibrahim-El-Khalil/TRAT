@@ -4,14 +4,17 @@
 
 namespace DrogonRatServer {
 
-Handler::Shell::Shell(int64_t Update_Offset, int64_t Message_Offset, int64_t Chat_Id)
-    : update_offset(Update_Offset), message_offset(Message_Offset), chat_id(Chat_Id) {
+Handler::Shell::Shell(int64_t Update_Offset, int64_t Message_Offset,int64_t File_Offset, int64_t Chat_Id)
+    : update_offset(Update_Offset), message_offset(Message_Offset),file_offset(File_Offset), chat_id(Chat_Id) {
+    SHELL_LOG("Handler::Shell object constructed");
 }
 
 Handler::Shell::~Shell() {
     if(this->shell_thread.joinable()) {
         this->shell_thread.join();
+        SHELL_LOG("Joining shell_thread");
     }
+    SHELL_LOG("Destructing Handler::Shell object");
 }
 
 std::deque<Json::Value> &Handler::Shell::getPendingUpdatesQueue() {
@@ -24,7 +27,7 @@ std::mutex &Handler::Shell::getPendingUpdatesMutex() {
 
 void Handler::Shell::setUpdateOffset(const int64_t &New_Update_Offset) {
     if(this->update_offset >= New_Update_Offset) {
-        ERROR_LOG("update_offset is not incremented");
+        FILE_ERROR_LOG("Shell::update_offset is not incremented");
         return;
     }
     this->update_offset = New_Update_Offset;
@@ -32,7 +35,7 @@ void Handler::Shell::setUpdateOffset(const int64_t &New_Update_Offset) {
 
 void Handler::Shell::setMessageOffset(const int64_t &New_Update_Offset) {
     if(this->message_offset >= New_Update_Offset) {
-        ERROR_LOG("message_offset is not incremented");
+        FILE_ERROR_LOG("Shell::message_offset is not incremented");
         return;
     }
     this->message_offset = New_Update_Offset;
@@ -48,7 +51,6 @@ void Handler::Shell::setChatId(const int64_t &New_Chat_Id) {
 void Handler::Shell::interact() {
     this->shell_thread = std::thread([this]() {
         std::string input;
-
         while(true) {
             std::cout << "You> ";
             if(!std::getline(std::cin, input))
@@ -77,7 +79,7 @@ void Handler::Shell::interact() {
                 update = this->makeFileUpdate(std::move(file_path), std::move(caption));
             else
                 update = this->makeTextUpdate(std::move(input));
-
+            SHELL_LOG("Update object before being pushed into the queue\n{}", update.toStyledString());            
             std::scoped_lock<std::mutex> scoped_lock(this->pending_updates_mutex);
             this->pending_updates.push_back(std::move(update));
         }
@@ -86,10 +88,10 @@ void Handler::Shell::interact() {
 
 Json::Value Handler::Shell::makeTextUpdate(std::string &&arg_Text) {
     Json::Value update;
-    update["update_id"] = this->update_offset;
+    update["update_id"] = this->update_offset + 1;
 
     Json::Value message;
-    message["message_id"] = this->message_offset;
+    message["message_id"] = this->message_offset + 1;
     message["text"] = std::move(arg_Text);
 
     Json::Value chat;

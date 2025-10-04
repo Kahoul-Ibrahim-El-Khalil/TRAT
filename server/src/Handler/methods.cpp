@@ -74,7 +74,21 @@ int64_t Handler::queryMessageOffset() {
         return 0;
     }
 }
+int64_t Handler::queryFileOffset() {
+    try {
+        const auto &result =
+            p_db_client->execSqlSync("SELECT MAX(id) AS max_id FROM file;");
 
+        if(!result.empty() && !result[0]["max_id"].isNull())
+            return result[0]["max_id"].as<int64_t>();
+        else
+            return 0;
+
+    } catch(const drogon::orm::DrogonDbException &e) {
+        FILE_ERROR_LOG("queryFileOffset() failed: {}", e.base().what());
+        return 0;
+    }
+}
 void Handler::registerAll() {
     this->registerEchoHandler();
     this->registerTelegramBotApiHandler();

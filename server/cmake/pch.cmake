@@ -8,6 +8,8 @@ target_precompile_headers(PCH INTERFACE
     <drogon/orm/Mapper.h>
     <json/value.h>
     <fmt/core.h>
+    <iostream>
+    <cstdint>
     <filesystem>
     <functional>
     <algorithm>
